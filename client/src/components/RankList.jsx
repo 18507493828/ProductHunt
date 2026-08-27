@@ -73,6 +73,11 @@ export default function RankList() {
               <span className="rank-name" title={product.name}>
                 {product.name}
               </span>
+              <span className="rank-votes">
+                <span className="rank-votes-icon">🔥</span>
+                <span>{product.voteCount ?? 0}</span>
+                <span className="rank-votes-label">热度值</span>
+              </span>
             </li>
           ))}
         </ol>

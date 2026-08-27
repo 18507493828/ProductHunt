@@ -56,9 +56,9 @@ function VoteButton({ product, onVote, disabled }) {
       type="button"
       className={product.votedByMe ? "vote-btn voted" : "vote-btn"}
       onClick={() => onVote(product)}
-      disabled={disabled}
-      aria-label={product.votedByMe ? "取消投票" : "投票"}
-      title={product.votedByMe ? "取消投票" : "为这个产品投票"}
+      disabled={disabled || product.votedByMe}
+      aria-label={product.votedByMe ? "已投票" : "投票"}
+      title={product.votedByMe ? "已投票" : "为这个产品投票"}
     >
       <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
         <path
@@ -254,7 +254,7 @@ export default function App() {
         toast.success("投票成功", `已为「${product.name}」投票`);
       }
     } catch (err) {
-      setError(err.message);
+      toast.error("投票失败", err.message);
     } finally {
       setVotingId("");
     }
@@ -409,11 +409,11 @@ export default function App() {
                     <article
                       className="ph-top-card"
                       key={product.id}
-                      onClick={() => handleVote(product)}
+                      onClick={() => !product.votedByMe && handleVote(product)}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") handleVote(product);
+                        if (e.key === "Enter" && !product.votedByMe) handleVote(product);
                       }}
                     >
                       <span className="ph-top-rank">#{index + 1}</span>

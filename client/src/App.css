@@ -1581,6 +1581,34 @@ main {
   text-overflow: ellipsis;
 }
 
+.rank-votes {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ph-primary);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 87, 34, 0.25);
+  background: var(--ph-primary-soft);
+}
+
+.rank-votes svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.rank-votes-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ph-primary);
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
 .rank-empty {
   padding: 20px 4px;
   text-align: center;
