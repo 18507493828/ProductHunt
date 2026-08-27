@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Runtime data (local dev storage)
+server/storage/products/*
+!server/storage/products/.gitkeep
+server/storage/users.json
+
+# Generated archives
+*.zip
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.sw?
+
+# Vite
+*.local

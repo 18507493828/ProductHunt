@@ -1,0 +1,142 @@
+.toast-viewport {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(252, 85, 49, 0.12);
+  box-shadow:
+    0 16px 40px rgba(34, 34, 38, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+  animation: toast-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.toast-leaving {
+  animation: toast-leave 0.22s ease forwards;
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-leave {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+.toast-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+}
+
+.toast-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.toast-icon-success {
+  color: #fc5531;
+  background: #fff3ef;
+}
+
+.toast-icon-error {
+  color: #d64545;
+  background: #fff1f1;
+}
+
+.toast-icon-info {
+  color: #3b6fd9;
+  background: #eef4ff;
+}
+
+.toast-content {
+  flex: 1;
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.toast-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #222226;
+  line-height: 1.4;
+}
+
+.toast-message {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #555666;
+}
+
+.toast-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin: -2px -4px 0 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #999aaa;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.toast-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #555666;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .toast-leaving {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .toast-viewport {
+    top: 16px;
+    width: calc(100vw - 24px);
+  }
+}
