@@ -12,6 +12,7 @@ import {
   voteProduct,
 } from "./api";
 import MyProductsList from "./components/MyProductsList";
+import RankList from "./components/RankList";
 import "./App.css";
 
 const RANGE_TABS = [
@@ -315,7 +316,7 @@ export default function App() {
                   className="ph-nav-ghost"
                   onClick={() => setActiveView(activeView === "my" ? "home" : "my")}
                 >
-                  我的提交
+                  {activeView === "my" ? "返回首页" : "我的提交"}
                 </button>
                 <button type="button" className="ph-nav-ghost" onClick={logout}>
                   退出
@@ -387,7 +388,9 @@ export default function App() {
 
           <section className="ph-section">
             <div className="ph-section-inner">
-              <h2 className="ph-section-title">热门 TOP 5</h2>
+              <div className="ph-home-layout">
+                <div className="ph-main-col">
+                  <h2 className="ph-section-title">热门前五</h2>
               {loading ? (
                 <div className="ph-top-grid">
                   {Array.from({ length: 5 }).map((_, index) => (
@@ -447,13 +450,8 @@ export default function App() {
                     </article>
                   ))}
                 </div>
-              )}
-            </div>
-          </section>
-
-          <section className="ph-section" id="product-list">
-            <div className="ph-section-inner">
-              <h2 className="ph-section-title">全部产品</h2>
+                )}
+                <h2 className="ph-section-title spaced" id="product-list">全部产品</h2>
 
               <div className="ph-filters" role="tablist" aria-label="产品分类">
                 {categories.map((category) => (
@@ -532,7 +530,7 @@ export default function App() {
                         </div>
                         <p className="ph-item-tagline">{product.tagline}</p>
                         <p className="ph-item-meta">
-                          <span>by {product.submittedBy || "匿名"}</span>
+                          <span>来自 {product.submittedBy || "匿名"}</span>
                           <span>{formatRelativeTime(product.submittedAt)}</span>
                         </p>
                         {product.description && (
@@ -562,7 +560,12 @@ export default function App() {
                     </article>
                   ))}
                 </div>
-              )}
+                )}
+                </div>
+                <aside className="ph-sidebar">
+                  <RankList />
+                </aside>
+              </div>
             </div>
           </section>
         </main>
@@ -645,7 +648,7 @@ export default function App() {
             >
               <div className="modal-header">
                 <div>
-                  <p className="modal-eyebrow">Launch</p>
+                  <p className="modal-eyebrow">发布</p>
                   <h2 id="submit-modal-title">提交你的产品</h2>
                 </div>
                 <button

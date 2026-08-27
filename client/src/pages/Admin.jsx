@@ -118,7 +118,7 @@ export default function Admin() {
       <div className="admin-page">
         <header className="admin-header">
           <div>
-            <p className="eyebrow">Admin</p>
+            <p className="eyebrow">管理</p>
             <h1>产品审核后台</h1>
             <p className="subtitle">管理员：{user.username}</p>
           </div>

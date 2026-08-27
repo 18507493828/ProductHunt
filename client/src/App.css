@@ -282,6 +282,10 @@ main {
   background: var(--ph-primary);
 }
 
+.ph-section-title.spaced {
+  margin-top: 48px;
+}
+
 /* ---------- top 5 ---------- */
 
 .ph-top-grid {
@@ -1462,4 +1466,148 @@ main {
   height: 100%;
   object-fit: cover;
   border-radius: inherit;
+}
+
+/* ===== 首页两列布局（主内容 + 右侧榜单边栏） ===== */
+.ph-home-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 28px;
+  align-items: start;
+}
+
+.ph-main-col {
+  min-width: 0;
+}
+
+.ph-sidebar {
+  position: sticky;
+  top: 84px;
+}
+
+/* ===== 右侧榜单组件 ===== */
+.rank-card {
+  background: var(--ph-card);
+  border: 1px solid var(--ph-border);
+  border-radius: var(--ph-radius);
+  padding: 18px;
+  transform: translateX(64px);
+}
+
+.rank-title {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: var(--ph-text);
+}
+
+.rank-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ph-border);
+}
+
+.rank-tab {
+  flex: 1;
+  padding: 7px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ph-text-secondary);
+  background: transparent;
+  border: 1px solid var(--ph-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+
+.rank-tab:hover {
+  color: var(--ph-primary);
+  border-color: rgba(255, 87, 34, 0.4);
+}
+
+.rank-tab.active {
+  color: #fff;
+  background: var(--ph-primary);
+  border-color: var(--ph-primary);
+}
+
+.rank-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--ph-border);
+}
+
+.rank-item:last-child {
+  border-bottom: none;
+}
+
+.rank-num {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ph-primary);
+  background: var(--ph-primary-soft);
+  border-radius: 7px;
+}
+
+.rank-item:nth-child(-n + 3) .rank-num {
+  color: #fff;
+  background: var(--ph-primary);
+}
+
+.rank-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ph-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rank-empty {
+  padding: 20px 4px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--ph-text-muted);
+}
+
+.rank-item.skeleton {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.rank-item.skeleton .skeleton-line {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .ph-home-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ph-sidebar {
+    position: static;
+  }
+
+  .rank-card {
+    transform: none;
+  }
 }
