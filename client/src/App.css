@@ -1595,9 +1595,9 @@ main {
   background: var(--ph-primary-soft);
 }
 
-.rank-votes svg {
-  width: 12px;
-  height: 12px;
+.rank-votes-icon {
+  font-size: 12px;
+  line-height: 1;
   flex-shrink: 0;
 }
 
