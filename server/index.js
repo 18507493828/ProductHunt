@@ -335,19 +335,18 @@ app.post("/api/products/:id/vote", requireAuth, async (req, res) => {
     }
 
     const voters = Array.isArray(product.voters) ? product.voters : [];
-    const voted = voters.includes(req.user.id);
 
-    if (voted) {
-      product.voters = voters.filter((id) => id !== req.user.id);
-    } else {
-      product.voters = [...voters, req.user.id];
+    if (voters.includes(req.user.id)) {
+      return res.status(400).json({ error: "您已经投过票了" });
     }
+
+    product.voters = [...voters, req.user.id];
 
     await writeProductFile(product);
 
     res.json({
-      message: voted ? "已取消投票" : "投票成功",
-      voted: !voted,
+      message: "投票成功",
+      voted: true,
       voteCount: product.voters.length,
     });
   } catch {
