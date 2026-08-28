@@ -536,11 +536,6 @@ export default function App() {
               ProductHunt · 发现码道与开发者的优秀作品
             </span>
           </div>
-          <nav className="ph-footer-nav">
-            <button type="button" onClick={openSubmitModal}>
-              提交产品
-            </button>
-          </nav>
         </div>
       </footer>
 
