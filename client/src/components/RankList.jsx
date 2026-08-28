@@ -1,16 +1,9 @@
 import { useEffect, useState } from "react";
 import { fetchProducts } from "../api";
 
-const RANK_TABS = [
-  { key: "week", label: "周榜" },
-  { key: "month", label: "月榜" },
-  { key: "all", label: "总榜" },
-];
-
 const TOP_N = 10;
 
 export default function RankList() {
-  const [tab, setTab] = useState("week");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -19,7 +12,7 @@ export default function RankList() {
     let ignore = false;
     setLoading(true);
     setError("");
-    fetchProducts({ category: "全部", range: tab })
+    fetchProducts({ range: "all" })
       .then((list) => {
         if (!ignore) setItems(list.slice(0, TOP_N));
       })
@@ -32,25 +25,11 @@ export default function RankList() {
     return () => {
       ignore = true;
     };
-  }, [tab]);
+  }, []);
 
   return (
     <div className="rank-card">
       <h2 className="rank-title">榜单</h2>
-      <div className="rank-tabs" role="tablist" aria-label="榜单">
-        {RANK_TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.key}
-            className={tab === t.key ? "rank-tab active" : "rank-tab"}
-            onClick={() => setTab(t.key)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
 
       {error ? (
         <div className="rank-empty">{error}</div>

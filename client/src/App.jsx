@@ -15,20 +15,6 @@ import MyProductsList from "./components/MyProductsList";
 import RankList from "./components/RankList";
 import "./App.css";
 
-const RANGE_TABS = [
-  { key: "today", label: "今日" },
-  { key: "week", label: "周榜" },
-  { key: "month", label: "月榜" },
-  { key: "all", label: "总榜" },
-];
-
-const RANGE_EMPTY_HINT = {
-  today: "今天还没有新产品提交，去总榜看看经典作品",
-  week: "本周还没有新产品提交，去总榜看看经典作品",
-  month: "本月还没有新产品提交，去总榜看看经典作品",
-  all: "还没有产品，来提交第一个吧",
-};
-
 function getProductInitial(name = "") {
   return (name.trim()[0] || "P").toUpperCase();
 }
@@ -78,7 +64,6 @@ export default function App() {
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState(["全部"]);
-  const [activeRange, setActiveRange] = useState("all");
   const [activeView, setActiveView] = useState("home");
 
   const [loading, setLoading] = useState(true);
@@ -109,11 +94,11 @@ export default function App() {
       .catch(() => setCategories(["全部"]));
   }, []);
 
-  async function loadProducts(range = activeRange) {
+  async function loadProducts() {
     try {
       setLoading(true);
       setError("");
-      const list = await fetchProducts({ range });
+      const list = await fetchProducts();
       setProducts(list);
     } catch (err) {
       setError(err.message);
@@ -137,9 +122,9 @@ export default function App() {
 
   useEffect(() => {
     if (activeView === "home") {
-      loadProducts(activeRange);
+      loadProducts();
     }
-  }, [activeRange, activeView]);
+  }, [activeView]);
 
   useEffect(() => {
     if (user && activeView === "my") {
@@ -224,7 +209,7 @@ export default function App() {
       toast.success("提交成功", result.message);
       if (isAdmin) {
         setActiveView("home");
-        await loadProducts(activeRange);
+        await loadProducts();
       } else {
         setActiveView("my");
         await loadMyProducts();
@@ -259,14 +244,6 @@ export default function App() {
     }
   }
 
-  function jumpToWeekRank() {
-    setActiveView("home");
-    setActiveRange("week");
-    document
-      .getElementById("product-list")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   return (
     <div className="ph-page">
       <header className="ph-nav">
@@ -283,23 +260,6 @@ export default function App() {
             </span>
             <span className="ph-logo-text">ProductHunt</span>
           </Link>
-
-          {activeView === "home" && (
-            <nav className="ph-nav-tabs" role="tablist" aria-label="榜单">
-              {RANGE_TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeRange === tab.key}
-                  className={activeRange === tab.key ? "ph-nav-tab active" : "ph-nav-tab"}
-                  onClick={() => setActiveRange(tab.key)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-          )}
 
           <div className="ph-nav-actions">
             {user ? (
@@ -378,9 +338,6 @@ export default function App() {
                 onClick={openSubmitModal}
               >
                 提交你的产品
-              </button>
-              <button type="button" className="ph-btn-ghost" onClick={jumpToWeekRank}>
-                查看周榜
               </button>
             </div>
           </section>
@@ -466,7 +423,7 @@ export default function App() {
                 </div>
               ) : products.length === 0 ? (
                 <div className="ph-empty">
-                  <h3>{RANGE_EMPTY_HINT[activeRange]}</h3>
+                  <h3>还没有产品，来提交第一个吧</h3>
                   <button
                     type="button"
                     className="ph-empty-link"
@@ -580,33 +537,6 @@ export default function App() {
             </span>
           </div>
           <nav className="ph-footer-nav">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveView("home");
-                setActiveRange("today");
-              }}
-            >
-              今日
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveView("home");
-                setActiveRange("week");
-              }}
-            >
-              周榜
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveView("home");
-                setActiveRange("month");
-              }}
-            >
-              月榜
-            </button>
             <button type="button" onClick={openSubmitModal}>
               提交产品
             </button>
