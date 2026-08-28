@@ -98,3 +98,66 @@ export async function rejectProduct(id, reason = "") {
 export async function deleteProduct(id) {
   return request(`/api/products/${id}`, { method: "DELETE" });
 }
+
+/* ---------------- 轮播图 API ---------------- */
+
+export async function fetchBanners() {
+  return request("/api/banners");
+}
+
+export async function fetchAdminBanners() {
+  return request("/api/admin/banners");
+}
+
+export async function createBanner({ title, subtitle, imageUrl, linkUrl, sort, enabled }) {
+  return request("/api/admin/banners", {
+    method: "POST",
+    body: JSON.stringify({ title, subtitle, imageUrl, linkUrl, sort, enabled }),
+  });
+}
+
+export async function updateBanner(id, { title, subtitle, imageUrl, linkUrl, sort, enabled }) {
+  return request(`/api/admin/banners/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ title, subtitle, imageUrl, linkUrl, sort, enabled }),
+  });
+}
+
+export async function deleteBanner(id) {
+  return request(`/api/admin/banners/${id}`, { method: "DELETE" });
+}
+
+/* ---------------- 导航 API ---------------- */
+
+export async function fetchNavs() {
+  return request("/api/navs");
+}
+
+export async function fetchAdminNavs() {
+  return request("/api/admin/navs");
+}
+
+export async function createNav({ title, url, sort, enabled }) {
+  return request("/api/admin/navs", {
+    method: "POST",
+    body: JSON.stringify({ title, url, sort, enabled }),
+  });
+}
+
+export async function updateNav(id, { title, url, sort, enabled }) {
+  return request(`/api/admin/navs/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ title, url, sort, enabled }),
+  });
+}
+
+export async function deleteNav(id) {
+  return request(`/api/admin/navs/${id}`, { method: "DELETE" });
+}
+
+export async function reorderNavs(ids) {
+  return request("/api/admin/navs/reorder", {
+    method: "PUT",
+    body: JSON.stringify({ ids }),
+  });
+}

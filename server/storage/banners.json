@@ -1,0 +1,35 @@
+[
+  {
+    "id": "banner-ai",
+    "title": "AI 工具专区",
+    "subtitle": "发现能真正提升生产力的 AI 产品",
+    "imageUrl": "/banners/banner-ai.png",
+    "linkUrl": "https://www.producthunt.com/",
+    "sort": 1,
+    "enabled": true,
+    "createdAt": "2026-08-28T09:35:54.045Z",
+    "updatedAt": "2026-08-28T09:35:54.045Z"
+  },
+  {
+    "id": "banner-dev",
+    "title": "开发者利器",
+    "subtitle": "从编辑器插件到部署平台，汇聚开发者精心打磨的工具",
+    "imageUrl": "/banners/banner-dev.png",
+    "linkUrl": "https://www.producthunt.com/categories/developer-tools",
+    "sort": 2,
+    "enabled": true,
+    "createdAt": "2026-08-28T09:35:54.045Z",
+    "updatedAt": "2026-08-28T09:35:54.045Z"
+  },
+  {
+    "id": "banner-open",
+    "title": "开源项目巡礼",
+    "subtitle": "每周精选值得关注的开源项目，让优秀作品被更多人看见",
+    "imageUrl": "/banners/banner-open.png",
+    "linkUrl": "https://www.producthunt.com/categories/open-source",
+    "sort": 3,
+    "enabled": true,
+    "createdAt": "2026-08-28T09:35:54.045Z",
+    "updatedAt": "2026-08-28T09:35:54.045Z"
+  }
+]

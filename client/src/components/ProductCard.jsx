@@ -55,7 +55,12 @@ export default function ProductCard({
         ) : (
           <span className="ph-product-card-initial">{getProductInitial(product.name)}</span>
         )}
-        {rank != null && <span className="ph-product-card-rank">#{rank}</span>}
+        {rank != null && (
+          <span className="ph-product-card-rank">
+            <span className="ph-product-card-rank-icon" aria-hidden="true">🔥</span>
+            {rank}
+          </span>
+        )}
         {onVote && (
           <VoteControl
             product={product}

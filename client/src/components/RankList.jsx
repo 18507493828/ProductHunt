@@ -36,7 +36,7 @@ export default function RankList() {
 
   return (
     <div className="rank-card">
-      <h2 className="rank-title">榜单</h2>
+      <h2 className="rank-title">热门榜单</h2>
       <div className="rank-tabs" role="tablist" aria-label="榜单">
         {RANK_TABS.map((t) => (
           <button
@@ -67,19 +67,38 @@ export default function RankList() {
         <div className="rank-empty">暂无数据</div>
       ) : (
         <ol className="rank-list">
-          {items.map((product, index) => (
-            <li className="rank-item" key={product.id}>
-              <span className="rank-num">{index + 1}</span>
-              <span className="rank-name" title={product.name}>
-                {product.name}
-              </span>
-              <span className="rank-votes">
-                <span className="rank-votes-icon">🔥</span>
-                <span className="rank-votes-label">热度值</span>
-                <span>{product.voteCount ?? 0}</span>
-              </span>
-            </li>
-          ))}
+          {items.map((product, index) => {
+            const content = (
+              <>
+                <span className="rank-num">{index + 1}</span>
+                <span className="rank-name" title={product.name}>
+                  {product.name}
+                </span>
+                <span className="rank-votes">
+                  <span className="rank-votes-icon">🔥</span>
+                  <span className="rank-votes-label">热度值</span>
+                  <span>{product.voteCount ?? 0}</span>
+                </span>
+              </>
+            );
+
+            return product.url ? (
+              <li className="rank-item" key={product.id}>
+                <a
+                  className="rank-link"
+                  href={product.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {content}
+                </a>
+              </li>
+            ) : (
+              <li className="rank-item" key={product.id}>
+                {content}
+              </li>
+            );
+          })}
         </ol>
       )}
     </div>

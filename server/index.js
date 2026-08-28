@@ -25,6 +25,8 @@ const HOST = process.env.HOST || "0.0.0.0";
 const CLIENT_DIST = path.join(__dirname, "..", "client", "dist");
 const STORAGE_DIR = path.join(__dirname, "storage", "products");
 const UPLOADS_DIR = path.join(__dirname, "storage", "uploads");
+const BANNERS_FILE = path.join(__dirname, "storage", "banners.json");
+const NAVS_FILE = path.join(__dirname, "storage", "navs.json");
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 const RANGES = ["today", "week", "month", "all"];
@@ -45,9 +47,86 @@ const AVATAR_COLORS = [
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const DEFAULT_BANNERS = [
+  {
+    id: "banner-ai",
+    title: "AI 工具专区",
+    subtitle: "发现能真正提升生产力的 AI 产品",
+    imageUrl: "/banners/banner-ai.png",
+    linkUrl: "https://www.producthunt.com/",
+    sort: 1,
+    enabled: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "banner-dev",
+    title: "开发者利器",
+    subtitle: "从编辑器插件到部署平台，汇聚开发者精心打磨的工具",
+    imageUrl: "/banners/banner-dev.png",
+    linkUrl: "https://www.producthunt.com/categories/developer-tools",
+    sort: 2,
+    enabled: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "banner-open",
+    title: "开源项目巡礼",
+    subtitle: "每周精选值得关注的开源项目，让优秀作品被更多人看见",
+    imageUrl: "/banners/banner-open.png",
+    linkUrl: "https://www.producthunt.com/categories/open-source",
+    sort: 3,
+    enabled: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+];
+
+const DEFAULT_NAVS = [
+  {
+    id: "nav-codearts",
+    title: "码道官方网站",
+    url: "https://codearts.huaweicloud.com/",
+    sort: 1,
+    enabled: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "nav-csdn",
+    title: "CSDN 官方社区",
+    url: "https://csdn.net",
+    sort: 2,
+    enabled: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "nav-codearts-csdn",
+    title: "CSDN 码道开发者社区",
+    url: "https://codearts.csdn.net/",
+    sort: 3,
+    enabled: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "nav-codearts-hackathon",
+    title: "码道黑客松",
+    url: "https://builderx.csdn.net/activity-site/madao/hackathon/index#join",
+    sort: 4,
+    enabled: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+];
+
 await fs.mkdir(STORAGE_DIR, { recursive: true });
 await fs.mkdir(UPLOADS_DIR, { recursive: true });
 await initAuth();
+await initBanners();
+await initNavs();
 
 if (IS_PRODUCTION) {
   app.use(express.static(CLIENT_DIST));
@@ -88,6 +167,104 @@ async function readProductFile(filePath) {
 async function writeProductFile(product) {
   const filePath = path.join(STORAGE_DIR, `${product.id}.json`);
   await fs.writeFile(filePath, JSON.stringify(product, null, 2), "utf-8");
+}
+
+/* ---------------- 轮播图存储 ---------------- */
+
+async function readBanners() {
+  try {
+    const raw = await fs.readFile(BANNERS_FILE, "utf-8");
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeBanners(banners) {
+  await fs.writeFile(BANNERS_FILE, JSON.stringify(banners, null, 2), "utf-8");
+}
+
+async function initBanners() {
+  const existing = await readBanners();
+  if (existing.length > 0) return;
+
+  const now = new Date().toISOString();
+  const seed = DEFAULT_BANNERS.map((banner) => ({
+    ...banner,
+    createdAt: now,
+    updatedAt: now,
+  }));
+  await writeBanners(seed);
+}
+
+function toPublicBanner(banner) {
+  return {
+    id: banner.id,
+    title: banner.title || "",
+    subtitle: banner.subtitle || "",
+    imageUrl: banner.imageUrl || "",
+    linkUrl: banner.linkUrl || "",
+    sort: Number(banner.sort) || 0,
+    enabled: banner.enabled !== false,
+    createdAt: banner.createdAt || "",
+    updatedAt: banner.updatedAt || "",
+  };
+}
+
+async function getBannerById(id) {
+  const banners = await readBanners();
+  return banners.find((banner) => banner.id === id) || null;
+}
+
+/* ---------------- 导航存储 ---------------- */
+
+async function readNavs() {
+  try {
+    const raw = await fs.readFile(NAVS_FILE, "utf-8");
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeNavs(navs) {
+  await fs.writeFile(NAVS_FILE, JSON.stringify(navs, null, 2), "utf-8");
+}
+
+async function initNavs() {
+  const existing = await readNavs();
+  if (existing.length > 0) return;
+
+  const now = new Date().toISOString();
+  const seed = DEFAULT_NAVS.map((nav) => ({
+    ...nav,
+    createdAt: now,
+    updatedAt: now,
+  }));
+  await writeNavs(seed);
+}
+
+function toPublicNav(nav) {
+  return {
+    id: nav.id,
+    title: nav.title || "",
+    url: nav.url || "",
+    sort: Number(nav.sort) || 0,
+    enabled: nav.enabled !== false,
+    createdAt: nav.createdAt || "",
+    updatedAt: nav.updatedAt || "",
+  };
+}
+
+async function getNavById(id) {
+  const navs = await readNavs();
+  return navs.find((nav) => nav.id === id) || null;
+}
+
+async function sortNavs(navs) {
+  return navs.sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0));
 }
 
 async function listProducts() {
@@ -197,6 +374,276 @@ app.get("/api/auth/me", requireAuth, async (req, res) => {
 
 app.get("/api/category-options", (_req, res) => {
   res.json({ categories: PRODUCT_CATEGORIES });
+});
+
+/* ---------------- 轮播图 API ---------------- */
+
+// 公开：获取启用的轮播图（按 sort 升序）
+app.get("/api/banners", async (_req, res) => {
+  try {
+    const banners = (await readBanners())
+      .filter((banner) => banner.enabled !== false)
+      .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0))
+      .map(toPublicBanner);
+    res.json(banners);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 管理员：获取全部轮播图
+app.get("/api/admin/banners", requireAdmin, async (_req, res) => {
+  try {
+    const banners = (await readBanners())
+      .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0))
+      .map(toPublicBanner);
+    res.json(banners);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 管理员：新增轮播图
+app.post("/api/admin/banners", requireAdmin, async (req, res) => {
+  try {
+    const { title, subtitle, imageUrl, linkUrl, sort, enabled } = req.body || {};
+    const trimmedTitle = (title || "").trim();
+    const trimmedImageUrl = (imageUrl || "").trim();
+    const trimmedLinkUrl = (linkUrl || "").trim();
+
+    if (!trimmedTitle) {
+      return res.status(400).json({ error: "请填写轮播图标题" });
+    }
+    if (!trimmedImageUrl) {
+      return res.status(400).json({ error: "请填写图片地址" });
+    }
+    if (trimmedImageUrl.length > 500) {
+      return res.status(400).json({ error: "图片地址过长" });
+    }
+    if (trimmedLinkUrl && !URL_PATTERN.test(trimmedLinkUrl)) {
+      return res.status(400).json({ error: "跳转链接需以 http:// 或 https:// 开头" });
+    }
+
+    const now = new Date().toISOString();
+    const banner = {
+      id: crypto.randomUUID().replace(/-/g, "").slice(0, 12),
+      title: trimmedTitle,
+      subtitle: (subtitle || "").trim(),
+      imageUrl: trimmedImageUrl,
+      linkUrl: trimmedLinkUrl,
+      sort: Number(sort) || 0,
+      enabled: enabled !== false,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const banners = await readBanners();
+    banners.push(banner);
+    await writeBanners(banners);
+
+    res.json({ message: "轮播图已添加", banner: toPublicBanner(banner) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 管理员：更新轮播图
+app.put("/api/admin/banners/:id", requireAdmin, async (req, res) => {
+  try {
+    const { title, subtitle, imageUrl, linkUrl, sort, enabled } = req.body || {};
+    const banner = await getBannerById(req.params.id);
+    if (!banner) {
+      return res.status(404).json({ error: "轮播图不存在" });
+    }
+
+    const trimmedTitle = (title ?? banner.title).toString().trim();
+    const trimmedImageUrl = (imageUrl ?? banner.imageUrl).toString().trim();
+    const trimmedLinkUrl = (linkUrl ?? banner.linkUrl).toString().trim();
+
+    if (!trimmedTitle) {
+      return res.status(400).json({ error: "请填写轮播图标题" });
+    }
+    if (!trimmedImageUrl) {
+      return res.status(400).json({ error: "请填写图片地址" });
+    }
+    if (trimmedLinkUrl && !URL_PATTERN.test(trimmedLinkUrl)) {
+      return res.status(400).json({ error: "跳转链接需以 http:// 或 https:// 开头" });
+    }
+
+    banner.title = trimmedTitle;
+    banner.subtitle = (subtitle ?? banner.subtitle).toString().trim();
+    banner.imageUrl = trimmedImageUrl;
+    banner.linkUrl = trimmedLinkUrl;
+    banner.sort = Number(sort ?? banner.sort) || 0;
+    banner.enabled = enabled === undefined ? banner.enabled : enabled !== false;
+    banner.updatedAt = new Date().toISOString();
+
+    const banners = await readBanners();
+    const index = banners.findIndex((item) => item.id === banner.id);
+    if (index !== -1) banners[index] = banner;
+    await writeBanners(banners);
+
+    res.json({ message: "轮播图已更新", banner: toPublicBanner(banner) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 管理员：删除轮播图
+app.delete("/api/admin/banners/:id", requireAdmin, async (req, res) => {
+  try {
+    const banners = await readBanners();
+    const index = banners.findIndex((item) => item.id === req.params.id);
+    if (index === -1) {
+      return res.status(404).json({ error: "轮播图不存在" });
+    }
+    const [removed] = banners.splice(index, 1);
+    await writeBanners(banners);
+    res.json({ message: "轮播图已删除", banner: toPublicBanner(removed) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ---------------- 导航 API ---------------- */
+
+// 公开：获取启用的导航（按 sort 升序）
+app.get("/api/navs", async (_req, res) => {
+  try {
+    const navs = (await readNavs())
+      .filter((nav) => nav.enabled !== false)
+      .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0))
+      .map(toPublicNav);
+    res.json(navs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 管理员：获取全部导航
+app.get("/api/admin/navs", requireAdmin, async (_req, res) => {
+  try {
+    const navs = (await sortNavs(await readNavs())).map(toPublicNav);
+    res.json(navs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 管理员：新增导航
+app.post("/api/admin/navs", requireAdmin, async (req, res) => {
+  try {
+    const { title, url, sort, enabled } = req.body || {};
+    const trimmedTitle = (title || "").trim();
+    const trimmedUrl = (url || "").trim();
+
+    if (!trimmedTitle) {
+      return res.status(400).json({ error: "请填写导航名称" });
+    }
+    if (!URL_PATTERN.test(trimmedUrl)) {
+      return res.status(400).json({ error: "链接需以 http:// 或 https:// 开头" });
+    }
+
+    const now = new Date().toISOString();
+    const nav = {
+      id: crypto.randomUUID().replace(/-/g, "").slice(0, 12),
+      title: trimmedTitle,
+      url: trimmedUrl,
+      sort: Number(sort) || 0,
+      enabled: enabled !== false,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const navs = await readNavs();
+    navs.push(nav);
+    await writeNavs(navs);
+
+    res.json({ message: "导航已添加", nav: toPublicNav(nav) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 管理员：更新导航
+app.put("/api/admin/navs/:id", requireAdmin, async (req, res) => {
+  try {
+    const { title, url, sort, enabled } = req.body || {};
+    const nav = await getNavById(req.params.id);
+    if (!nav) {
+      return res.status(404).json({ error: "导航不存在" });
+    }
+
+    const trimmedTitle = (title ?? nav.title).toString().trim();
+    const trimmedUrl = (url ?? nav.url).toString().trim();
+
+    if (!trimmedTitle) {
+      return res.status(400).json({ error: "请填写导航名称" });
+    }
+    if (!URL_PATTERN.test(trimmedUrl)) {
+      return res.status(400).json({ error: "链接需以 http:// 或 https:// 开头" });
+    }
+
+    nav.title = trimmedTitle;
+    nav.url = trimmedUrl;
+    nav.sort = Number(sort ?? nav.sort) || 0;
+    nav.enabled = enabled === undefined ? nav.enabled : enabled !== false;
+    nav.updatedAt = new Date().toISOString();
+
+    const navs = await readNavs();
+    const index = navs.findIndex((item) => item.id === nav.id);
+    if (index !== -1) navs[index] = nav;
+    await writeNavs(navs);
+
+    res.json({ message: "导航已更新", nav: toPublicNav(nav) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 管理员：删除导航
+app.delete("/api/admin/navs/:id", requireAdmin, async (req, res) => {
+  try {
+    const navs = await readNavs();
+    const index = navs.findIndex((item) => item.id === req.params.id);
+    if (index === -1) {
+      return res.status(404).json({ error: "导航不存在" });
+    }
+    const [removed] = navs.splice(index, 1);
+    await writeNavs(navs);
+    res.json({ message: "导航已删除", nav: toPublicNav(removed) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 管理员：排序导航（body: { ids: [id1, id2, ...] }，按传入顺序从 1 重排 sort）
+app.put("/api/admin/navs/reorder", requireAdmin, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    if (ids.length === 0) {
+      return res.status(400).json({ error: "排序数据无效" });
+    }
+
+    const navs = await readNavs();
+    const idSet = new Set(navs.map((nav) => nav.id));
+    if (ids.some((id) => !idSet.has(id))) {
+      return res.status(400).json({ error: "排序数据包含不存在的导航" });
+    }
+
+    const byId = new Map(navs.map((nav) => [nav.id, nav]));
+    const ordered = ids.map((id, index) => {
+      const nav = byId.get(id);
+      nav.sort = index + 1;
+      nav.updatedAt = new Date().toISOString();
+      return nav;
+    });
+
+    await writeNavs(ordered);
+    res.json({ message: "排序已保存", navs: ordered.map(toPublicNav) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post("/api/upload", requireAuth, (req, res) => {
@@ -418,6 +865,22 @@ app.delete("/api/products/:id", requireAdmin, async (req, res) => {
 if (IS_PRODUCTION) {
   app.get("*", (_req, res) => {
     res.sendFile(path.join(CLIENT_DIST, "index.html"));
+  });
+} else {
+  // 开发模式下后端不托管前端页面，访问根路径时给出指引
+  app.get("/", (_req, res) => {
+    res
+      .status(200)
+      .type("html")
+      .send(
+        `<html><body style="font-family:system-ui,sans-serif;background:#0d1017;color:#e8eaf0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+          <div style="text-align:center">
+            <h2>这是后端 API 服务（端口 ${PORT}）</h2>
+            <p>请访问前端开发服务器：<a href="http://localhost:5173" style="color:#4da3ff">http://localhost:5173</a></p>
+            <p style="color:#8a93a5;font-size:14px">接口健康检查：<a href="/api/health" style="color:#4da3ff">/api/health</a></p>
+          </div>
+        </body></html>`
+      );
   });
 }
 
