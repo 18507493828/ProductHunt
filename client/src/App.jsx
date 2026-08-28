@@ -26,7 +26,7 @@ const RANGE_EMPTY_HINT = {
   today: "今天还没有新产品提交，去总榜看看经典作品",
   week: "本周还没有新产品提交，去总榜看看经典作品",
   month: "本月还没有新产品提交，去总榜看看经典作品",
-  all: "该分类下还没有产品",
+  all: "还没有产品，来提交第一个吧",
 };
 
 function getProductInitial(name = "") {
@@ -78,8 +78,7 @@ export default function App() {
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState(["全部"]);
-  const [activeCategory, setActiveCategory] = useState("全部");
-  const [activeRange, setActiveRange] = useState("today");
+  const [activeRange, setActiveRange] = useState("all");
   const [activeView, setActiveView] = useState("home");
 
   const [loading, setLoading] = useState(true);
@@ -110,11 +109,11 @@ export default function App() {
       .catch(() => setCategories(["全部"]));
   }, []);
 
-  async function loadProducts(category = activeCategory, range = activeRange) {
+  async function loadProducts(range = activeRange) {
     try {
       setLoading(true);
       setError("");
-      const list = await fetchProducts({ category, range });
+      const list = await fetchProducts({ range });
       setProducts(list);
     } catch (err) {
       setError(err.message);
@@ -138,9 +137,9 @@ export default function App() {
 
   useEffect(() => {
     if (activeView === "home") {
-      loadProducts(activeCategory, activeRange);
+      loadProducts(activeRange);
     }
-  }, [activeCategory, activeRange, activeView]);
+  }, [activeRange, activeView]);
 
   useEffect(() => {
     if (user && activeView === "my") {
@@ -225,7 +224,7 @@ export default function App() {
       toast.success("提交成功", result.message);
       if (isAdmin) {
         setActiveView("home");
-        await loadProducts(activeCategory, activeRange);
+        await loadProducts(activeRange);
       } else {
         setActiveView("my");
         await loadMyProducts();
@@ -453,23 +452,6 @@ export default function App() {
                 )}
                 <h2 className="ph-section-title spaced" id="product-list">全部产品</h2>
 
-              <div className="ph-filters" role="tablist" aria-label="产品分类">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    type="button"
-                    role="tab"
-                    aria-selected={category === activeCategory}
-                    className={
-                      category === activeCategory ? "ph-filter active" : "ph-filter"
-                    }
-                    onClick={() => setActiveCategory(category)}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-
               {error && <div className="error">{error}</div>}
 
               {loading ? (
@@ -484,11 +466,7 @@ export default function App() {
                 </div>
               ) : products.length === 0 ? (
                 <div className="ph-empty">
-                  <h3>
-                    {activeCategory !== "全部"
-                      ? "该分类下还没有产品"
-                      : RANGE_EMPTY_HINT[activeRange]}
-                  </h3>
+                  <h3>{RANGE_EMPTY_HINT[activeRange]}</h3>
                   <button
                     type="button"
                     className="ph-empty-link"
