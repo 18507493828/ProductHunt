@@ -278,7 +278,10 @@ app.post("/api/products", requireAuth, async (req, res) => {
     if (trimmedTagline.length > 100) {
       return res.status(400).json({ error: "一句话介绍不能超过 100 字" });
     }
-    if (trimmedUrl && !URL_PATTERN.test(trimmedUrl)) {
+    if (!trimmedUrl) {
+      return res.status(400).json({ error: "请填写产品链接" });
+    }
+    if (!URL_PATTERN.test(trimmedUrl)) {
       return res.status(400).json({ error: "产品链接需以 http:// 或 https:// 开头" });
     }
     if (trimmedImageUrl && trimmedImageUrl.length > 500) {

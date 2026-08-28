@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
@@ -12,63 +12,78 @@ import {
   voteProduct,
 } from "./api";
 import MyProductsList from "./components/MyProductsList";
+import ProductCard, { ProductCardSkeleton } from "./components/ProductCard";
 import RankList from "./components/RankList";
 import "./App.css";
 
-const RANGE_TABS = [
-  { key: "today", label: "今日" },
-  { key: "week", label: "周榜" },
-  { key: "month", label: "月榜" },
-  { key: "all", label: "总榜" },
-];
+const PRODUCT_PAGE_SIZE = 20;
 
-const RANGE_EMPTY_HINT = {
-  today: "今天还没有新产品提交，去总榜看看经典作品",
-  week: "本周还没有新产品提交，去总榜看看经典作品",
-  month: "本月还没有新产品提交，去总榜看看经典作品",
-  all: "该分类下还没有产品",
-};
+function StarField() {
+  const ref = useRef(null);
 
-function getProductInitial(name = "") {
-  return (name.trim()[0] || "P").toUpperCase();
-}
+  useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas.getContext("2d");
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    let stars = [];
+    let raf = 0;
 
-function formatRelativeTime(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
+    function initStars() {
+      const count = Math.min(
+        Math.floor((window.innerWidth * window.innerHeight) / 9000),
+        220
+      );
+      stars = Array.from({ length: count }, () => ({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() * 1.4 + 0.3,
+        speed: Math.random() * 0.12 + 0.02,
+        twinkle: Math.random() * Math.PI * 2,
+        twinkleSpeed: Math.random() * 0.02 + 0.005,
+        alpha: Math.random() * 0.5 + 0.25,
+        purple: Math.random() < 0.15,
+      }));
+    }
 
-  const diff = Date.now() - date.getTime();
-  const minutes = Math.floor(diff / 60000);
+    function resize() {
+      canvas.width = window.innerWidth * DPR;
+      canvas.height = window.innerHeight * DPR;
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      initStars();
+    }
 
-  if (minutes < 1) return "刚刚";
-  if (minutes < 60) return `${minutes} 分钟前`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} 天前`;
-  return date.toLocaleDateString("zh-CN");
-}
+    function tick() {
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      for (const s of stars) {
+        s.y -= s.speed;
+        s.twinkle += s.twinkleSpeed;
+        if (s.y < -2) {
+          s.y = window.innerHeight + 2;
+          s.x = Math.random() * window.innerWidth;
+        }
+        const a = s.alpha * (0.55 + 0.45 * Math.sin(s.twinkle));
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = s.purple
+          ? `rgba(147, 111, 245, ${a})`
+          : `rgba(255, 255, 255, ${a})`;
+        ctx.fill();
+      }
+      raf = requestAnimationFrame(tick);
+    }
 
-function VoteButton({ product, onVote, disabled }) {
-  return (
-    <button
-      type="button"
-      className={product.votedByMe ? "vote-btn voted" : "vote-btn"}
-      onClick={() => onVote(product)}
-      disabled={disabled || product.votedByMe}
-      aria-label={product.votedByMe ? "已投票" : "投票"}
-      title={product.votedByMe ? "已投票" : "为这个产品投票"}
-    >
-      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-        <path
-          d="M10 4l5.5 6.5H13V15a1 1 0 01-1 1H8a1 1 0 01-1-1v-4.5H4.5L10 4z"
-          fill="currentColor"
-        />
-      </svg>
-      <span>{product.voteCount ?? 0}</span>
-    </button>
-  );
+    resize();
+    tick();
+    window.addEventListener("resize", resize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
+  return <canvas ref={ref} className="starfield-canvas" aria-hidden="true" />;
 }
 
 export default function App() {
@@ -77,14 +92,18 @@ export default function App() {
   const navigate = useNavigate();
 
   const [products, setProducts] = useState([]);
+  const [topProducts, setTopProducts] = useState([]);
   const [categories, setCategories] = useState(["全部"]);
   const [activeCategory, setActiveCategory] = useState("全部");
-  const [activeRange, setActiveRange] = useState("today");
   const [activeView, setActiveView] = useState("home");
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [votingId, setVotingId] = useState("");
+  const filtersRef = useRef(null);
+  const dragState = useRef({ dragging: false, startX: 0, startScrollLeft: 0, moved: false });
+  const [filterOverflow, setFilterOverflow] = useState({ left: false, right: false });
+  const [visibleCount, setVisibleCount] = useState(PRODUCT_PAGE_SIZE);
 
   const [myProducts, setMyProducts] = useState([]);
   const [myLoading, setMyLoading] = useState(false);
@@ -102,7 +121,11 @@ export default function App() {
     imageUrl: "",
   });
 
-  const topProducts = useMemo(() => products.slice(0, 5), [products]);
+  const visibleProducts = useMemo(
+    () => products.slice(0, visibleCount),
+    [products, visibleCount]
+  );
+  const hasMoreProducts = visibleCount < products.length;
 
   useEffect(() => {
     fetchCategoryOptions()
@@ -110,11 +133,20 @@ export default function App() {
       .catch(() => setCategories(["全部"]));
   }, []);
 
-  async function loadProducts(category = activeCategory, range = activeRange) {
+  async function loadTopProducts() {
+    try {
+      const list = await fetchProducts();
+      setTopProducts(list.slice(0, 5));
+    } catch (err) {
+      // 热门前五加载失败不阻塞页面
+    }
+  }
+
+  async function loadProducts(category = activeCategory) {
     try {
       setLoading(true);
       setError("");
-      const list = await fetchProducts({ category, range });
+      const list = await fetchProducts({ category });
       setProducts(list);
     } catch (err) {
       setError(err.message);
@@ -138,9 +170,14 @@ export default function App() {
 
   useEffect(() => {
     if (activeView === "home") {
-      loadProducts(activeCategory, activeRange);
+      loadProducts(activeCategory);
+      loadTopProducts();
     }
-  }, [activeCategory, activeRange, activeView]);
+  }, [activeCategory, activeView]);
+
+  useEffect(() => {
+    setVisibleCount(PRODUCT_PAGE_SIZE);
+  }, [activeCategory]);
 
   useEffect(() => {
     if (user && activeView === "my") {
@@ -200,8 +237,24 @@ export default function App() {
 
   async function handleSubmitProduct(e) {
     e.preventDefault();
-    if (!form.name.trim() || !form.tagline.trim()) {
-      setSubmitError("请填写产品名称和一句话介绍");
+    const trimmedName = form.name.trim();
+    const trimmedTagline = form.tagline.trim();
+    const trimmedUrl = form.url.trim();
+
+    if (!trimmedName) {
+      setSubmitError("请填写产品名称");
+      return;
+    }
+    if (!trimmedTagline) {
+      setSubmitError("请填写一句话介绍");
+      return;
+    }
+    if (!trimmedUrl) {
+      setSubmitError("请填写产品链接");
+      return;
+    }
+    if (!/^https?:\/\/.+/i.test(trimmedUrl)) {
+      setSubmitError("产品链接需以 http:// 或 https:// 开头");
       return;
     }
     if (!form.category) {
@@ -225,7 +278,7 @@ export default function App() {
       toast.success("提交成功", result.message);
       if (isAdmin) {
         setActiveView("home");
-        await loadProducts(activeCategory, activeRange);
+        await loadProducts(activeCategory);
       } else {
         setActiveView("my");
         await loadMyProducts();
@@ -234,6 +287,67 @@ export default function App() {
       setSubmitError(err.message);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  function updateFilterOverflow() {
+    const el = filtersRef.current;
+    if (!el) return;
+    const maxLeft = el.scrollWidth - el.clientWidth;
+    setFilterOverflow({
+      left: el.scrollLeft > 2,
+      right: el.scrollLeft < maxLeft - 2 && maxLeft > 0,
+    });
+  }
+
+  useEffect(() => {
+    updateFilterOverflow();
+    window.addEventListener("resize", updateFilterOverflow);
+    return () => window.removeEventListener("resize", updateFilterOverflow);
+  }, [categories]);
+
+  function onFilterMouseDown(e) {
+    dragState.current = {
+      dragging: true,
+      startX: e.clientX,
+      startScrollLeft: filtersRef.current?.scrollLeft ?? 0,
+      moved: false,
+    };
+  }
+
+  function onFilterMouseMove(e) {
+    const st = dragState.current;
+    const container = filtersRef.current;
+    if (!st.dragging || !container) return;
+    const dx = e.clientX - st.startX;
+    if (Math.abs(dx) > 4) st.moved = true;
+    container.scrollLeft = st.startScrollLeft - dx;
+  }
+
+  function endFilterDrag() {
+    if (dragState.current.dragging) {
+      dragState.current.dragging = false;
+    }
+  }
+
+  function onFilterClickCapture(e) {
+    // 拖拽后抬起鼠标会触发 click，这里吞掉，避免误选分类
+    if (dragState.current.moved) {
+      e.preventDefault();
+      e.stopPropagation();
+      dragState.current.moved = false;
+    }
+  }
+
+  function selectCategory(category, e) {
+    setActiveCategory(category);
+    const container = filtersRef.current;
+    const btn = e?.currentTarget;
+    if (container && btn) {
+      container.scrollTo({
+        left: btn.offsetLeft - (container.clientWidth - btn.clientWidth) / 2,
+        behavior: "smooth",
+      });
     }
   }
 
@@ -250,6 +364,13 @@ export default function App() {
             : item
         )
       );
+      setTopProducts((prev) =>
+        prev.map((item) =>
+          item.id === product.id
+            ? { ...item, votedByMe: result.voted, voteCount: result.voteCount }
+            : item
+        )
+      );
       if (result.voted) {
         toast.success("投票成功", `已为「${product.name}」投票`);
       }
@@ -260,16 +381,9 @@ export default function App() {
     }
   }
 
-  function jumpToWeekRank() {
-    setActiveView("home");
-    setActiveRange("week");
-    document
-      .getElementById("product-list")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   return (
     <div className="ph-page">
+      <StarField />
       <header className="ph-nav">
         <div className="ph-nav-inner">
           <Link to="/" className="ph-logo" onClick={() => setActiveView("home")}>
@@ -284,23 +398,6 @@ export default function App() {
             </span>
             <span className="ph-logo-text">ProductHunt</span>
           </Link>
-
-          {activeView === "home" && (
-            <nav className="ph-nav-tabs" role="tablist" aria-label="榜单">
-              {RANGE_TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeRange === tab.key}
-                  className={activeRange === tab.key ? "ph-nav-tab active" : "ph-nav-tab"}
-                  onClick={() => setActiveRange(tab.key)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-          )}
 
           <div className="ph-nav-actions">
             {user ? (
@@ -352,134 +449,112 @@ export default function App() {
 
       {activeView === "home" ? (
         <main>
-          <section className="ph-hero">
-            <span className="ph-hero-pill">
-              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path
-                  d="M10 2c2.6 1.6 4 4.4 4 7.2 0 1-.2 2-.5 2.8l1.7 1.7c.3.3.5.8.5 1.2V17l-2.7-.9c-.9.6-2 1-3 1s-2.1-.4-3-1L4.3 17v-2.1c0-.4.2-.9.5-1.2l1.7-1.7c-.3-.8-.5-1.8-.5-2.8C6 6.4 7.4 3.6 10 2z"
-                  fill="currentColor"
-                />
-                <circle cx="10" cy="8" r="1.3" fill="#fff" />
-              </svg>
-              每天发现一个好产品
-            </span>
-            <h1 className="ph-hero-title">
-              发现好作品，
-              <br />
-              为创新投票
-            </h1>
-            <p className="ph-hero-subtitle">
-              汇集码道与开发者们精心打磨的产品 —— AI 工具、开发利器、开源项目。
-              浏览、投票、上榜，让好作品被更多人看见。
-            </p>
-            <div className="ph-hero-actions">
-              <button
-                type="button"
-                className="ph-btn-primary"
-                onClick={openSubmitModal}
-              >
-                提交你的产品
-              </button>
-              <button type="button" className="ph-btn-ghost" onClick={jumpToWeekRank}>
-                查看周榜
-              </button>
+          <section className="ph-page-header">
+            <div className="ph-section-inner">
+              <div className="ph-page-header-inner">
+                <div>
+                  <p className="ph-page-eyebrow">
+                    今日精选 ·{" "}
+                    {new Date().toLocaleDateString("zh-CN", {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                  <h1 className="ph-page-title">发现好作品，为创新投票</h1>
+                  <p className="ph-page-desc">
+                    汇集码道与开发者们精心打磨的产品 —— AI 工具、开发利器、开源项目。浏览、投票、上榜，让好作品被更多人看见。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="ph-btn-primary"
+                  onClick={openSubmitModal}
+                >
+                  提交产品
+                </button>
+              </div>
             </div>
           </section>
 
           <section className="ph-section">
             <div className="ph-section-inner">
-              <div className="ph-home-layout">
+              <div className="ph-home-layout ph-top-row">
                 <div className="ph-main-col">
                   <h2 className="ph-section-title">热门前五</h2>
-              {loading ? (
-                <div className="ph-top-grid">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <div className="ph-top-card skeleton" key={index}>
-                      <div className="skeleton-line short" />
-                      <div className="skeleton-line title" />
-                      <div className="skeleton-line" />
+                  {loading ? (
+                    <div className="ph-product-grid ph-product-grid-top">
+                      {Array.from({ length: 5 }).map((_, index) => (
+                        <ProductCardSkeleton key={index} size="lg" />
+                      ))}
                     </div>
-                  ))}
+                  ) : topProducts.length === 0 ? (
+                    <div className="ph-grid-empty">暂无数据，等待第一批产品</div>
+                  ) : (
+                    <div className="ph-product-grid ph-product-grid-top">
+                      {topProducts.map((product, index) => (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          rank={index + 1}
+                          onVote={handleVote}
+                          votingDisabled={votingId === product.id}
+                          size="lg"
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ) : topProducts.length === 0 ? (
-                <div className="ph-top-empty">暂无数据，等待第一批产品</div>
-              ) : (
-                <div className="ph-top-grid">
-                  {topProducts.map((product, index) => (
-                    <article
-                      className="ph-top-card"
-                      key={product.id}
-                      onClick={() => !product.votedByMe && handleVote(product)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !product.votedByMe) handleVote(product);
-                      }}
-                    >
-                      <span className="ph-top-rank">#{index + 1}</span>
-                      <div
-                        className="ph-top-avatar"
-                        style={
-                          product.imageUrl
-                            ? undefined
-                            : { background: product.color || "#FF5722" }
-                        }
-                        aria-hidden="true"
-                      >
-                        {product.imageUrl ? (
-                          <img src={product.imageUrl} alt="" loading="lazy" />
-                        ) : (
-                          getProductInitial(product.name)
-                        )}
-                      </div>
-                      <h3 className="ph-top-name">{product.name}</h3>
-                      <p className="ph-top-tagline">{product.tagline}</p>
-                      <div
-                        className={
-                          product.votedByMe ? "ph-top-votes voted" : "ph-top-votes"
-                        }
-                      >
-                        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                          <path
-                            d="M10 4l5.5 6.5H13V15a1 1 0 01-1 1H8a1 1 0 01-1-1v-4.5H4.5L10 4z"
-                            fill="currentColor"
-                          />
-                        </svg>
-                        <span>{product.voteCount ?? 0}</span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-                )}
-                <h2 className="ph-section-title spaced" id="product-list">全部产品</h2>
+                <aside className="ph-sidebar">
+                  <RankList />
+                </aside>
+              </div>
 
-              <div className="ph-filters" role="tablist" aria-label="产品分类">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    type="button"
-                    role="tab"
-                    aria-selected={category === activeCategory}
-                    className={
-                      category === activeCategory ? "ph-filter active" : "ph-filter"
-                    }
-                    onClick={() => setActiveCategory(category)}
-                  >
-                    {category}
-                  </button>
-                ))}
+              <div className="ph-all-section" id="product-list">
+                <h2 className="ph-section-title spaced">全部产品</h2>
+
+              <div className="ph-filters-wrap">
+                <div
+                  className="ph-filters"
+                  role="tablist"
+                  aria-label="产品分类"
+                  ref={filtersRef}
+                  onScroll={updateFilterOverflow}
+                  onMouseDown={onFilterMouseDown}
+                  onMouseMove={onFilterMouseMove}
+                  onMouseUp={endFilterDrag}
+                  onMouseLeave={endFilterDrag}
+                  onClickCapture={onFilterClickCapture}
+                >
+                  {categories.map((category) => (
+                    <button
+                      key={category}
+                      type="button"
+                      role="tab"
+                      aria-selected={category === activeCategory}
+                      className={
+                        category === activeCategory ? "ph-filter active" : "ph-filter"
+                      }
+                      onClick={(e) => selectCategory(category, e)}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+                {filterOverflow.left && (
+                  <span className="ph-filters-fade left" aria-hidden="true" />
+                )}
+                {filterOverflow.right && (
+                  <span className="ph-filters-fade right" aria-hidden="true" />
+                )}
               </div>
 
               {error && <div className="error">{error}</div>}
 
               {loading ? (
-                <div className="ph-list">
-                  {Array.from({ length: 4 }).map((_, index) => (
-                    <div className="ph-item skeleton" key={index}>
-                      <div className="skeleton-line short" />
-                      <div className="skeleton-line title" />
-                      <div className="skeleton-line" />
-                    </div>
+                <div className="ph-product-grid ph-product-grid-all">
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <ProductCardSkeleton key={index} size="md" />
                   ))}
                 </div>
               ) : products.length === 0 ? (
@@ -487,7 +562,7 @@ export default function App() {
                   <h3>
                     {activeCategory !== "全部"
                       ? "该分类下还没有产品"
-                      : RANGE_EMPTY_HINT[activeRange]}
+                      : "还没有产品，来提交第一个吧"}
                   </h3>
                   <button
                     type="button"
@@ -498,73 +573,40 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <div className="ph-list">
-                  {products.map((product) => (
-                    <article className="ph-item" key={product.id}>
-                      <VoteButton
+                <>
+                  <div className="ph-product-grid ph-product-grid-all">
+                    {visibleProducts.map((product) => (
+                      <ProductCard
+                        key={product.id}
                         product={product}
                         onVote={handleVote}
-                        disabled={votingId === product.id}
+                        votingDisabled={votingId === product.id}
+                        showCategory
+                        showMeta
+                        size="md"
                       />
-
-                      <div
-                        className="ph-item-avatar"
-                        style={
-                          product.imageUrl
-                            ? undefined
-                            : { background: product.color || "#FF5722" }
+                    ))}
+                  </div>
+                  {hasMoreProducts && (
+                    <div className="ph-load-more">
+                      <p className="ph-load-more-hint">
+                        已显示 {visibleProducts.length} / {products.length}
+                      </p>
+                      <button
+                        type="button"
+                        className="ph-load-more-btn"
+                        onClick={() =>
+                          setVisibleCount((n) =>
+                            Math.min(n + PRODUCT_PAGE_SIZE, products.length)
+                          )
                         }
-                        aria-hidden="true"
                       >
-                        {product.imageUrl ? (
-                          <img src={product.imageUrl} alt="" loading="lazy" />
-                        ) : (
-                          getProductInitial(product.name)
-                        )}
-                      </div>
-
-                      <div className="ph-item-main">
-                        <div className="ph-item-title-row">
-                          <h3>{product.name}</h3>
-                          <span className="ph-category-badge">{product.category}</span>
-                        </div>
-                        <p className="ph-item-tagline">{product.tagline}</p>
-                        <p className="ph-item-meta">
-                          <span>来自 {product.submittedBy || "匿名"}</span>
-                          <span>{formatRelativeTime(product.submittedAt)}</span>
-                        </p>
-                        {product.description && (
-                          <p className="ph-item-desc">{product.description}</p>
-                        )}
-                      </div>
-
-                      {product.url && (
-                        <a
-                          className="ph-item-link"
-                          href={product.url}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                        >
-                          访问
-                          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                            <path
-                              d="M6 3h7v7M13 3l-7 7M11 10v3H3V5h3"
-                              stroke="currentColor"
-                              strokeWidth="1.6"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </a>
-                      )}
-                    </article>
-                  ))}
-                </div>
-                )}
-                </div>
-                <aside className="ph-sidebar">
-                  <RankList />
-                </aside>
+                        加载更多
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
               </div>
             </div>
           </section>
@@ -601,38 +643,6 @@ export default function App() {
               ProductHunt · 发现码道与开发者的优秀作品
             </span>
           </div>
-          <nav className="ph-footer-nav">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveView("home");
-                setActiveRange("today");
-              }}
-            >
-              今日
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveView("home");
-                setActiveRange("week");
-              }}
-            >
-              周榜
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveView("home");
-                setActiveRange("month");
-              }}
-            >
-              月榜
-            </button>
-            <button type="button" onClick={openSubmitModal}>
-              提交产品
-            </button>
-          </nav>
         </div>
       </footer>
 
@@ -722,7 +732,9 @@ export default function App() {
                 </div>
 
                 <label className="modal-field">
-                  <span>产品名称 *</span>
+                  <span>
+                    产品名称 <span className="field-required">*</span>
+                  </span>
                   <input
                     value={form.name}
                     onChange={(e) => updateForm("name", e.target.value)}
@@ -734,7 +746,9 @@ export default function App() {
                 </label>
 
                 <label className="modal-field">
-                  <span>一句话介绍 *</span>
+                  <span>
+                    一句话介绍 <span className="field-required">*</span>
+                  </span>
                   <input
                     value={form.tagline}
                     onChange={(e) => updateForm("tagline", e.target.value)}
@@ -746,17 +760,22 @@ export default function App() {
                 </label>
 
                 <label className="modal-field">
-                  <span>产品链接</span>
+                  <span>
+                    产品链接 <span className="field-required">*</span>
+                  </span>
                   <input
                     value={form.url}
                     onChange={(e) => updateForm("url", e.target.value)}
                     placeholder="https://your-product.com"
                     disabled={submitting}
+                    required
                   />
                 </label>
 
                 <div className="modal-field">
-                  <span>分类 *</span>
+                  <span>
+                    分类 <span className="field-required">*</span>
+                  </span>
                   <div className="modal-category-options">
                     {categories
                       .filter((c) => c !== "全部")

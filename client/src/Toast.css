@@ -16,13 +16,10 @@
   align-items: flex-start;
   gap: 12px;
   padding: 14px 16px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(252, 85, 49, 0.12);
-  box-shadow:
-    0 16px 40px rgba(34, 34, 38, 0.12),
-    0 0 0 1px rgba(255, 255, 255, 0.6) inset;
-  backdrop-filter: blur(12px);
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e3e0da;
+  box-shadow: 0 8px 24px rgba(26, 31, 54, 0.1);
   pointer-events: auto;
   animation: toast-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
