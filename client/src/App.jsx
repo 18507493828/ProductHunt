@@ -6,17 +6,19 @@ import { useToast } from "./Toast";
 import {
   fetchCategoryOptions,
   fetchMyProducts,
+  fetchNavs,
   fetchProducts,
   submitProduct,
   uploadImage,
   voteProduct,
 } from "./api";
+import Carousel from "./components/Carousel";
 import MyProductsList from "./components/MyProductsList";
 import ProductCard, { ProductCardSkeleton } from "./components/ProductCard";
 import RankList from "./components/RankList";
 import "./App.css";
 
-const PRODUCT_PAGE_SIZE = 20;
+const PRODUCT_PAGE_SIZE = 12;
 
 function StarField() {
   const ref = useRef(null);
@@ -93,6 +95,7 @@ export default function App() {
 
   const [products, setProducts] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
+  const [navs, setNavs] = useState([]);
   const [categories, setCategories] = useState(["全部"]);
   const [activeCategory, setActiveCategory] = useState("全部");
   const [activeView, setActiveView] = useState("home");
@@ -126,12 +129,38 @@ export default function App() {
     [products, visibleCount]
   );
   const hasMoreProducts = visibleCount < products.length;
+  const loadMoreRef = useRef(null);
 
   useEffect(() => {
     fetchCategoryOptions()
       .then(({ categories: list }) => setCategories(["全部", ...(list || [])]))
       .catch(() => setCategories(["全部"]));
   }, []);
+
+  // 顶部导航链接
+  useEffect(() => {
+    fetchNavs()
+      .then(setNavs)
+      .catch(() => setNavs([]));
+  }, []);
+
+  // 下拉滚动到底部自动加载更多
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || !hasMoreProducts || loading) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((n) =>
+            Math.min(n + PRODUCT_PAGE_SIZE, products.length)
+          );
+        }
+      },
+      { rootMargin: "300px 0px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMoreProducts, loading, products.length, visibleCount]);
 
   async function loadTopProducts() {
     try {
@@ -399,6 +428,22 @@ export default function App() {
             <span className="ph-logo-text">ProductHunt</span>
           </Link>
 
+          {navs.length > 0 && (
+            <nav className="ph-nav-links" aria-label="顶部导航">
+              {navs.map((nav) => (
+                <a
+                  key={nav.id}
+                  className="ph-nav-link"
+                  href={nav.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  {nav.title}
+                </a>
+              ))}
+            </nav>
+          )}
+
           <div className="ph-nav-actions">
             {user ? (
               <>
@@ -447,6 +492,8 @@ export default function App() {
         </div>
       </header>
 
+      {activeView === "home" && <Carousel />}
+
       {activeView === "home" ? (
         <main>
           <section className="ph-page-header">
@@ -481,29 +528,31 @@ export default function App() {
             <div className="ph-section-inner">
               <div className="ph-home-layout ph-top-row">
                 <div className="ph-main-col">
-                  <h2 className="ph-section-title">热门前五</h2>
-                  {loading ? (
-                    <div className="ph-product-grid ph-product-grid-top">
-                      {Array.from({ length: 5 }).map((_, index) => (
-                        <ProductCardSkeleton key={index} size="lg" />
-                      ))}
-                    </div>
-                  ) : topProducts.length === 0 ? (
-                    <div className="ph-grid-empty">暂无数据，等待第一批产品</div>
-                  ) : (
-                    <div className="ph-product-grid ph-product-grid-top">
-                      {topProducts.map((product, index) => (
-                        <ProductCard
-                          key={product.id}
-                          product={product}
-                          rank={index + 1}
-                          onVote={handleVote}
-                          votingDisabled={votingId === product.id}
-                          size="lg"
-                        />
-                      ))}
-                    </div>
-                  )}
+                  <div className="ph-top-box">
+                    <h2 className="ph-section-title">热门作品</h2>
+                    {loading ? (
+                      <div className="ph-product-grid ph-product-grid-top">
+                        {Array.from({ length: 5 }).map((_, index) => (
+                          <ProductCardSkeleton key={index} size="lg" />
+                        ))}
+                      </div>
+                    ) : topProducts.length === 0 ? (
+                      <div className="ph-grid-empty">暂无数据，等待第一批产品</div>
+                    ) : (
+                      <div className="ph-product-grid ph-product-grid-top">
+                        {topProducts.map((product, index) => (
+                          <ProductCard
+                            key={product.id}
+                            product={product}
+                            rank={index + 1}
+                            onVote={handleVote}
+                            votingDisabled={votingId === product.id}
+                            size="lg"
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <aside className="ph-sidebar">
                   <RankList />
@@ -511,102 +560,103 @@ export default function App() {
               </div>
 
               <div className="ph-all-section" id="product-list">
-                <h2 className="ph-section-title spaced">全部产品</h2>
+                <div className="ph-all-box">
+                  <h2 className="ph-section-title spaced">全部产品</h2>
 
-              <div className="ph-filters-wrap">
-                <div
-                  className="ph-filters"
-                  role="tablist"
-                  aria-label="产品分类"
-                  ref={filtersRef}
-                  onScroll={updateFilterOverflow}
-                  onMouseDown={onFilterMouseDown}
-                  onMouseMove={onFilterMouseMove}
-                  onMouseUp={endFilterDrag}
-                  onMouseLeave={endFilterDrag}
-                  onClickCapture={onFilterClickCapture}
-                >
-                  {categories.map((category) => (
-                    <button
-                      key={category}
-                      type="button"
-                      role="tab"
-                      aria-selected={category === activeCategory}
-                      className={
-                        category === activeCategory ? "ph-filter active" : "ph-filter"
-                      }
-                      onClick={(e) => selectCategory(category, e)}
+                  <div className="ph-filters-wrap">
+                    <div
+                      className="ph-filters"
+                      role="tablist"
+                      aria-label="产品分类"
+                      ref={filtersRef}
+                      onScroll={updateFilterOverflow}
+                      onMouseDown={onFilterMouseDown}
+                      onMouseMove={onFilterMouseMove}
+                      onMouseUp={endFilterDrag}
+                      onMouseLeave={endFilterDrag}
+                      onClickCapture={onFilterClickCapture}
                     >
-                      {category}
-                    </button>
-                  ))}
-                </div>
-                {filterOverflow.left && (
-                  <span className="ph-filters-fade left" aria-hidden="true" />
-                )}
-                {filterOverflow.right && (
-                  <span className="ph-filters-fade right" aria-hidden="true" />
-                )}
-              </div>
-
-              {error && <div className="error">{error}</div>}
-
-              {loading ? (
-                <div className="ph-product-grid ph-product-grid-all">
-                  {Array.from({ length: 8 }).map((_, index) => (
-                    <ProductCardSkeleton key={index} size="md" />
-                  ))}
-                </div>
-              ) : products.length === 0 ? (
-                <div className="ph-empty">
-                  <h3>
-                    {activeCategory !== "全部"
-                      ? "该分类下还没有产品"
-                      : "还没有产品，来提交第一个吧"}
-                  </h3>
-                  <button
-                    type="button"
-                    className="ph-empty-link"
-                    onClick={openSubmitModal}
-                  >
-                    成为第一个提交者 →
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="ph-product-grid ph-product-grid-all">
-                    {visibleProducts.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onVote={handleVote}
-                        votingDisabled={votingId === product.id}
-                        showCategory
-                        showMeta
-                        size="md"
-                      />
-                    ))}
+                      {categories.map((category) => (
+                        <button
+                          key={category}
+                          type="button"
+                          role="tab"
+                          aria-selected={category === activeCategory}
+                          className={
+                            category === activeCategory
+                              ? "ph-filter active"
+                              : "ph-filter"
+                          }
+                          onClick={(e) => selectCategory(category, e)}
+                        >
+                          {category}
+                        </button>
+                      ))}
+                    </div>
+                    {filterOverflow.left && (
+                      <span className="ph-filters-fade left" aria-hidden="true" />
+                    )}
+                    {filterOverflow.right && (
+                      <span className="ph-filters-fade right" aria-hidden="true" />
+                    )}
                   </div>
-                  {hasMoreProducts && (
-                    <div className="ph-load-more">
-                      <p className="ph-load-more-hint">
-                        已显示 {visibleProducts.length} / {products.length}
-                      </p>
+
+                  {error && <div className="error">{error}</div>}
+
+                  {loading ? (
+                    <div className="ph-product-grid ph-product-grid-all">
+                      {Array.from({ length: 12 }).map((_, index) => (
+                        <ProductCardSkeleton key={index} size="md" />
+                      ))}
+                    </div>
+                  ) : products.length === 0 ? (
+                    <div className="ph-empty">
+                      <h3>
+                        {activeCategory !== "全部"
+                          ? "该分类下还没有产品"
+                          : "还没有产品，来提交第一个吧"}
+                      </h3>
                       <button
                         type="button"
-                        className="ph-load-more-btn"
-                        onClick={() =>
-                          setVisibleCount((n) =>
-                            Math.min(n + PRODUCT_PAGE_SIZE, products.length)
-                          )
-                        }
+                        className="ph-empty-link"
+                        onClick={openSubmitModal}
                       >
-                        加载更多
+                        成为第一个提交者 →
                       </button>
                     </div>
+                  ) : (
+                    <>
+                      <div className="ph-product-grid ph-product-grid-all">
+                        {visibleProducts.map((product) => (
+                          <ProductCard
+                            key={product.id}
+                            product={product}
+                            onVote={handleVote}
+                            votingDisabled={votingId === product.id}
+                            showCategory
+                            showMeta
+                            size="md"
+                          />
+                        ))}
+                      </div>
+                      {hasMoreProducts ? (
+                        <div className="ph-load-more" ref={loadMoreRef}>
+                          <span className="ph-load-more-spinner" />
+                          <p className="ph-load-more-hint">
+                            下拉加载更多 · 已显示 {visibleProducts.length} /{" "}
+                            {products.length}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="ph-load-more done">
+                          <p className="ph-load-more-hint">
+                            已全部加载 · 共 {products.length} 个产品
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
-                </>
-              )}
+                </div>
               </div>
             </div>
           </section>

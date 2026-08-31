@@ -1,0 +1,38 @@
+[
+  {
+    "id": "nav-codearts",
+    "title": "码道官方网站",
+    "url": "https://codearts.huaweicloud.com/",
+    "sort": 1,
+    "enabled": true,
+    "createdAt": "2026-08-28T10:25:37.317Z",
+    "updatedAt": "2026-08-28T10:25:37.317Z"
+  },
+  {
+    "id": "nav-csdn",
+    "title": "CSDN 官方社区",
+    "url": "https://csdn.net",
+    "sort": 2,
+    "enabled": true,
+    "createdAt": "2026-08-28T10:25:37.317Z",
+    "updatedAt": "2026-08-28T10:25:37.317Z"
+  },
+  {
+    "id": "nav-codearts-csdn",
+    "title": "CSDN 码道开发者社区",
+    "url": "https://codearts.csdn.net/",
+    "sort": 3,
+    "enabled": true,
+    "createdAt": "2026-08-28T10:25:37.317Z",
+    "updatedAt": "2026-08-28T10:25:37.317Z"
+  },
+  {
+    "id": "nav-codearts-hackathon",
+    "title": "码道黑客松",
+    "url": "https://builderx.csdn.net/activity-site/madao/hackathon/index#join",
+    "sort": 4,
+    "enabled": true,
+    "createdAt": "2026-08-28T10:25:37.317Z",
+    "updatedAt": "2026-08-28T10:25:37.317Z"
+  }
+]
