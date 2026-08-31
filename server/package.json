@@ -1,5 +1,5 @@
 {
-  "name": "product-hunt-server",
+  "name": "vibe-building-server",
   "type": "module",
   "scripts": {
     "dev": "node --watch index.js",

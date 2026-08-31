@@ -1,4 +1,4 @@
-# Product Hunt · 发现好作品
+# Vibe Building · 发现好作品
 
 React 前端 + Node.js 后端的产品发现社区，Product Hunt 风格：提交产品、投票、冲榜。
 
