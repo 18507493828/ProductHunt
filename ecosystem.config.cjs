@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "product-hunt",
+      name: "vibe-building",
       script: "server/index.js",
       cwd: __dirname,
       env: {

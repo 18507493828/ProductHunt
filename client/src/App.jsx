@@ -18,7 +18,7 @@ import ProductCard, { ProductCardSkeleton } from "./components/ProductCard";
 import RankList from "./components/RankList";
 import "./App.css";
 
-const PRODUCT_PAGE_SIZE = 12;
+const PRODUCT_PAGE_SIZE = 50;
 
 function StarField() {
   const ref = useRef(null);
@@ -94,7 +94,6 @@ export default function App() {
   const navigate = useNavigate();
 
   const [products, setProducts] = useState([]);
-  const [topProducts, setTopProducts] = useState([]);
   const [navs, setNavs] = useState([]);
   const [categories, setCategories] = useState(["全部"]);
   const [activeCategory, setActiveCategory] = useState("全部");
@@ -106,7 +105,7 @@ export default function App() {
   const filtersRef = useRef(null);
   const dragState = useRef({ dragging: false, startX: 0, startScrollLeft: 0, moved: false });
   const [filterOverflow, setFilterOverflow] = useState({ left: false, right: false });
-  const [visibleCount, setVisibleCount] = useState(PRODUCT_PAGE_SIZE);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [myProducts, setMyProducts] = useState([]);
   const [myLoading, setMyLoading] = useState(false);
@@ -124,12 +123,33 @@ export default function App() {
     imageUrl: "",
   });
 
+  const pageSize = PRODUCT_PAGE_SIZE;
+  const totalPages = Math.max(1, Math.ceil(products.length / pageSize));
   const visibleProducts = useMemo(
-    () => products.slice(0, visibleCount),
-    [products, visibleCount]
+    () => products.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [products, currentPage, pageSize]
   );
-  const hasMoreProducts = visibleCount < products.length;
-  const loadMoreRef = useRef(null);
+  const pageItems = useMemo(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const core = [1, totalPages, currentPage - 1, currentPage, currentPage + 1].filter(
+      (p) => p >= 1 && p <= totalPages
+    );
+    const sorted = [...new Set(core)].sort((a, b) => a - b);
+    const items = [];
+    let prev = 0;
+    for (const p of sorted) {
+      if (p - prev > 1) items.push("...");
+      items.push(p);
+      prev = p;
+    }
+    return items;
+  }, [totalPages, currentPage]);
+
+  function goToPage(page) {
+    setCurrentPage(Math.min(Math.max(1, page), totalPages));
+  }
 
   useEffect(() => {
     fetchCategoryOptions()
@@ -144,39 +164,15 @@ export default function App() {
       .catch(() => setNavs([]));
   }, []);
 
-  // 下拉滚动到底部自动加载更多
-  useEffect(() => {
-    const sentinel = loadMoreRef.current;
-    if (!sentinel || !hasMoreProducts || loading) return undefined;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount((n) =>
-            Math.min(n + PRODUCT_PAGE_SIZE, products.length)
-          );
-        }
-      },
-      { rootMargin: "300px 0px" }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMoreProducts, loading, products.length, visibleCount]);
-
-  async function loadTopProducts() {
-    try {
-      const list = await fetchProducts();
-      setTopProducts(list.slice(0, 5));
-    } catch (err) {
-      // 热门前五加载失败不阻塞页面
-    }
-  }
-
   async function loadProducts(category = activeCategory) {
     try {
       setLoading(true);
       setError("");
       const list = await fetchProducts({ category });
       setProducts(list);
+      setCurrentPage((p) =>
+        Math.min(p, Math.max(1, Math.ceil(list.length / PRODUCT_PAGE_SIZE)))
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -200,12 +196,11 @@ export default function App() {
   useEffect(() => {
     if (activeView === "home") {
       loadProducts(activeCategory);
-      loadTopProducts();
     }
   }, [activeCategory, activeView]);
 
   useEffect(() => {
-    setVisibleCount(PRODUCT_PAGE_SIZE);
+    setCurrentPage(1);
   }, [activeCategory]);
 
   useEffect(() => {
@@ -393,13 +388,6 @@ export default function App() {
             : item
         )
       );
-      setTopProducts((prev) =>
-        prev.map((item) =>
-          item.id === product.id
-            ? { ...item, votedByMe: result.voted, voteCount: result.voteCount }
-            : item
-        )
-      );
       if (result.voted) {
         toast.success("投票成功", `已为「${product.name}」投票`);
       }
@@ -425,7 +413,7 @@ export default function App() {
                 <circle cx="12" cy="9.5" r="1.8" fill="#171A1D" />
               </svg>
             </span>
-            <span className="ph-logo-text">ProductHunt</span>
+            <span className="ph-logo-text">Vibe Building</span>
           </Link>
 
           {navs.length > 0 && (
@@ -510,7 +498,7 @@ export default function App() {
                   </p>
                   <h1 className="ph-page-title">发现好作品，为创新投票</h1>
                   <p className="ph-page-desc">
-                    汇集码道与开发者们精心打磨的产品 —— AI 工具、开发利器、开源项目。浏览、投票、上榜，让好作品被更多人看见。
+                    Vibe Building 人人都可以成为开发者，构建自己的应用
                   </p>
                 </div>
                 <button
@@ -526,39 +514,6 @@ export default function App() {
 
           <section className="ph-section">
             <div className="ph-section-inner">
-              <div className="ph-home-layout ph-top-row">
-                <div className="ph-main-col">
-                  <div className="ph-top-box">
-                    <h2 className="ph-section-title">热门作品</h2>
-                    {loading ? (
-                      <div className="ph-product-grid ph-product-grid-top">
-                        {Array.from({ length: 5 }).map((_, index) => (
-                          <ProductCardSkeleton key={index} size="lg" />
-                        ))}
-                      </div>
-                    ) : topProducts.length === 0 ? (
-                      <div className="ph-grid-empty">暂无数据，等待第一批产品</div>
-                    ) : (
-                      <div className="ph-product-grid ph-product-grid-top">
-                        {topProducts.map((product, index) => (
-                          <ProductCard
-                            key={product.id}
-                            product={product}
-                            rank={index + 1}
-                            onVote={handleVote}
-                            votingDisabled={votingId === product.id}
-                            size="lg"
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <aside className="ph-sidebar">
-                  <RankList />
-                </aside>
-              </div>
-
               <div className="ph-all-section" id="product-list">
                 <div className="ph-all-box">
                   <h2 className="ph-section-title spaced">全部产品</h2>
@@ -639,24 +594,57 @@ export default function App() {
                           />
                         ))}
                       </div>
-                      {hasMoreProducts ? (
-                        <div className="ph-load-more" ref={loadMoreRef}>
-                          <span className="ph-load-more-spinner" />
-                          <p className="ph-load-more-hint">
-                            下拉加载更多 · 已显示 {visibleProducts.length} /{" "}
-                            {products.length}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="ph-load-more done">
-                          <p className="ph-load-more-hint">
-                            已全部加载 · 共 {products.length} 个产品
-                          </p>
+                      {totalPages > 1 && (
+                        <div className="ph-pagination">
+                          <button
+                            type="button"
+                            className="ph-page-btn"
+                            disabled={currentPage === 1}
+                            onClick={() => goToPage(currentPage - 1)}
+                          >
+                            上一页
+                          </button>
+                          <div className="ph-page-numbers">
+                            {pageItems.map((item, i) =>
+                              item === "..." ? (
+                                <span key={`ellipsis-${i}`} className="ph-page-ellipsis">
+                                  …
+                                </span>
+                              ) : (
+                                <button
+                                  key={item}
+                                  type="button"
+                                  className={
+                                    item === currentPage
+                                      ? "ph-page-num active"
+                                      : "ph-page-num"
+                                  }
+                                  onClick={() => goToPage(item)}
+                                >
+                                  {item}
+                                </button>
+                              )
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className="ph-page-btn"
+                            disabled={currentPage === totalPages}
+                            onClick={() => goToPage(currentPage + 1)}
+                          >
+                            下一页
+                          </button>
+                          <span className="ph-page-total">
+                            共 {products.length} 个产品 · 第 {currentPage} / {totalPages} 页
+                          </span>
                         </div>
                       )}
                     </>
                   )}
                 </div>
+                <aside className="ph-sidebar">
+                  <RankList />
+                </aside>
               </div>
             </div>
           </section>
@@ -690,7 +678,7 @@ export default function App() {
               </svg>
             </span>
             <span className="ph-footer-text">
-              ProductHunt · 发现码道与开发者的优秀作品
+              Vibe Building · 发现码道与开发者的优秀作品
             </span>
           </div>
         </div>
