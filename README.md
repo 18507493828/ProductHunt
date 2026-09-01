@@ -69,10 +69,15 @@ sudo systemctl reload nginx
 
 ## 环境变量
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| PORT | 服务端口 | 3001 |
-| HOST | 监听地址 | 0.0.0.0 |
-| JWT_SECRET | JWT 签名密钥 | 开发默认值（生产必改） |
-| ADMIN_USERNAME | 初始管理员用户名 | admin |
-| ADMIN_PASSWORD | 初始管理员密码 | admin123456 |
+| 变量           | 说明             | 默认值                 |
+| -------------- | ---------------- | ---------------------- |
+| PORT           | 服务端口         | 3001                   |
+| HOST           | 监听地址         | 0.0.0.0                |
+| JWT_SECRET     | JWT 签名密钥     | 开发默认值（生产必改） |
+| ADMIN_USERNAME | 初始管理员用户名 | admin                  |
+| ADMIN_PASSWORD | 初始管理员密码   | admin123456            |
+
+## 远程部署
+
+cd /www/wwwroot/ProductHunt/client && npm ci && npm run build
+cd .. && pm2 reload ecosystem.config.cjs

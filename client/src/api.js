@@ -44,10 +44,12 @@ export async function fetchCategoryOptions() {
   return request("/api/category-options");
 }
 
-export async function fetchProducts({ category = "全部", range = "all" } = {}) {
+export async function fetchProducts({ category = "全部", range = "all", topicId = "", special = false } = {}) {
   const params = new URLSearchParams();
   if (category && category !== "全部") params.set("category", category);
   if (range) params.set("range", range);
+  if (topicId) params.set("topicId", topicId);
+  if (special) params.set("special", "true");
   const query = params.toString();
   return request(`/api/products${query ? `?${query}` : ""}`);
 }
@@ -69,15 +71,36 @@ export async function submitProduct({
   category,
   description,
   imageUrl,
+  topicId,
 }) {
   return request("/api/products", {
     method: "POST",
-    body: JSON.stringify({ name, tagline, url, category, description, imageUrl }),
+    body: JSON.stringify({ name, tagline, url, category, description, imageUrl, topicId }),
   });
 }
 
-export async function voteProduct(id) {
-  return request(`/api/products/${id}/vote`, { method: "POST" });
+export async function voteProduct(id, rating) {
+  return request(`/api/products/${id}/vote`, {
+    method: "POST",
+    body: JSON.stringify({ rating }),
+  });
+}
+
+/* ---------------- 话题 API ---------------- */
+
+export async function fetchTopics() {
+  return request("/api/topics");
+}
+
+export async function createTopic({ name, description, coverImage }) {
+  return request("/api/topics", {
+    method: "POST",
+    body: JSON.stringify({ name, description, coverImage }),
+  });
+}
+
+export async function followTopic(id) {
+  return request(`/api/topics/${id}/follow`, { method: "POST" });
 }
 
 export async function fetchAdminProducts(status = "pending") {
@@ -97,6 +120,13 @@ export async function rejectProduct(id, reason = "") {
 
 export async function deleteProduct(id) {
   return request(`/api/products/${id}`, { method: "DELETE" });
+}
+
+export async function setProductSpecial(id, isSpecial) {
+  return request(`/api/admin/products/${id}/special`, {
+    method: "POST",
+    body: JSON.stringify({ isSpecial }),
+  });
 }
 
 /* ---------------- 轮播图 API ---------------- */

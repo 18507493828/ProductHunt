@@ -1,3 +1,5 @@
+import { ThumbsUp, ArrowUpRight } from "lucide-react";
+
 function getProductInitial(name = "") {
   return (name.trim()[0] || "P").toUpperCase();
 }
@@ -20,15 +22,10 @@ function VoteControl({ product, onVote, disabled, compact }) {
         onVote?.(product);
       }}
       disabled={disabled || product.votedByMe}
-      aria-label={product.votedByMe ? "已投票" : "投票"}
-      title={product.votedByMe ? "已投票" : "为这个产品投票"}
+      aria-label={product.votedByMe ? "已评分" : "评分"}
+      title={product.votedByMe ? "已评分" : "为这个产品评分"}
     >
-      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-        <path
-          d="M10 4l5.5 6.5H13V15a1 1 0 01-1 1H8a1 1 0 01-1-1v-4.5H4.5L10 4z"
-          fill="currentColor"
-        />
-      </svg>
+      <ThumbsUp size={15} strokeWidth={2} aria-hidden="true" />
       <span>{product.voteCount ?? 0}</span>
     </button>
   );
@@ -78,6 +75,18 @@ export default function ProductCard({
         <p className="ph-product-card-tagline" title={product.tagline}>
           {product.tagline}
         </p>
+        {product.ratingCount > 0 && product.avgRating > 0 && (
+          <div className="ph-product-card-rating" aria-label={`${product.avgRating} 分，${product.ratingCount} 人评分`}>
+            <span className="ph-product-card-rating-stars" aria-hidden="true">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <span key={s} className={s <= Math.round(product.avgRating) ? "on" : ""}>★</span>
+              ))}
+            </span>
+            <span className="ph-product-card-rating-score">
+              {product.avgRating} · {product.ratingCount} 人评分
+            </span>
+          </div>
+        )}
         {(showCategory || showMeta) && (
           <p className="ph-product-card-meta">
             {showCategory && product.category && (
@@ -97,15 +106,7 @@ export default function ProductCard({
             onClick={(e) => e.stopPropagation()}
           >
             访问
-            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path
-                d="M6 3h7v7M13 3l-7 7M11 10v3H3V5h3"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <ArrowUpRight size={15} aria-hidden="true" />
           </a>
         )}
       </div>

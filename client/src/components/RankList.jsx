@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { fetchProducts } from "../api";
+import EmptyState from "./EmptyState";
 
 const RANK_TABS = [
   { key: "week", label: "周榜" },
   { key: "month", label: "月榜" },
   { key: "all", label: "总榜" },
+  { key: "special", label: "专题活动" },
 ];
 
 const TOP_N = 10;
@@ -19,7 +21,11 @@ export default function RankList() {
     let ignore = false;
     setLoading(true);
     setError("");
-    fetchProducts({ category: "全部", range: tab })
+    const promise =
+      tab === "special"
+        ? fetchProducts({ category: "全部", special: true })
+        : fetchProducts({ category: "全部", range: tab });
+    promise
       .then((list) => {
         if (!ignore) setItems(list.slice(0, TOP_N));
       })
@@ -64,7 +70,10 @@ export default function RankList() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="rank-empty">暂无数据</div>
+        <EmptyState
+          compact
+          title={tab === "special" ? "暂无专题活动" : "暂无数据"}
+        />
       ) : (
         <ol className="rank-list">
           {items.map((product, index) => {

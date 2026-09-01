@@ -1,0 +1,152 @@
+[
+  {
+    "id": "topic-ai-tools",
+    "name": "AI 工具",
+    "description": "发现能真正提升生产力的 AI 产品",
+    "coverImage": "",
+    "color": "#534AB7",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T03:17:59.318Z",
+    "followerIds": []
+  },
+  {
+    "id": "topic-dev-tools",
+    "name": "开发工具",
+    "description": "从编辑器插件到部署平台，汇聚开发者精心打磨的工具",
+    "coverImage": "",
+    "color": "#0F6E56",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T03:17:59.318Z",
+    "followerIds": []
+  },
+  {
+    "id": "topic-open-source",
+    "name": "开源项目",
+    "description": "每周精选值得关注的开源项目，让优秀作品被更多人看见",
+    "coverImage": "",
+    "color": "#185FA5",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T03:17:59.318Z",
+    "followerIds": []
+  },
+  {
+    "id": "topic-productivity",
+    "name": "效率办公",
+    "description": "从任务管理到协作工具，让工作更高效",
+    "coverImage": "",
+    "color": "#3B7DD8",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T09:11:52.629293Z",
+    "followerIds": []
+  },
+  {
+    "id": "topic-design",
+    "name": "设计创意",
+    "description": "灵感、配色与设计工具，让创意落地",
+    "coverImage": "",
+    "color": "#7A5FD8",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T09:11:52.629293Z",
+    "followerIds": []
+  },
+  {
+    "id": "topic-education",
+    "name": "学习教育",
+    "description": "让学习更轻松的知识与课程工具",
+    "coverImage": "",
+    "color": "#2FA0A0",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T09:11:52.629293Z",
+    "followerIds": []
+  },
+  {
+    "id": "topic-lifestyle",
+    "name": "生活娱乐",
+    "description": "提升生活品质的实用工具与娱乐应用",
+    "coverImage": "",
+    "color": "#5BA85F",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T09:11:52.629293Z",
+    "followerIds": []
+  },
+  {
+    "id": "topic-business",
+    "name": "企业服务",
+    "description": "面向团队与企业的专业解决方案",
+    "coverImage": "",
+    "color": "#B0528F",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T09:11:52.629293Z",
+    "followerIds": []
+  },
+  {
+    "id": "topic-hardware",
+    "name": "硬件设备",
+    "description": "智能硬件、机器人与智能家居等创新设备",
+    "coverImage": "",
+    "color": "#0F7B9E",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T09:11:52.629293Z",
+    "followerIds": []
+  },
+  {
+    "id": "topic-marketing",
+    "name": "数字营销",
+    "description": "增长、投放与内容营销的效率利器",
+    "coverImage": "",
+    "color": "#E1523D",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T09:11:52.629293Z",
+    "followerIds": []
+  },
+  {
+    "id": "topic-finance",
+    "name": "金融理财",
+    "description": "记账、理财与支付相关的金融工具",
+    "coverImage": "",
+    "color": "#C8952A",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T09:11:52.629293Z",
+    "followerIds": []
+  },
+  {
+    "id": "topic-data",
+    "name": "数据分析",
+    "description": "数据可视化与分析洞察平台",
+    "coverImage": "",
+    "color": "#1F6FEB",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T09:11:52.629293Z",
+    "followerIds": []
+  },
+  {
+    "id": "topic-security",
+    "name": "网络安全",
+    "description": "保护数据与隐私的安全与合规工具",
+    "coverImage": "",
+    "color": "#2C3E50",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T09:11:52.629293Z",
+    "followerIds": []
+  },
+  {
+    "id": "topic-ecommerce",
+    "name": "电商零售",
+    "description": "开店、电商运营与销售支持",
+    "coverImage": "",
+    "color": "#C0392B",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T09:11:52.629293Z",
+    "followerIds": []
+  },
+  {
+    "id": "topic-cloud",
+    "name": "云与运维",
+    "description": "云计算、DevOps 与基础设施",
+    "coverImage": "",
+    "color": "#16A085",
+    "createdBy": "admin",
+    "createdAt": "2026-09-01T09:11:52.629293Z",
+    "followerIds": []
+  }
+]

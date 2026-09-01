@@ -1,3 +1,6 @@
+import { ThumbsUp, ArrowUpRight } from "lucide-react";
+import EmptyState from "./EmptyState";
+
 const STATUS_LABEL = {
   pending: "待审核",
   approved: "已上架",
@@ -38,13 +41,15 @@ export default function MyProductsList({ products, loading, onSubmit }) {
 
   if (products.length === 0) {
     return (
-      <div className="ph-empty">
-        <h3>还没有提交记录</h3>
-        <p>提交产品后可在这里查看审核状态和票数</p>
-        <button type="button" className="ph-empty-link" onClick={onSubmit}>
-          提交第一个产品 →
-        </button>
-      </div>
+      <EmptyState
+        title="还没有提交记录"
+        description="提交产品后可在这里查看审核状态和票数"
+        action={
+          <button type="button" className="ph-empty-link" onClick={onSubmit}>
+            提交第一个产品 →
+          </button>
+        }
+      />
     );
   }
 
@@ -53,12 +58,7 @@ export default function MyProductsList({ products, loading, onSubmit }) {
       {products.map((product) => (
         <article className="ph-item" key={product.id}>
           <div className="ph-vote-static" aria-label="当前票数">
-            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path
-                d="M10 4l5.5 6.5H13V15a1 1 0 01-1 1H8a1 1 0 01-1-1v-4.5H4.5L10 4z"
-                fill="currentColor"
-              />
-            </svg>
+            <ThumbsUp size={15} strokeWidth={2} aria-hidden="true" />
             <span>{product.voteCount ?? 0}</span>
           </div>
 
@@ -105,15 +105,7 @@ export default function MyProductsList({ products, loading, onSubmit }) {
               rel="noreferrer noopener"
             >
               访问
-              <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path
-                  d="M6 3h7v7M13 3l-7 7M11 10v3H3V5h3"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <ArrowUpRight size={12} aria-hidden="true" />
             </a>
           )}
         </article>
