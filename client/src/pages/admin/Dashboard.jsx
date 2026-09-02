@@ -5,6 +5,7 @@ import {
   fetchAdminNavs,
   fetchAdminProducts,
 } from "../../api";
+import EcosystemStats from "../../components/EcosystemStats";
 
 const STAT_CARDS = [
   { key: "pending", label: "待审核资源", tone: "warning" },
@@ -63,10 +64,11 @@ export default function Dashboard() {
     <div className="dash">
       {error && <div className="error">{error}</div>}
 
-      {loading ? (
-        <div className="dash-loading">加载中...</div>
-      ) : (
-        <>
+      <div className="dash-section">
+        <h2 className="dash-section-title">运营概览</h2>
+        {loading ? (
+          <div className="dash-loading">加载中...</div>
+        ) : (
           <div className="dash-grid">
             {STAT_CARDS.map((card) => (
               <div
@@ -84,37 +86,43 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+        )}
+      </div>
 
-          <div className="dash-section">
-            <h2 className="dash-section-title">快捷操作</h2>
-            <div className="dash-actions">
-              <button
-                type="button"
-                className="dash-action"
-                onClick={() => navigate("/admin/products")}
-              >
-                审核待处理资源
-                <span className="dash-action-badge">
-                  {dashboard.products.pending}
-                </span>
-              </button>
-              <button
-                type="button"
-                className="dash-action"
-                onClick={() => navigate("/admin/banners")}
-              >
-                管理首页轮播图
-              </button>
-              <button
-                type="button"
-                className="dash-action"
-                onClick={() => navigate("/admin/navs")}
-              >
-                管理顶部导航
-              </button>
-            </div>
+      <div className="dash-section dash-section-eco">
+        <EcosystemStats />
+      </div>
+
+      {!loading && (
+        <div className="dash-section">
+          <h2 className="dash-section-title">快捷操作</h2>
+          <div className="dash-actions">
+            <button
+              type="button"
+              className="dash-action"
+              onClick={() => navigate("/admin/products")}
+            >
+              审核待处理资源
+              <span className="dash-action-badge">
+                {dashboard.products.pending}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="dash-action"
+              onClick={() => navigate("/admin/banners")}
+            >
+              管理首页轮播图
+            </button>
+            <button
+              type="button"
+              className="dash-action"
+              onClick={() => navigate("/admin/navs")}
+            >
+              管理顶部导航
+            </button>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

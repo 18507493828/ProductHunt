@@ -924,30 +924,98 @@ app.get("/api/products", attachUserIfPresent, async (req, res) => {
 
 app.get("/api/stats", async (_req, res) => {
   try {
-    const [products, topics] = await Promise.all([listProducts(), readTopics()]);
+    const [products, topics, topicPosts] = await Promise.all([
+      listProducts(),
+      readTopics(),
+      listTopicPosts(),
+    ]);
     const approved = products.filter((p) => (p.status || "approved") === "approved");
+    const approvedPosts = topicPosts.filter(
+      (p) => (p.status || "approved") === "approved",
+    );
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
     let totalVotes = 0;
     let totalViews = 0;
     let totalComments = 0;
+    let ratingSum = 0;
+    let ratingCount = 0;
+    let recentResources7d = 0;
     const categoryCounts = {};
 
     for (const product of approved) {
       totalVotes += Array.isArray(product.voters) ? product.voters.length : 0;
       totalViews += product.viewCount || 0;
       totalComments += Array.isArray(product.comments) ? product.comments.length : 0;
+      const [avgRating, count] = computeRating(product);
+      if (count > 0) {
+        ratingSum += avgRating * count;
+        ratingCount += count;
+      }
+      if ((product.submittedAt || "") >= weekAgo) recentResources7d += 1;
       const cat = product.category || DEFAULT_CATEGORY;
       categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
     }
 
+    let totalTopicLikes = 0;
+    let totalTopicViews = 0;
+    let totalTopicComments = 0;
+    let recentTopicPosts7d = 0;
+
+    for (const post of approvedPosts) {
+      totalTopicLikes += Array.isArray(post.likeIds) ? post.likeIds.length : 0;
+      totalTopicViews += post.viewCount || 0;
+      totalTopicComments += Array.isArray(post.comments) ? post.comments.length : 0;
+      if ((post.submittedAt || "") >= weekAgo) recentTopicPosts7d += 1;
+    }
+
+    const postCountByTopic = buildPostCountMap(approvedPosts);
+    let totalFollowers = 0;
+    for (const topic of topics) {
+      totalFollowers += Array.isArray(topic.followerIds) ? topic.followerIds.length : 0;
+    }
+
+    const totalResources = approved.length;
+    const categoryList = Object.entries(categoryCounts)
+      .map(([category, count]) => ({
+        category,
+        count,
+        percent: totalResources ? Math.round((count / totalResources) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const topTopics = topics
+      .map((topic) => {
+        const postCount = postCountByTopic[topic.id] || 0;
+        const followerCount = Array.isArray(topic.followerIds)
+          ? topic.followerIds.length
+          : 0;
+        return {
+          id: topic.id,
+          name: topic.name || "",
+          postCount,
+          followerCount,
+          hotScore: followerCount * 10 + postCount * 50,
+        };
+      })
+      .sort((a, b) => b.hotScore - a.hotScore)
+      .slice(0, 5);
+
     res.json({
-      totalResources: approved.length,
+      totalResources,
       totalTopics: topics.length,
+      totalTopicPosts: approvedPosts.length,
       totalVotes,
-      totalViews,
-      totalComments,
-      categoryCounts: Object.entries(categoryCounts)
-        .map(([category, count]) => ({ category, count }))
-        .sort((a, b) => b.count - a.count),
+      totalViews: totalViews + totalTopicViews,
+      totalComments: totalComments + totalTopicComments,
+      totalTopicLikes,
+      totalFollowers,
+      avgRating: ratingCount ? Math.round((ratingSum / ratingCount) * 10) / 10 : 0,
+      ratingCount,
+      recentResources7d,
+      recentTopicPosts7d,
+      categoryCounts: categoryList,
+      topTopics,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

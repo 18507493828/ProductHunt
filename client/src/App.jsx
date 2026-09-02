@@ -24,7 +24,6 @@ import ProductCard, { ProductCardSkeleton } from "./components/ProductCard";
 import RankList from "./components/RankList";
 import RatingModal from "./components/RatingModal";
 import TopicRankList from "./components/TopicRankList";
-import EcosystemStats from "./components/EcosystemStats";
 import TopicDetailPanel from "./components/TopicDetailPanel";
 import TopicExplore from "./components/TopicExplore";
 import TopicPostCard, { TopicPostCardSkeleton } from "./components/TopicPostCard";
@@ -564,14 +563,6 @@ export default function App() {
     }
   }
 
-  function handleCategoryFromStats(category) {
-    setActiveView("home");
-    setActiveCategory(category);
-    setAppliedSearch("");
-    setSearchQuery("");
-    document.getElementById("resource-list")?.scrollIntoView({ behavior: "smooth" });
-  }
-
   function handleSearchSubmit() {
     setAppliedSearch(searchQuery.trim());
     setVisibleCount(PRODUCT_PAGE_SIZE);
@@ -963,12 +954,6 @@ export default function App() {
                     <p className="ph-hero-hint">免费上传 · 社区评分冲榜</p>
                   </div>
                 </div>
-              </div>
-            </section>
-
-            <section className="ph-section ph-section-stats">
-              <div className="ph-section-inner">
-                <EcosystemStats onCategoryClick={handleCategoryFromStats} />
               </div>
             </section>
 

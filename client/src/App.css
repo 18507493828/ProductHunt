@@ -2026,6 +2026,8 @@ main { flex: 1; }
   margin-top: 8px;
   max-height: 240px;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   background: var(--ph-white);
   border: 1px solid var(--ph-light-bg-hover);
   border-radius: var(--ph-radius);
@@ -2033,6 +2035,9 @@ main { flex: 1; }
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+.topic-suggest::-webkit-scrollbar {
+  display: none;
 }
 .topic-suggest-item {
   display: flex;
@@ -2427,6 +2432,8 @@ main { flex: 1; }
   bottom: 0;
   width: 220px;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   display: flex;
   flex-direction: column;
   background: var(--ph-bg);
@@ -2434,6 +2441,10 @@ main { flex: 1; }
   padding: 16px 12px;
   gap: 16px;
   z-index: 30;
+}
+
+.admin-sidebar::-webkit-scrollbar {
+  display: none;
 }
 
 .admin-sidebar-brand {
@@ -2648,6 +2659,18 @@ main { flex: 1; }
   color: var(--ph-white);
   font-size: 12px;
   font-weight: 600;
+}
+
+.dash-section-eco {
+  margin-top: 8px;
+}
+
+.dash-section-eco .ph-eco-dashboard {
+  margin: 0;
+}
+
+.dash-section-eco .ph-eco-dashboard-head {
+  display: none;
 }
 
 .dash-loading {
@@ -3779,11 +3802,351 @@ main { flex: 1; }
   font-size: 14px;
 }
 
-/* ---- Ecosystem stats ---- */
+/* ---- Ecosystem stats dashboard ---- */
 .ph-section-stats {
   padding-top: 0;
   padding-bottom: 8px;
 }
+
+.ph-eco-dashboard {
+  padding: 22px 24px 24px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.ph-eco-dashboard--loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.ph-eco-dashboard-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.ph-eco-dashboard-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.ph-eco-dashboard-sub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--ph-text-muted);
+}
+
+.ph-eco-dashboard-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ph-accent);
+  background: rgba(131, 77, 240, 0.12);
+  border: 1px solid rgba(131, 77, 240, 0.2);
+  white-space: nowrap;
+}
+
+.ph-eco-metrics {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.ph-eco-metric {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 14, 26, 0.35);
+  min-width: 0;
+}
+
+.ph-eco-metric-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.ph-eco-metric--purple .ph-eco-metric-icon {
+  background: rgba(131, 77, 240, 0.18);
+  color: #a78bfa;
+}
+
+.ph-eco-metric--orange .ph-eco-metric-icon {
+  background: rgba(251, 146, 60, 0.18);
+  color: #fb923c;
+}
+
+.ph-eco-metric--blue .ph-eco-metric-icon {
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+}
+
+.ph-eco-metric--green .ph-eco-metric-icon {
+  background: rgba(34, 197, 94, 0.18);
+  color: #4ade80;
+}
+
+.ph-eco-metric--pink .ph-eco-metric-icon {
+  background: rgba(244, 63, 94, 0.18);
+  color: #fb7185;
+}
+
+.ph-eco-metric--violet .ph-eco-metric-icon {
+  background: rgba(167, 139, 250, 0.18);
+  color: #c4b5fd;
+}
+
+.ph-eco-metric-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ph-eco-metric-value {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ph-text);
+}
+
+.ph-eco-metric-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ph-text-secondary);
+}
+
+.ph-eco-metric-hint {
+  font-size: 11px;
+  color: var(--ph-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ph-eco-dashboard-panels {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 16px;
+}
+
+.ph-eco-panel {
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 14, 26, 0.28);
+}
+
+.ph-eco-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.ph-eco-panel-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ph-eco-panel-meta {
+  font-size: 12px;
+  color: var(--ph-text-muted);
+}
+
+.ph-eco-panel-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ph-text-muted);
+}
+
+.ph-eco-category-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ph-eco-category-bar {
+  margin: 0;
+}
+
+.ph-eco-category-bar-btn {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+
+.ph-eco-category-bar-btn:disabled {
+  cursor: default;
+}
+
+.ph-eco-category-bar-btn:not(:disabled):hover .ph-eco-category-bar-name {
+  color: var(--ph-accent);
+}
+
+.ph-eco-category-bar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.ph-eco-category-bar-name {
+  font-size: 13px;
+  color: var(--ph-text-secondary);
+  transition: color 0.15s;
+}
+
+.ph-eco-category-bar-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ph-text);
+  font-family: var(--ph-mono);
+}
+
+.ph-eco-category-bar-count em {
+  margin-left: 6px;
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ph-text-muted);
+}
+
+.ph-eco-category-bar-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.ph-eco-category-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ph-accent) 0%, #a78bfa 100%);
+  transition: width 0.4s ease;
+}
+
+.ph-eco-hot-topics {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ph-eco-hot-topic {
+  margin: 0;
+}
+
+.ph-eco-hot-topic-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.ph-eco-hot-topic-btn:not(:disabled):hover {
+  background: rgba(131, 77, 240, 0.1);
+}
+
+.ph-eco-hot-topic-btn:disabled {
+  cursor: default;
+}
+
+.ph-eco-hot-topic-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--ph-mono);
+  color: var(--ph-text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.ph-eco-hot-topic:nth-child(1) .ph-eco-hot-topic-rank {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.15);
+}
+
+.ph-eco-hot-topic-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ph-eco-hot-topic-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ph-text-muted);
+  flex-shrink: 0;
+}
+
+.ph-eco-panel-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  color: var(--ph-text-muted);
+}
+
+.ph-eco-panel-footer strong {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+/* legacy eco stats (kept for compatibility) */
 .ph-eco-stats {
   padding: 20px 24px;
   border-radius: 16px;
@@ -4318,6 +4681,16 @@ main { flex: 1; }
 }
 
 @media (max-width: 768px) {
+  .ph-eco-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ph-eco-dashboard-panels {
+    grid-template-columns: 1fr;
+  }
+  .ph-eco-dashboard-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
   .ph-eco-stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
