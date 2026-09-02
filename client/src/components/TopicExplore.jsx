@@ -61,13 +61,6 @@ export default function TopicExplore({ onSelectTopic, refreshKey = 0 }) {
 
   return (
     <div className="ph-topic-explore">
-      <div className="ph-topic-explore-head">
-        <h3 className="ph-topic-explore-title">发现话题</h3>
-        <p className="ph-topic-explore-hint">
-          浏览热门话题，点击顶部「创建话题」发起讨论
-        </p>
-      </div>
-
       <div className="ph-topic-explore-toolbar">
         <div className="ph-topic-explore-tabs" role="tablist">
           {TABS.map((tab) => (

@@ -1135,7 +1135,12 @@ export default function App() {
               <div className="ph-all-box">
                 {!activeTopicId ? (
                   <div className="ph-topic-toolbar">
-                    <h2 className="ph-section-title spaced">话题热榜</h2>
+                    <div className="ph-topic-explore-head">
+                      <h2 className="ph-topic-explore-title">发现话题</h2>
+                      <p className="ph-topic-explore-hint">
+                        浏览热门话题，点击顶部「创建话题」发起讨论
+                      </p>
+                    </div>
                     <button
                       type="button"
                       className="ph-btn-secondary ph-topic-create-toolbar-btn"

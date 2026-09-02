@@ -3283,9 +3283,21 @@ main { flex: 1; }
 /* 话题页顶部工具条：标题 + 发布话题 */
 .ph-topic-toolbar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  margin-bottom: 4px;
+}
+
+.ph-topic-toolbar .ph-topic-explore-head {
+  margin-bottom: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.ph-topic-toolbar .ph-topic-create-toolbar-btn {
+  margin-top: 2px;
+  flex-shrink: 0;
 }
 
 .ph-topic-toolbar-actions {
