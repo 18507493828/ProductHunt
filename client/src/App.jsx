@@ -330,7 +330,7 @@ export default function App() {
     };
   }, []);
 
-  // 下拉加载更多（首页全部产品，每页 20 条，滚动到底部自动加载）
+  // 客户端分页：滚动触底自动多展示一页（数据已全部在本地）
   const loadMoreRef = useRef(() => {});
   loadMoreRef.current = () => {
     setVisibleCount((c) => Math.min(c + PRODUCT_PAGE_SIZE, products.length));
@@ -343,16 +343,32 @@ export default function App() {
     );
   };
 
+  // 内部容器可滚动时用它做 root；否则（如窄屏 overflow:visible）用视口
+  function getScrollObserverRoot(scrollEl) {
+    if (!scrollEl) return null;
+    return scrollEl.scrollHeight > scrollEl.clientHeight + 1 ? scrollEl : null;
+  }
+
+  function isNearScrollBottom(scrollEl, sentinelEl, margin = 160) {
+    const rect = sentinelEl.getBoundingClientRect();
+    const root = getScrollObserverRoot(scrollEl);
+    if (root) {
+      const rootRect = root.getBoundingClientRect();
+      return rect.top <= rootRect.bottom + margin;
+    }
+    return rect.top <= window.innerHeight + margin;
+  }
+
   useEffect(() => {
     if (!hasMore) return undefined;
     const el = sentinelRef.current;
-    const root = homeScrollRef.current;
-    if (!el || !root) return undefined;
+    const scrollEl = homeScrollRef.current;
+    if (!el) return undefined;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) loadMoreRef.current();
       },
-      { root, rootMargin: "120px 0px" },
+      { root: getScrollObserverRoot(scrollEl), rootMargin: "160px 0px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -361,40 +377,51 @@ export default function App() {
   useEffect(() => {
     if (!topicHasMore) return undefined;
     const el = topicSentinelRef.current;
-    const root = topicScrollRef.current;
-    if (!el || !root) return undefined;
+    const scrollEl = topicScrollRef.current;
+    if (!el) return undefined;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) loadMoreTopicRef.current();
       },
-      { root, rootMargin: "120px 0px" },
+      { root: getScrollObserverRoot(scrollEl), rootMargin: "160px 0px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
   }, [topicHasMore, topicVisibleCount, topicPosts.length]);
 
+  // 哨兵仍在可视区时继续展开（IO 只在交叉状态变化时回调）
   useEffect(() => {
-    if (!hasMore) return;
-    const root = homeScrollRef.current;
+    if (!hasMore) return undefined;
     const el = sentinelRef.current;
-    if (!root || !el) return;
-    const rootRect = root.getBoundingClientRect();
-    const rect = el.getBoundingClientRect();
-    if (rect.top <= rootRect.bottom + 120) {
-      loadMoreRef.current();
-    }
+    const scrollEl = homeScrollRef.current;
+    if (!el) return undefined;
+    let cancelled = false;
+    const id = requestAnimationFrame(() => {
+      if (!cancelled && isNearScrollBottom(scrollEl, el)) {
+        loadMoreRef.current();
+      }
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(id);
+    };
   }, [visibleCount, products.length, hasMore]);
 
   useEffect(() => {
-    if (!topicHasMore) return;
-    const root = topicScrollRef.current;
+    if (!topicHasMore) return undefined;
     const el = topicSentinelRef.current;
-    if (!root || !el) return;
-    const rootRect = root.getBoundingClientRect();
-    const rect = el.getBoundingClientRect();
-    if (rect.top <= rootRect.bottom + 120) {
-      loadMoreTopicRef.current();
-    }
+    const scrollEl = topicScrollRef.current;
+    if (!el) return undefined;
+    let cancelled = false;
+    const id = requestAnimationFrame(() => {
+      if (!cancelled && isNearScrollBottom(scrollEl, el)) {
+        loadMoreTopicRef.current();
+      }
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(id);
+    };
   }, [topicVisibleCount, topicPosts.length, topicHasMore]);
 
   function requireLogin() {
@@ -1079,14 +1106,16 @@ export default function App() {
                           ))}
                         </div>
 
-                        {hasMore && (
-                          <div className="ph-loadmore" ref={sentinelRef}>
-                            <span className="ph-spinner" aria-hidden="true" />
-                            正在加载更多…
-                          </div>
-                        )}
-                        {!hasMore && products.length > 0 && (
-                          <div className="ph-loadmore-done">— 已经到底了 —</div>
+                        {hasMore ? (
+                          <div
+                            className="ph-loadmore-sentinel"
+                            ref={sentinelRef}
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          products.length > 0 && (
+                            <div className="ph-loadmore-done">— 已经到底了 —</div>
+                          )
                         )}
                       </>
                     )}
@@ -1169,14 +1198,16 @@ export default function App() {
                         ))}
                       </div>
 
-                      {topicHasMore && (
-                        <div className="ph-loadmore" ref={topicSentinelRef}>
-                          <span className="ph-spinner" aria-hidden="true" />
-                          正在加载更多…
-                        </div>
-                      )}
-                      {!topicHasMore && topicPosts.length > 0 && (
-                        <div className="ph-loadmore-done">— 已经到底了 —</div>
+                      {topicHasMore ? (
+                        <div
+                          className="ph-loadmore-sentinel"
+                          ref={topicSentinelRef}
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        topicPosts.length > 0 && (
+                          <div className="ph-loadmore-done">— 已经到底了 —</div>
+                        )
                       )}
                     </>
                   )}
