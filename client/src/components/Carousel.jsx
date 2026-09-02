@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchBanners } from "../api";
+import CachedImage from "./CachedImage";
 
 const AUTOPLAY_MS = 3000;
 
@@ -68,7 +69,7 @@ export default function Carousel() {
           const active = i === index;
           const inner = (
             <>
-              <img
+              <CachedImage
                 className="ph-carousel-img"
                 src={banner.imageUrl}
                 alt={banner.title}

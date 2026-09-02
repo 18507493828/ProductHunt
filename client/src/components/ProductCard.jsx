@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ThumbsUp, Eye, MessageCircle, Star } from "lucide-react";
+import CachedImage from "./CachedImage";
 
 function getProductInitial(name = "") {
   return (name.trim()[0] || "P").toUpperCase();
@@ -52,7 +53,7 @@ export default function ProductCard({
       <article>
         <div className="ph-product-card-media" style={mediaStyle} aria-hidden="true">
           {product.imageUrl ? (
-            <img src={product.imageUrl} alt="" loading="lazy" />
+            <CachedImage src={product.imageUrl} alt="" />
           ) : (
             <span className="ph-product-card-initial">{getProductInitial(product.name)}</span>
           )}

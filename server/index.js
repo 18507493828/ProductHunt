@@ -138,12 +138,40 @@ await initTopics();
 await initTopicPosts();
 
 if (IS_PRODUCTION) {
-  app.use(express.static(CLIENT_DIST));
+  app.use(
+    express.static(CLIENT_DIST, {
+      etag: true,
+      lastModified: true,
+      setHeaders(res, filePath) {
+        if (filePath.endsWith("index.html")) {
+          res.setHeader("Cache-Control", "no-cache");
+          return;
+        }
+        // Vite 产物带 hash，可长期缓存
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      },
+    }),
+  );
 }
 
 app.use(cors());
 app.use(express.json());
-app.use("/uploads", express.static(UPLOADS_DIR));
+// 上传文件名含时间戳+随机串，内容不变，二次加载走浏览器缓存
+app.use(
+  "/uploads",
+  express.static(UPLOADS_DIR, {
+    etag: true,
+    lastModified: true,
+    maxAge: "30d",
+    immutable: true,
+    setHeaders(res) {
+      res.setHeader(
+        "Cache-Control",
+        "public, max-age=2592000, immutable",
+      );
+    },
+  }),
+);
 
 const imageUpload = multer({
   storage: multer.diskStorage({

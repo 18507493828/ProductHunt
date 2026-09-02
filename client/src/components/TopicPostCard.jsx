@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Eye, Heart, MessageCircle, ArrowUpRight } from "lucide-react";
+import CachedImage from "./CachedImage";
 
 function formatDate(value) {
   if (!value) return "";
@@ -19,7 +20,7 @@ export default function TopicPostCard({ post, onLike, likeBusy }) {
       <Link to={`/topic-post/${post.id}`} className="ph-topic-post-main">
         {post.imageUrl ? (
           <div className="ph-topic-post-cover">
-            <img src={post.imageUrl} alt="" loading="lazy" />
+            <CachedImage src={post.imageUrl} alt="" />
           </div>
         ) : (
           <div className="ph-topic-post-cover ph-topic-post-cover--placeholder" aria-hidden="true">

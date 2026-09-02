@@ -64,14 +64,14 @@ sudo systemctl reload nginx
 
 ## 数据存储
 
-- 资源：`server/storage/products/<id>.json`（每条资源一个 JSON 文件，**不提交 git**）
-- 用户：`server/storage/users.json`（**不提交 git**）
-- 话题：`server/storage/topics.json`（种子数据，**需提交 git**）
-- 话题内容：`server/storage/topic-posts/*.json`（种子数据，**需提交 git**）
-- 轮播 / 导航：`server/storage/banners.json`、`server/storage/navs.json`（**需提交 git**）
-- 上传图片：`server/storage/uploads/`（运行时生成，**不提交 git**）
+运行时数据均在 `server/storage/`，**整目录不提交 git**（仅保留各子目录 `.gitkeep`）。
 
-首次启动或远程 `topics.json` 为空时，服务端会从 `server/topic-seed.js` 自动写入话题种子数据。
+- 资源：`server/storage/products/<id>.json`
+- 用户：`server/storage/users.json`
+- 话题：`server/storage/topics.json`（为空时由 `server/topic-seed.js` 自动写入）
+- 话题内容：`server/storage/topic-posts/*.json`（为空时由 `server/topic-post-seed.js` 自动写入）
+- 轮播 / 导航：`server/storage/banners.json`、`server/storage/navs.json`（为空时由服务端内置种子写入）
+- 上传图片：`server/storage/uploads/`
 
 ## 环境变量
 

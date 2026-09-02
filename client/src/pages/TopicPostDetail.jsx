@@ -9,6 +9,7 @@ import {
 import { useAuth } from "../AuthContext";
 import { useToast } from "../Toast";
 import EmptyState from "../components/EmptyState";
+import CachedImage from "../components/CachedImage";
 
 function formatTopicName(name) {
   const n = (name || "").trim();
@@ -150,7 +151,7 @@ export default function TopicPostDetail() {
 
                 {post.imageUrl && (
                   <div className="ph-topic-post-detail-cover">
-                    <img src={post.imageUrl} alt="" />
+                    <CachedImage src={post.imageUrl} alt="" loading="eager" />
                   </div>
                 )}
 

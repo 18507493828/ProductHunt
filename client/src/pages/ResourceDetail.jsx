@@ -7,6 +7,7 @@ import { useToast } from "../Toast";
 import EmptyState from "../components/EmptyState";
 import RatingModal from "../components/RatingModal";
 import ProductCard from "../components/ProductCard";
+import CachedImage from "../components/CachedImage";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -168,7 +169,7 @@ export default function ResourceDetail() {
                   }
                 >
                   {resource.imageUrl ? (
-                    <img src={resource.imageUrl} alt="" />
+                    <CachedImage src={resource.imageUrl} alt="" loading="eager" />
                   ) : (
                     <span className="ph-detail-initial">{getInitial(resource.name)}</span>
                   )}

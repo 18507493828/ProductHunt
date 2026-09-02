@@ -3,6 +3,7 @@ import { ArrowLeft, Flame, Heart, MessageSquare, PenLine, Users } from "lucide-r
 import { fetchTopic, followTopic } from "../api";
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
+import CachedImage from "./CachedImage";
 
 function formatTopicName(name) {
   const n = (name || "").trim();
@@ -156,7 +157,7 @@ export default function TopicDetailPanel({ topicId, onClear, onPublish }) {
             aria-hidden="true"
           >
             {topic.coverImage ? (
-              <img src={topic.coverImage} alt="" />
+              <CachedImage src={topic.coverImage} alt="" loading="eager" />
             ) : (
               getTopicInitial(topic.name)
             )}
