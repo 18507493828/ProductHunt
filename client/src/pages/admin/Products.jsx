@@ -74,7 +74,7 @@ export default function Products() {
   }
 
   async function handleDelete(id, name) {
-    if (!window.confirm(`确定删除产品「${name}」吗？此操作不可恢复。`)) return;
+    if (!window.confirm(`确定删除资源「${name}」吗？此操作不可恢复。`)) return;
 
     try {
       setActionId(id);
@@ -121,7 +121,7 @@ export default function Products() {
       {loading ? (
         <div className="admin-empty">加载中...</div>
       ) : products.length === 0 ? (
-        <EmptyState title="当前状态下没有产品" />
+        <EmptyState title="当前状态下没有资源" />
       ) : (
         <div className="admin-list">
           {products.map((product) => (
@@ -144,7 +144,7 @@ export default function Products() {
                   {product.isSpecial && <span className="special-badge">专题活动</span>}
                   {product.url && (
                     <a href={product.url} target="_blank" rel="noreferrer noopener">
-                      产品链接
+                      演示链接
                     </a>
                   )}
                   {product.rejectReason && (

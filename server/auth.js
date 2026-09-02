@@ -38,6 +38,7 @@ function sanitizeUser(user) {
   return {
     id: user.id,
     username: user.username,
+    nickname: user.nickname || user.username,
     role: user.role,
     createdAt: user.createdAt,
   };
@@ -62,6 +63,7 @@ export async function initAuth() {
     users.push({
       id: crypto.randomUUID(),
       username: adminUsername,
+      nickname: "管理员",
       passwordHash,
       role: "admin",
       createdAt: new Date().toISOString(),
@@ -71,10 +73,17 @@ export async function initAuth() {
   }
 }
 
-export async function registerUser(username, password) {
+export async function registerUser(username, nickname, password) {
   const normalizedUsername = username.trim();
+  const normalizedNickname = nickname.trim();
   if (normalizedUsername.length < USERNAME_MIN_LENGTH) {
-    throw new Error("用户名至少 3 个字符");
+    throw new Error("登录账号至少 3 个字符");
+  }
+  if (normalizedNickname.length < 2) {
+    throw new Error("昵称至少 2 个字符");
+  }
+  if (normalizedNickname.length > 20) {
+    throw new Error("昵称不能超过 20 个字符");
   }
   if (!password || password.length < 6) {
     throw new Error("密码至少 6 位");
@@ -82,12 +91,13 @@ export async function registerUser(username, password) {
 
   const users = await readUsersFile();
   if (users.some((user) => user.username === normalizedUsername)) {
-    throw new Error("用户名已存在");
+    throw new Error("该登录账号已被注册");
   }
 
   const user = {
     id: crypto.randomUUID(),
     username: normalizedUsername,
+    nickname: normalizedNickname,
     passwordHash: await bcrypt.hash(password, 10),
     role: "user",
     createdAt: new Date().toISOString(),
@@ -108,7 +118,7 @@ export async function loginUser(username, password) {
   const user = users.find((item) => item.username === normalizedUsername);
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-    throw new Error("用户名或密码错误");
+    throw new Error("登录账号或密码错误");
   }
 
   return {
@@ -117,10 +127,53 @@ export async function loginUser(username, password) {
   };
 }
 
+export async function resetPassword(username, nickname, password) {
+  const normalizedUsername = username.trim();
+  const normalizedNickname = nickname.trim();
+  if (normalizedUsername.length < USERNAME_MIN_LENGTH) {
+    throw new Error("请填写登录账号");
+  }
+  if (normalizedNickname.length < 2) {
+    throw new Error("请填写昵称");
+  }
+  if (!password || password.length < 6) {
+    throw new Error("新密码至少 6 位");
+  }
+
+  const users = await readUsersFile();
+  const index = users.findIndex((item) => item.username === normalizedUsername);
+  if (index === -1) {
+    throw new Error("登录账号不存在");
+  }
+
+  const user = users[index];
+  const storedNickname = (user.nickname || user.username).trim();
+  if (storedNickname !== normalizedNickname) {
+    throw new Error("昵称与账号不匹配");
+  }
+
+  users[index] = {
+    ...user,
+    passwordHash: await bcrypt.hash(password, 10),
+  };
+  await writeUsersFile(users);
+
+  return { message: "密码已重置，请使用新密码登录" };
+}
+
 export async function getUserById(id) {
   const users = await readUsersFile();
   const user = users.find((item) => item.id === id);
   return user ? sanitizeUser(user) : null;
+}
+
+export async function getUsersNicknameMap() {
+  const users = await readUsersFile();
+  const map = {};
+  for (const user of users) {
+    map[user.username] = user.nickname || user.username;
+  }
+  return map;
 }
 
 export function verifyToken(token) {

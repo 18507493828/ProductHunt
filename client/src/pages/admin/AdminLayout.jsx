@@ -3,14 +3,14 @@ import { useAuth } from "../../AuthContext";
 
 const NAV_ITEMS = [
   { to: "/admin", end: true, label: "总览" },
-  { to: "/admin/products", end: false, label: "产品审核" },
+  { to: "/admin/products", end: false, label: "资源审核" },
   { to: "/admin/banners", end: false, label: "轮播图管理" },
   { to: "/admin/navs", end: false, label: "导航管理" },
 ];
 
 const TITLE_MAP = {
   "/admin": "后台总览",
-  "/admin/products": "产品审核",
+  "/admin/products": "资源审核",
   "/admin/banners": "轮播图管理",
   "/admin/navs": "导航管理",
 };

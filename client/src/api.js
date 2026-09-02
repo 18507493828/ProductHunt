@@ -29,10 +29,17 @@ export async function login(username, password) {
   });
 }
 
-export async function register(username, password) {
+export async function register(username, nickname, password) {
   return request("/api/auth/register", {
     method: "POST",
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, nickname, password }),
+  });
+}
+
+export async function forgotPassword(username, nickname, password) {
+  return request("/api/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ username, nickname, password }),
   });
 }
 
@@ -71,11 +78,10 @@ export async function submitProduct({
   category,
   description,
   imageUrl,
-  topicId,
 }) {
   return request("/api/products", {
     method: "POST",
-    body: JSON.stringify({ name, tagline, url, category, description, imageUrl, topicId }),
+    body: JSON.stringify({ name, tagline, url, category, description, imageUrl }),
   });
 }
 
@@ -88,8 +94,17 @@ export async function voteProduct(id, rating) {
 
 /* ---------------- 话题 API ---------------- */
 
-export async function fetchTopics() {
-  return request("/api/topics");
+export async function fetchTopics({ tab = "hot", city = "", page = 1, pageSize = 20, all = false } = {}) {
+  const params = new URLSearchParams();
+  if (tab) params.set("tab", tab);
+  if (city) params.set("city", city);
+  if (all) params.set("all", "1");
+  else {
+    if (page) params.set("page", page);
+    if (pageSize) params.set("pageSize", pageSize);
+  }
+  const query = params.toString();
+  return request(`/api/topics${query ? `?${query}` : ""}`);
 }
 
 export async function createTopic({ name, description, coverImage }) {

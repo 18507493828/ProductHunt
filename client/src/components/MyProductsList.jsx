@@ -43,10 +43,10 @@ export default function MyProductsList({ products, loading, onSubmit }) {
     return (
       <EmptyState
         title="还没有提交记录"
-        description="提交产品后可在这里查看审核状态和票数"
+        description="上传资源后可在这里查看审核状态和评分"
         action={
           <button type="button" className="ph-empty-link" onClick={onSubmit}>
-            提交第一个产品 →
+            上传第一个资源 →
           </button>
         }
       />
@@ -64,7 +64,7 @@ export default function MyProductsList({ products, loading, onSubmit }) {
 
           <div
             className="ph-item-avatar"
-            style={{ background: product.color || "#FF5722" }}
+            style={{ background: product.color || "var(--ph-accent)" }}
             aria-hidden="true"
           >
             {getProductInitial(product.name)}

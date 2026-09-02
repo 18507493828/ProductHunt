@@ -28,14 +28,15 @@ export default function Login() {
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>登录</h1>
-        <p className="auth-tip">登录后可提交产品，并为喜欢的作品投票</p>
+        <p className="auth-tip">登录后可上传资源，并为喜欢的作品评分</p>
 
         <label>
-          用户名
+          登录账号
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
+            placeholder="注册时使用的账号"
             required
           />
         </label>
@@ -50,6 +51,12 @@ export default function Login() {
             required
           />
         </label>
+
+        <div className="auth-forgot-row">
+          <Link to="/forgot-password" className="auth-forgot-link">
+            忘记密码？
+          </Link>
+        </div>
 
         {error && <div className="error">{error}</div>}
 

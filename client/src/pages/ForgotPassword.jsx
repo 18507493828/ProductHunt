@@ -1,29 +1,32 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../AuthContext";
+import { forgotPassword } from "../api";
 
-export default function Register() {
-  const { register } = useAuth();
+export default function ForgotPassword() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [nickname, setNickname] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (password !== confirmPassword) {
       setError("两次输入的密码不一致");
+      setSuccess("");
       return;
     }
 
     try {
       setLoading(true);
       setError("");
-      await register(username, nickname, password);
-      navigate("/");
+      setSuccess("");
+      const result = await forgotPassword(username, nickname, password);
+      setSuccess(result.message || "密码已重置，请使用新密码登录");
+      setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -34,8 +37,8 @@ export default function Register() {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>注册</h1>
-        <p className="auth-tip">加入社区，上传 Agent 资源、参与互动评分</p>
+        <h1>忘记密码</h1>
+        <p className="auth-tip">验证登录账号与昵称后，可设置新密码</p>
 
         <label>
           登录账号
@@ -43,8 +46,7 @@ export default function Register() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
-            placeholder="邮箱或自定义账号，至少 3 个字符"
-            minLength={3}
+            placeholder="注册时使用的账号"
             required
           />
         </label>
@@ -55,15 +57,13 @@ export default function Register() {
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
             autoComplete="nickname"
-            placeholder="社区展示名称，2-20 个字符"
-            minLength={2}
-            maxLength={20}
+            placeholder="注册时填写的昵称"
             required
           />
         </label>
 
         <label>
-          密码
+          新密码
           <input
             type="password"
             value={password}
@@ -76,29 +76,30 @@ export default function Register() {
         </label>
 
         <label>
-          确认密码
+          确认新密码
           <input
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             autoComplete="new-password"
-            placeholder="再次输入密码"
+            placeholder="再次输入新密码"
             minLength={6}
             required
           />
         </label>
 
         {error && <div className="error">{error}</div>}
+        {success && <div className="auth-success">{success}</div>}
 
         <button type="submit" className="auth-submit" disabled={loading}>
-          {loading ? "注册中..." : "注册"}
+          {loading ? "提交中..." : "重置密码"}
         </button>
 
         <p className="auth-switch">
-          已有账号？<Link to="/login">去登录</Link>
+          想起密码了？<Link to="/login">返回登录</Link>
         </p>
         <p className="auth-switch">
-          <Link to="/">返回首页</Link>
+          <Link to="/register">还没有账号？去注册</Link>
         </p>
       </form>
     </div>

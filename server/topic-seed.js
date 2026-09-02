@@ -1,4 +1,6 @@
-[
+// 话题种子数据：111 个话题，含全国热门(region=全国)与各城市本地话题
+// region 用于「本地榜」按城市分组，followerIds 数量决定「热门榜」热度
+export const TOPIC_SEED = [
   {
     "id": "topic-hot-001",
     "name": "AI 创作",
@@ -13054,17 +13056,5 @@
       "18edf844",
       "77ebe719"
     ]
-  },
-  {
-    "id": "topic-a756db55",
-    "name": "量化大师",
-    "description": "",
-    "coverImage": "",
-    "color": "#FF8A65",
-    "createdBy": "493102216@qq.com",
-    "createdAt": "2026-09-02T03:04:50.676Z",
-    "followerIds": [
-      "2c5c4a13-f1c8-4bf5-a1f4-2c68c3a0b520"
-    ]
   }
-]
+];

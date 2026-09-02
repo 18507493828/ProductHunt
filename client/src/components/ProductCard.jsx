@@ -23,7 +23,7 @@ function VoteControl({ product, onVote, disabled, compact }) {
       }}
       disabled={disabled || product.votedByMe}
       aria-label={product.votedByMe ? "已评分" : "评分"}
-      title={product.votedByMe ? "已评分" : "为这个产品评分"}
+      title={product.votedByMe ? "已评分" : "为这个资源评分"}
     >
       <ThumbsUp size={15} strokeWidth={2} aria-hidden="true" />
       <span>{product.voteCount ?? 0}</span>
@@ -38,11 +38,12 @@ export default function ProductCard({
   votingDisabled,
   showMeta = false,
   showCategory = false,
+  showTopic = false,
   size = "md",
 }) {
   const mediaStyle = product.imageUrl
     ? undefined
-    : { background: product.color || "#834DF0" };
+    : { background: product.color || "var(--ph-accent)" };
 
   return (
     <article className={`ph-product-card ph-product-card-${size}`}>
@@ -87,10 +88,13 @@ export default function ProductCard({
             </span>
           </div>
         )}
-        {(showCategory || showMeta) && (
+        {(showCategory || showMeta || showTopic) && (
           <p className="ph-product-card-meta">
             {showCategory && product.category && (
               <span>{product.category}</span>
+            )}
+            {showTopic && product.topicName && (
+              <span className="ph-product-card-topic">{product.topicName}</span>
             )}
             {showMeta && product.submittedBy && (
               <span>{product.submittedBy}</span>

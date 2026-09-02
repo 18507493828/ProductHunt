@@ -7,10 +7,10 @@ import {
 } from "../../api";
 
 const STAT_CARDS = [
-  { key: "pending", label: "待审核产品", tone: "warning" },
-  { key: "approved", label: "已上架产品", tone: "success" },
-  { key: "rejected", label: "已拒绝产品", tone: "danger" },
-  { key: "all", label: "产品总数", tone: "primary" },
+  { key: "pending", label: "待审核资源", tone: "warning" },
+  { key: "approved", label: "已上架资源", tone: "success" },
+  { key: "rejected", label: "已拒绝资源", tone: "danger" },
+  { key: "all", label: "资源总数", tone: "primary" },
   { key: "banners", label: "轮播图", tone: "neutral" },
   { key: "navs", label: "导航栏", tone: "neutral" },
 ];
@@ -93,7 +93,7 @@ export default function Dashboard() {
                 className="dash-action"
                 onClick={() => navigate("/admin/products")}
               >
-                审核待处理产品
+                审核待处理资源
                 <span className="dash-action-badge">
                   {dashboard.products.pending}
                 </span>

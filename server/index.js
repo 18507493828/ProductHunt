@@ -6,10 +6,13 @@ import path from "path";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
 import { PRODUCT_CATEGORIES, DEFAULT_CATEGORY } from "./categories.js";
+import { TOPIC_SEED } from "./topic-seed.js";
 import {
   initAuth,
   registerUser,
   loginUser,
+  resetPassword,
+  getUsersNicknameMap,
   getUserById,
   requireAuth,
   requireAdmin,
@@ -51,10 +54,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_BANNERS = [
   {
     id: "banner-ai",
-    title: "AI 工具专区",
-    subtitle: "发现能真正提升生产力的 AI 产品",
+    title: "Agent 专家精选",
+    subtitle: "发现各领域 Agent 角色与专家配置，快速接入智能助手",
     imageUrl: "/banners/banner-ai.png",
-    linkUrl: "https://www.producthunt.com/",
+    linkUrl: "/",
     sort: 1,
     enabled: true,
     createdAt: "",
@@ -62,10 +65,10 @@ const DEFAULT_BANNERS = [
   },
   {
     id: "banner-dev",
-    title: "开发者利器",
-    subtitle: "从编辑器插件到部署平台，汇聚开发者精心打磨的工具",
+    title: "技能与链接器",
+    subtitle: "技能模块、MCP 工具与外部集成，扩展 Agent 能力边界",
     imageUrl: "/banners/banner-dev.png",
-    linkUrl: "https://www.producthunt.com/categories/developer-tools",
+    linkUrl: "/",
     sort: 2,
     enabled: true,
     createdAt: "",
@@ -73,10 +76,10 @@ const DEFAULT_BANNERS = [
   },
   {
     id: "banner-open",
-    title: "开源项目巡礼",
-    subtitle: "每周精选值得关注的开源项目，让优秀作品被更多人看见",
+    title: "自动化模版",
+    subtitle: "工作流与任务模版，一键复用成熟 Agent 编排方案",
     imageUrl: "/banners/banner-open.png",
-    linkUrl: "https://www.producthunt.com/categories/open-source",
+    linkUrl: "/",
     sort: 3,
     enabled: true,
     createdAt: "",
@@ -290,158 +293,7 @@ async function initTopics() {
   if (existing.length > 0) return;
 
   const now = new Date().toISOString();
-  const seed = [
-    {
-      id: "topic-ai-tools",
-      name: "AI 工具",
-      description: "发现能真正提升生产力的 AI 产品",
-      coverImage: "",
-      color: "#534AB7",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-    {
-      id: "topic-dev-tools",
-      name: "开发工具",
-      description: "从编辑器插件到部署平台，汇聚开发者精心打磨的工具",
-      coverImage: "",
-      color: "#0F6E56",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-    {
-      id: "topic-open-source",
-      name: "开源项目",
-      description: "每周精选值得关注的开源项目，让优秀作品被更多人看见",
-      coverImage: "",
-      color: "#185FA5",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-    {
-      id: "topic-productivity",
-      name: "效率办公",
-      description: "从任务管理到协作工具，让工作更高效",
-      coverImage: "",
-      color: "#3B7DD8",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-    {
-      id: "topic-design",
-      name: "设计创意",
-      description: "灵感、配色与设计工具，让创意落地",
-      coverImage: "",
-      color: "#7A5FD8",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-    {
-      id: "topic-education",
-      name: "学习教育",
-      description: "让学习更轻松的知识与课程工具",
-      coverImage: "",
-      color: "#2FA0A0",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-    {
-      id: "topic-lifestyle",
-      name: "生活娱乐",
-      description: "提升生活品质的实用工具与娱乐应用",
-      coverImage: "",
-      color: "#5BA85F",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-    {
-      id: "topic-business",
-      name: "企业服务",
-      description: "面向团队与企业的专业解决方案",
-      coverImage: "",
-      color: "#B0528F",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-    {
-      id: "topic-hardware",
-      name: "硬件设备",
-      description: "智能硬件、机器人与智能家居等创新设备",
-      coverImage: "",
-      color: "#0F7B9E",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-    {
-      id: "topic-marketing",
-      name: "数字营销",
-      description: "增长、投放与内容营销的效率利器",
-      coverImage: "",
-      color: "#E1523D",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-    {
-      id: "topic-finance",
-      name: "金融理财",
-      description: "记账、理财与支付相关的金融工具",
-      coverImage: "",
-      color: "#C8952A",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-    {
-      id: "topic-data",
-      name: "数据分析",
-      description: "数据可视化与分析洞察平台",
-      coverImage: "",
-      color: "#1F6FEB",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-    {
-      id: "topic-security",
-      name: "网络安全",
-      description: "保护数据与隐私的安全与合规工具",
-      coverImage: "",
-      color: "#2C3E50",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-    {
-      id: "topic-ecommerce",
-      name: "电商零售",
-      description: "开店、电商运营与销售支持",
-      coverImage: "",
-      color: "#C0392B",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-    {
-      id: "topic-cloud",
-      name: "云与运维",
-      description: "云计算、DevOps 与基础设施",
-      coverImage: "",
-      color: "#16A085",
-      createdBy: "admin",
-      createdAt: now,
-      followerIds: [],
-    },
-  ];
+  const seed = TOPIC_SEED.map((t) => ({ ...t, createdAt: t.createdAt || now }));
   await writeTopics(seed);
 }
 
@@ -453,11 +305,13 @@ function toPublicTopic(topic, productCount, currentUser) {
     description: topic.description || "",
     coverImage: topic.coverImage || "",
     color: topic.color || pickAvatarColor(topic.name || "话题"),
+    region: topic.region || "全国",
     createdBy: topic.createdBy || "",
     createdAt: topic.createdAt || "",
     followerCount: followerIds.length,
     following: currentUser ? followerIds.includes(currentUser.id) : false,
     productCount: productCount || 0,
+    hotScore: followerIds.length * 10 + (productCount || 0) * 50,
   };
 }
 
@@ -487,8 +341,17 @@ async function listProducts() {
 
 async function getProduct(id) {
   const filePath = path.join(STORAGE_DIR, `${id}.json`);
-  await fs.access(filePath);
-  return readProductFile(filePath);
+  try {
+    await fs.access(filePath);
+    return readProductFile(filePath);
+  } catch {
+    const all = await listProducts();
+    const product = all.find((item) => item.id === id);
+    if (!product) {
+      throw new Error("NOT_FOUND");
+    }
+    return product;
+  }
 }
 
 function getRangeStart(range) {
@@ -504,9 +367,20 @@ function getRangeStart(range) {
   return 0;
 }
 
-function toPublicProduct(product, currentUser) {
+function resolveSubmitterDisplayName(product, nicknameMap) {
+  if (product.submittedNickname) {
+    return product.submittedNickname;
+  }
+  if (nicknameMap && product.submittedBy) {
+    return nicknameMap[product.submittedBy] || product.submittedBy;
+  }
+  return product.submittedBy || "";
+}
+
+function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = null) {
   const voteCount = Array.isArray(product.voters) ? product.voters.length : 0;
   const [avgRating, ratingCount] = computeRating(product);
+  const topicName = topicMap && product.topicId ? (topicMap[product.topicId] || "") : "";
   return {
     id: product.id,
     name: product.name,
@@ -515,7 +389,7 @@ function toPublicProduct(product, currentUser) {
     url: product.url,
     category: product.category,
     topicId: product.topicId || "",
-    color: product.color,
+    topicName,
     imageUrl: product.imageUrl || "",
     voteCount,
     avgRating,
@@ -523,7 +397,7 @@ function toPublicProduct(product, currentUser) {
     votedByMe: currentUser
       ? Array.isArray(product.voters) && product.voters.includes(currentUser.id)
       : false,
-    submittedBy: product.submittedBy,
+    submittedBy: resolveSubmitterDisplayName(product, nicknameMap),
     submittedAt: product.submittedAt,
     status: product.status,
     rejectReason: product.rejectReason || "",
@@ -556,8 +430,18 @@ app.get("/api/health", (_req, res) => {
 
 app.post("/api/auth/register", async (req, res) => {
   try {
-    const { username, password } = req.body || {};
-    const result = await registerUser(username, password);
+    const { username, nickname, password } = req.body || {};
+    const result = await registerUser(username, nickname, password);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post("/api/auth/forgot-password", async (req, res) => {
+  try {
+    const { username, nickname, password } = req.body || {};
+    const result = await resetPassword(username, nickname, password);
     res.json(result);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -887,6 +771,9 @@ app.get("/api/products", attachUserIfPresent, async (req, res) => {
     const rangeStart = getRangeStart(range);
 
     const all = await listProducts();
+    const topics = await readTopics();
+    const topicMap = Object.fromEntries(topics.map((t) => [t.id, t.name || ""]));
+    const nicknameMap = await getUsersNicknameMap();
     const approved = all.filter((product) => (product.status || "approved") === "approved");
     const filtered = approved.filter((product) => {
       if (category && product.category !== category) return false;
@@ -900,7 +787,7 @@ app.get("/api/products", attachUserIfPresent, async (req, res) => {
     });
 
     const sorted = sortProducts(filtered).map((product) =>
-      toPublicProduct(product, req.user)
+      toPublicProduct(product, req.user, topicMap, nicknameMap)
     );
     res.json(sorted);
   } catch (err) {
@@ -932,10 +819,10 @@ app.post("/api/products", requireAuth, async (req, res) => {
     const trimmedImageUrl = (imageUrl || "").trim();
 
     if (!trimmedName) {
-      return res.status(400).json({ error: "请填写产品名称" });
+      return res.status(400).json({ error: "请填写资源名称" });
     }
     if (trimmedName.length > 50) {
-      return res.status(400).json({ error: "产品名称不能超过 50 字" });
+      return res.status(400).json({ error: "资源名称不能超过 50 字" });
     }
     if (!trimmedTagline) {
       return res.status(400).json({ error: "请填写一句话介绍" });
@@ -944,10 +831,10 @@ app.post("/api/products", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "一句话介绍不能超过 100 字" });
     }
     if (!trimmedUrl) {
-      return res.status(400).json({ error: "请填写产品链接" });
+      return res.status(400).json({ error: "请填写演示链接" });
     }
     if (!URL_PATTERN.test(trimmedUrl)) {
-      return res.status(400).json({ error: "产品链接需以 http:// 或 https:// 开头" });
+      return res.status(400).json({ error: "演示链接需以 http:// 或 https:// 开头" });
     }
     if (trimmedImageUrl && trimmedImageUrl.length > 500) {
       return res.status(400).json({ error: "图片链接过长" });
@@ -986,7 +873,7 @@ app.post("/api/products", requireAuth, async (req, res) => {
 
     res.json({
       message: isAdmin
-        ? "发布成功，产品已上架"
+        ? "发布成功，资源已上架"
         : "提交成功，等待管理员审核",
       product: toPublicProduct(product, req.user),
     });
@@ -1000,7 +887,7 @@ app.post("/api/products/:id/vote", requireAuth, async (req, res) => {
     const product = await getProduct(req.params.id);
 
     if ((product.status || "approved") !== "approved") {
-      return res.status(403).json({ error: "该产品尚未上架" });
+      return res.status(403).json({ error: "该资源尚未上架" });
     }
 
     const { rating } = req.body || {};
@@ -1030,14 +917,20 @@ app.post("/api/products/:id/vote", requireAuth, async (req, res) => {
       ratingCount,
     });
   } catch {
-    res.status(404).json({ error: "产品不存在" });
+    res.status(404).json({ error: "资源不存在" });
   }
 });
 
 /* ---------------- 话题 API ---------------- */
 
-app.get("/api/topics", attachUserIfPresent, async (_req, res) => {
+app.get("/api/topics", attachUserIfPresent, async (req, res) => {
   try {
+    const tab = req.query.tab === "local" ? "local" : "hot";
+    const city = (req.query.city || "").trim();
+    const all = req.query.all === "1";
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.max(1, parseInt(req.query.pageSize, 10) || 20);
+
     const [topics, products] = await Promise.all([readTopics(), listProducts()]);
     const approved = products.filter(
       (p) => (p.status || "approved") === "approved"
@@ -1046,15 +939,35 @@ app.get("/api/topics", attachUserIfPresent, async (_req, res) => {
     for (const p of approved) {
       if (p.topicId) countByTopic[p.topicId] = (countByTopic[p.topicId] || 0) + 1;
     }
-    const result = topics
+
+    let pool = topics;
+    // 本地榜：按城市过滤（city 缺省或"全国"时取全部）
+    if (tab === "local") {
+      pool =
+        city && city !== "全国"
+          ? topics.filter((t) => (t.region || "全国") === city)
+          : topics;
+    }
+
+    const sorted = pool
       .sort((a, b) => {
+        const aCount = countByTopic[a.id] || 0;
+        const bCount = countByTopic[b.id] || 0;
+        // 综合热度：关注数为主、作品数为辅
+        const ah = (a.followerIds?.length || 0) * 10 + aCount * 50;
+        const bh = (b.followerIds?.length || 0) * 10 + bCount * 50;
+        if (ah !== bh) return bh - ah;
         const ac = countByTopic[a.id] || 0;
         const bc = countByTopic[b.id] || 0;
         if (ac !== bc) return bc - ac;
         return (b.createdAt || "").localeCompare(a.createdAt || "");
       })
-      .map((topic) => toPublicTopic(topic, countByTopic[topic.id] || 0, _req.user));
-    res.json(result);
+      .map((topic) => toPublicTopic(topic, countByTopic[topic.id] || 0, req.user));
+
+    const total = sorted.length;
+    // 联想等场景需要全量时用 all=1；否则按页切片
+    const items = all ? sorted : sorted.slice((page - 1) * pageSize, page * pageSize);
+    res.json({ items, total, page, pageSize });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1063,7 +976,8 @@ app.get("/api/topics", attachUserIfPresent, async (_req, res) => {
 app.post("/api/topics", requireAuth, async (req, res) => {
   try {
     const { name, description, coverImage } = req.body || {};
-    const trimmedName = (name || "").trim();
+    // 话题名统一存裸名：输入若带首尾 ## 则剥离，展示层负责包装成 #话题#
+    const trimmedName = (name || "").trim().replace(/^#+|#+$/g, "");
     const trimmedDescription = (description || "").trim();
     const trimmedCover = (coverImage || "").trim();
 
@@ -1161,7 +1075,7 @@ app.post("/api/admin/products/:id/approve", requireAdmin, async (req, res) => {
     await writeProductFile(product);
     res.json({ message: "已通过审核", product: toPublicProduct(product, req.user) });
   } catch {
-    res.status(404).json({ error: "产品不存在" });
+    res.status(404).json({ error: "资源不存在" });
   }
 });
 
@@ -1175,7 +1089,7 @@ app.post("/api/admin/products/:id/reject", requireAdmin, async (req, res) => {
     await writeProductFile(product);
     res.json({ message: "已拒绝", product: toPublicProduct(product, req.user) });
   } catch {
-    res.status(404).json({ error: "产品不存在" });
+    res.status(404).json({ error: "资源不存在" });
   }
 });
 
@@ -1191,7 +1105,7 @@ app.post("/api/admin/products/:id/special", requireAdmin, async (req, res) => {
       product: toPublicProduct(product, req.user),
     });
   } catch {
-    res.status(404).json({ error: "产品不存在" });
+    res.status(404).json({ error: "资源不存在" });
   }
 });
 
@@ -1206,7 +1120,7 @@ app.delete("/api/products/:id", requireAdmin, async (req, res) => {
     await fs.rm(path.join(STORAGE_DIR, `${req.params.id}.json`), { force: true });
     res.json({ message: "删除成功" });
   } catch {
-    res.status(404).json({ error: "产品不存在" });
+    res.status(404).json({ error: "资源不存在" });
   }
 });
 

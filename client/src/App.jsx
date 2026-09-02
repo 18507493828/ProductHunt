@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
-import { Upload, Inbox, SearchX } from "lucide-react";
+import { Upload, Inbox, SearchX, Sparkles } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { useToast } from "./Toast";
 import {
@@ -10,7 +10,6 @@ import {
   fetchProducts,
   fetchTopics,
   createTopic,
-  followTopic,
   submitProduct,
   uploadImage,
   voteProduct,
@@ -21,10 +20,27 @@ import MyProductsList from "./components/MyProductsList";
 import ProductCard, { ProductCardSkeleton } from "./components/ProductCard";
 import RankList from "./components/RankList";
 import RatingModal from "./components/RatingModal";
-import TopicsView from "./components/TopicsView";
+import TopicRankList from "./components/TopicRankList";
+import MainViewSwitch, { MainViewTabNav } from "./components/MainViewSwitch";
 import "./App.css";
 
 const PRODUCT_PAGE_SIZE = 20;
+const SPECIAL_FILTER = "活动";
+const WEEKDAY_LABELS = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+
+function formatHeroDate(date = new Date()) {
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const weekday = WEEKDAY_LABELS[date.getDay()];
+  return `${month}月${day}日${weekday}`;
+}
+
+// 话题名统一以 #话题# 形式展示（数据里存的是裸名，展示时包装）
+function formatTopicName(name) {
+  const n = (name || "").trim();
+  if (!n) return "";
+  return n.startsWith("#") && n.endsWith("#") ? n : `#${n}#`;
+}
 
 const TOPIC_COLORS = [
   "#E1523D",
@@ -50,7 +66,7 @@ function StarField() {
     function initStars() {
       const count = Math.min(
         Math.floor((window.innerWidth * window.innerHeight) / 9000),
-        220
+        220,
       );
       stars = Array.from({ length: count }, () => ({
         x: Math.random() * window.innerWidth,
@@ -112,6 +128,7 @@ export default function App() {
   const navigate = useNavigate();
 
   const [products, setProducts] = useState([]);
+  const [topicProducts, setTopicProducts] = useState([]);
   const [categories, setCategories] = useState(["全部"]);
   const [activeCategory, setActiveCategory] = useState("全部");
   const [activeTopicId, setActiveTopicId] = useState("");
@@ -119,17 +136,29 @@ export default function App() {
   const [activeView, setActiveView] = useState("home");
 
   const [loading, setLoading] = useState(true);
+  const [topicLoading, setTopicLoading] = useState(false);
   const [error, setError] = useState("");
+  const [topicError, setTopicError] = useState("");
   const [votingId, setVotingId] = useState("");
   const [ratingProduct, setRatingProduct] = useState(null);
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const filtersRef = useRef(null);
-  const dragState = useRef({ dragging: false, startX: 0, startScrollLeft: 0, moved: false });
-  const [filterOverflow, setFilterOverflow] = useState({ left: false, right: false });
+  const dragState = useRef({
+    dragging: false,
+    startX: 0,
+    startScrollLeft: 0,
+    moved: false,
+  });
+  const [filterOverflow, setFilterOverflow] = useState({
+    hasOverflow: false,
+    left: false,
+    right: false,
+  });
   const [visibleCount, setVisibleCount] = useState(PRODUCT_PAGE_SIZE);
+  const [topicVisibleCount, setTopicVisibleCount] = useState(PRODUCT_PAGE_SIZE);
   const sentinelRef = useRef(null);
-  const [topicStats, setTopicStats] = useState([]);
-  const [topicsLoading, setTopicsLoading] = useState(false);
+  const topicSentinelRef = useRef(null);
+  const [topicAll, setTopicAll] = useState([]);
   const [showCreateTopicModal, setShowCreateTopicModal] = useState(false);
   const [creatingTopic, setCreatingTopic] = useState(false);
   const [createTopicError, setCreateTopicError] = useState("");
@@ -156,14 +185,27 @@ export default function App() {
     category: "",
     description: "",
     imageUrl: "",
-    topicId: "",
   });
 
   const visibleProducts = useMemo(
     () => products.slice(0, visibleCount),
-    [products, visibleCount]
+    [products, visibleCount],
+  );
+  const visibleTopicProducts = useMemo(
+    () => topicProducts.slice(0, topicVisibleCount),
+    [topicProducts, topicVisibleCount],
   );
   const hasMore = products.length > 0 && visibleCount < products.length;
+  const topicHasMore =
+    topicProducts.length > 0 && topicVisibleCount < topicProducts.length;
+  const filterTags = useMemo(() => {
+    const rest = categories.filter((c) => c !== "全部" && c !== "其他");
+    return ["全部", SPECIAL_FILTER, ...rest];
+  }, [categories]);
+
+  useEffect(() => {
+    if (activeCategory === "其他") setActiveCategory("全部");
+  }, [activeCategory]);
 
   useEffect(() => {
     fetchCategoryOptions()
@@ -171,17 +213,42 @@ export default function App() {
       .catch(() => setCategories(["全部"]));
   }, []);
 
-  async function loadProducts(category = activeCategory, topicId = activeTopicId) {
+  async function loadProducts(category = activeCategory) {
     try {
       setLoading(true);
       setError("");
-      const list = await fetchProducts({ category, topicId });
+      const special = category === SPECIAL_FILTER;
+      const list = await fetchProducts({
+        category: special ? "全部" : category,
+        special,
+      });
       setProducts(list);
       setVisibleCount(PRODUCT_PAGE_SIZE);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadTopicProducts(topicId = activeTopicId) {
+    if (!topicId) {
+      setTopicProducts([]);
+      setTopicVisibleCount(PRODUCT_PAGE_SIZE);
+      setTopicLoading(false);
+      setTopicError("");
+      return;
+    }
+    try {
+      setTopicLoading(true);
+      setTopicError("");
+      const list = await fetchProducts({ topicId });
+      setTopicProducts(list);
+      setTopicVisibleCount(PRODUCT_PAGE_SIZE);
+    } catch (err) {
+      setTopicError(err.message);
+    } finally {
+      setTopicLoading(false);
     }
   }
 
@@ -200,16 +267,19 @@ export default function App() {
 
   useEffect(() => {
     if (activeView === "home") {
-      loadProducts(activeCategory, activeTopicId);
-    } else if (activeView === "topics") {
-      // 话题视图始终加载产品：未选话题则默认全部，选中则按话题过滤
-      loadProducts(activeCategory, activeTopicId);
+      loadProducts(activeCategory);
     }
-  }, [activeCategory, activeTopicId, activeView]);
+  }, [activeCategory, activeView]);
+
+  useEffect(() => {
+    if (activeView === "topics") {
+      loadTopicProducts(activeTopicId);
+    }
+  }, [activeTopicId, activeView]);
 
   useEffect(() => {
     setVisibleCount(PRODUCT_PAGE_SIZE);
-  }, [activeCategory, activeTopicId]);
+  }, [activeCategory]);
 
   useEffect(() => {
     if (user && activeView === "my") {
@@ -222,33 +292,12 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [activeView]);
 
-  // 话题视图：拉取全部话题列表
-  useEffect(() => {
-    if (activeView !== "topics") return;
-    let cancelled = false;
-    setTopicsLoading(true);
-    fetchTopics()
-      .then((list) => {
-        if (cancelled) return;
-        setTopicStats(list || []);
-      })
-      .catch(() => {
-        if (!cancelled) setTopicStats([]);
-      })
-      .finally(() => {
-        if (!cancelled) setTopicsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeView]);
-
-  // 加载话题列表（供提交产品时选择关联话题）
+  // 加载全部话题（供发布话题联想匹配全部）
   useEffect(() => {
     let cancelled = false;
-    fetchTopics()
-      .then((list) => {
-        if (!cancelled) setTopicStats(list || []);
+    fetchTopics({ all: true })
+      .then((res) => {
+        if (!cancelled) setTopicAll(res?.items || []);
       })
       .catch(() => {});
     return () => {
@@ -262,6 +311,13 @@ export default function App() {
     setVisibleCount((c) => Math.min(c + PRODUCT_PAGE_SIZE, products.length));
   };
 
+  const loadMoreTopicRef = useRef(() => {});
+  loadMoreTopicRef.current = () => {
+    setTopicVisibleCount((c) =>
+      Math.min(c + PRODUCT_PAGE_SIZE, topicProducts.length),
+    );
+  };
+
   useEffect(() => {
     if (!hasMore) return undefined;
     const el = sentinelRef.current;
@@ -270,11 +326,25 @@ export default function App() {
       (entries) => {
         if (entries[0].isIntersecting) loadMoreRef.current();
       },
-      { rootMargin: "300px 0px" }
+      { rootMargin: "300px 0px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
   }, [hasMore]);
+
+  useEffect(() => {
+    if (!topicHasMore) return undefined;
+    const el = topicSentinelRef.current;
+    if (!el) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMoreTopicRef.current();
+      },
+      { rootMargin: "300px 0px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [topicHasMore]);
 
   // 首屏不足一屏时自动补足，避免一进来就看到“已经到底了”
   useEffect(() => {
@@ -286,6 +356,16 @@ export default function App() {
       loadMoreRef.current();
     }
   }, [visibleCount, products.length, hasMore]);
+
+  useEffect(() => {
+    if (!topicHasMore) return;
+    const el = topicSentinelRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.top <= window.innerHeight + 300) {
+      loadMoreTopicRef.current();
+    }
+  }, [topicVisibleCount, topicProducts.length, topicHasMore]);
 
   function requireLogin() {
     if (!user) {
@@ -344,7 +424,7 @@ export default function App() {
     const trimmedUrl = form.url.trim();
 
     if (!trimmedName) {
-      setSubmitError("请填写产品名称");
+      setSubmitError("请填写资源名称");
       return;
     }
     if (!trimmedTagline) {
@@ -352,21 +432,22 @@ export default function App() {
       return;
     }
     if (!trimmedUrl) {
-      setSubmitError("请填写产品链接");
+      setSubmitError("请填写演示链接");
       return;
     }
     if (!/^https?:\/\/.+/i.test(trimmedUrl)) {
-      setSubmitError("产品链接需以 http:// 或 https:// 开头");
+      setSubmitError("演示链接需以 http:// 或 https:// 开头");
       return;
     }
     if (!form.category) {
-      setSubmitError("请选择产品分类");
+      setSubmitError("请选择资源分类");
       return;
     }
 
     try {
       setSubmitting(true);
       setSubmitError("");
+
       const result = await submitProduct(form);
       setShowSubmitModal(false);
       setForm({
@@ -376,9 +457,8 @@ export default function App() {
         category: "",
         description: "",
         imageUrl: "",
-        topicId: "",
       });
-      toast.success("提交成功", result.message);
+      toast.success("上传成功", result.message);
       if (isAdmin) {
         setActiveView("home");
         await loadProducts(activeCategory);
@@ -397,17 +477,28 @@ export default function App() {
     const el = filtersRef.current;
     if (!el) return;
     const maxLeft = el.scrollWidth - el.clientWidth;
+    const hasOverflow = maxLeft > 2;
     setFilterOverflow({
-      left: el.scrollLeft > 2,
-      right: el.scrollLeft < maxLeft - 2 && maxLeft > 0,
+      hasOverflow,
+      left: hasOverflow && el.scrollLeft > 2,
+      right: hasOverflow && el.scrollLeft < maxLeft - 2,
     });
   }
 
   useEffect(() => {
     updateFilterOverflow();
     window.addEventListener("resize", updateFilterOverflow);
-    return () => window.removeEventListener("resize", updateFilterOverflow);
-  }, [categories]);
+    const el = filtersRef.current;
+    let observer;
+    if (el && typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(updateFilterOverflow);
+      observer.observe(el);
+    }
+    return () => {
+      window.removeEventListener("resize", updateFilterOverflow);
+      observer?.disconnect();
+    };
+  }, [filterTags]);
 
   function onFilterMouseDown(e) {
     dragState.current = {
@@ -455,29 +546,8 @@ export default function App() {
   }
 
   function selectTopic(topicId, name) {
-    // 停留在当前界面（话题视图），仅按话题筛选数据，不跳转首页
     setActiveTopicId(topicId);
-    setActiveCategory("全部");
     setSelectedTopic({ id: topicId, name });
-  }
-
-  async function handleFollowTopic(topicId, e) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!requireLogin()) return;
-    try {
-      const result = await followTopic(topicId);
-      setTopicStats((prev) =>
-        prev.map((t) =>
-          t.id === topicId
-            ? { ...t, following: result.following, followerCount: result.followerCount }
-            : t
-        )
-      );
-      toast.success(result.following ? "已关注话题" : "已取消关注");
-    } catch (err) {
-      toast.error("操作失败", err.message);
-    }
   }
 
   function openCreateTopicModal() {
@@ -519,7 +589,7 @@ export default function App() {
   function topicSuggestions() {
     const q = (topicForm.name || "").trim().toLowerCase();
     if (!q) return [];
-    return topicStats.filter((t) => t.name.toLowerCase().includes(q)).slice(0, 8);
+    return topicAll.filter((t) => t.name.toLowerCase().includes(q)).slice(0, 8);
   }
 
   function updateTopicForm(key, value) {
@@ -559,7 +629,7 @@ export default function App() {
     }
     // 从联想下拉中选择了已有话题：不重复创建，进入该话题
     if (selectedTopicId) {
-      const existing = topicStats.find((t) => t.id === selectedTopicId);
+      const existing = topicAll.find((t) => t.id === selectedTopicId);
       setShowCreateTopicModal(false);
       setSelectedTopicId("");
       setTopicForm({ name: "", description: "", coverImage: "" });
@@ -579,13 +649,23 @@ export default function App() {
       setTopicForm({ name: "", description: "", coverImage: "" });
       setTopicSuggestOpen(false);
       // 刷新话题列表，并把新话题加入本地状态
-      setTopicStats((prev) => [...prev, result.topic].sort((a, b) => b.productCount - a.productCount));
+      setTopicAll((prev) =>
+        [...prev, result.topic].sort((a, b) => b.productCount - a.productCount),
+      );
       toast.success("发布成功", `话题「${name}」已创建`);
     } catch (err) {
       setCreateTopicError(err.message);
     } finally {
       setCreatingTopic(false);
     }
+  }
+
+  function handleMainViewChange(viewId) {
+    if (viewId === "topics") {
+      setActiveTopicId("");
+      setSelectedTopic(null);
+    }
+    setActiveView(viewId);
   }
 
   function handleVote(product) {
@@ -615,8 +695,21 @@ export default function App() {
                 avgRating: result.avgRating,
                 ratingCount: result.ratingCount,
               }
-            : item
-        )
+            : item,
+        ),
+      );
+      setTopicProducts((prev) =>
+        prev.map((item) =>
+          item.id === ratingProduct.id
+            ? {
+                ...item,
+                votedByMe: result.voted,
+                voteCount: result.voteCount,
+                avgRating: result.avgRating,
+                ratingCount: result.ratingCount,
+              }
+            : item,
+        ),
       );
       toast.success("评分成功", `已为「${ratingProduct.name}」打 ${rating} 星`);
       setRatingProduct(null);
@@ -633,7 +726,11 @@ export default function App() {
       <StarField />
       <header className="ph-nav">
         <div className="ph-nav-inner">
-          <Link to="/" className="ph-logo" onClick={() => setActiveView("home")}>
+          <Link
+            to="/"
+            className="ph-logo"
+            onClick={() => setActiveView("home")}
+          >
             <span className="ph-logo-mark" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none">
                 <path
@@ -646,34 +743,15 @@ export default function App() {
             <span className="ph-logo-text">Vibe Building</span>
           </Link>
 
-          <nav className="ph-nav-links" aria-label="顶部导航">
-            <Link
-              to="/"
-              className={
-                "ph-nav-link" + (activeView === "home" ? " active" : "")
-              }
-              onClick={() => setActiveView("home")}
-            >
-              首页
-            </Link>
-            <a
-              href="#"
-              className={"ph-nav-link" + (activeView === "topics" ? " active" : "")}
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveView("topics");
-                setActiveTopicId("");
-                setSelectedTopic(null);
-              }}
-            >
-              话题
-            </a>
-          </nav>
+          <MainViewTabNav
+            activeView={activeView}
+            onChange={handleMainViewChange}
+          />
 
           <div className="ph-nav-actions">
             {user ? (
               <>
-                <span className="ph-user-badge">{user.username}</span>
+                <span className="ph-user-badge">{user.nickname || user.username}</span>
                 {isAdmin && (
                   <Link to="/admin" className="ph-nav-ghost">
                     管理后台
@@ -682,9 +760,11 @@ export default function App() {
                 <button
                   type="button"
                   className="ph-nav-ghost"
-                  onClick={() => setActiveView(activeView === "my" ? "home" : "my")}
+                  onClick={() =>
+                    setActiveView(activeView === "my" ? "home" : "my")
+                  }
                 >
-                  {activeView === "my" ? "返回首页" : "我的提交"}
+                  {activeView === "my" ? "返回首页" : "我的上传"}
                 </button>
                 <button type="button" className="ph-nav-ghost" onClick={logout}>
                   退出
@@ -694,7 +774,7 @@ export default function App() {
                   className="ph-nav-primary"
                   onClick={openSubmitModal}
                 >
-                  提交产品
+                  上传资源
                 </button>
               </>
             ) : (
@@ -710,7 +790,7 @@ export default function App() {
                   className="ph-nav-primary"
                   onClick={openSubmitModal}
                 >
-                  提交产品
+                  上传资源
                 </button>
               </>
             )}
@@ -720,217 +800,258 @@ export default function App() {
 
       {activeView === "home" && <Carousel />}
 
-      {activeView === "home" ? (
-        <main key="home" className="ph-view-enter">
-          <section className="ph-page-header">
-            <div className="ph-section-inner">
-              <div className="ph-page-header-inner">
-                <div>
+      <MainViewSwitch
+        activeView={activeView}
+        home={
+          <>
+            <section className="ph-page-header">
+              <div className="ph-section-inner">
+                <div className="ph-page-header-inner">
                   <p className="ph-page-eyebrow">
-                    今日精选 ·{" "}
-                    {new Date().toLocaleDateString("zh-CN", {
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                    })}
+                    <span className="ph-page-eyebrow-dot" aria-hidden="true" />
+                    今日精选 · Agent 生态 · {formatHeroDate()}
                   </p>
-                  <h1 className="ph-page-title">发现好作品，为创新投票</h1>
+                  <h1 className="ph-page-title">
+                    发现 Agent 生态，
+                    <span className="ph-page-title-accent">上传与互动</span>
+                  </h1>
                   <p className="ph-page-desc">
-                    Vibe Building 人人都可以成为开发者，构建自己的应用
+                    汇聚专家、技能、链接器、模版等各类 Agent 资源，供社区发现、演示与评分
                   </p>
-                </div>
-                <button
-                  type="button"
-                  className="ph-btn-primary"
-                  onClick={openSubmitModal}
-                >
-                  提交产品
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section className="ph-section">
-            <div className="ph-section-inner">
-              <div className="ph-all-section" id="product-list">
-                <div className="ph-all-box">
-                  <h2 className="ph-section-title spaced">全部产品</h2>
-
-                  <div className="ph-filters-wrap">
-                    <div
-                      className="ph-filters"
-                      role="tablist"
-                      aria-label="产品分类"
-                      ref={filtersRef}
-                      onScroll={updateFilterOverflow}
-                      onMouseDown={onFilterMouseDown}
-                      onMouseMove={onFilterMouseMove}
-                      onMouseUp={endFilterDrag}
-                      onMouseLeave={endFilterDrag}
-                      onClickCapture={onFilterClickCapture}
+                  <div className="ph-page-header-actions">
+                    <button
+                      type="button"
+                      className="ph-btn-primary ph-btn-hero"
+                      onClick={openSubmitModal}
                     >
-                      {categories.map((category) => (
-                        <button
-                          key={category}
-                          type="button"
-                          role="tab"
-                          aria-selected={category === activeCategory}
-                          className={
-                            category === activeCategory
-                              ? "ph-filter active"
-                              : "ph-filter"
-                          }
-                          onClick={(e) => selectCategory(category, e)}
-                        >
-                          {category}
-                        </button>
-                      ))}
+                      <Sparkles size={16} strokeWidth={2.2} aria-hidden="true" />
+                      上传资源
+                    </button>
+                    <p className="ph-hero-hint">免费上传 · 社区评分冲榜</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="ph-section">
+              <div className="ph-section-inner">
+                <div className="ph-all-section" id="product-list">
+                  <div className="ph-all-box">
+                    <h2 className="ph-section-title spaced">全部资源</h2>
+
+                    <div
+                      className={
+                        "ph-filters-wrap" +
+                        (filterOverflow.hasOverflow ? " has-overflow" : "")
+                      }
+                    >
+                      <div
+                        className="ph-filters"
+                        role="tablist"
+                        aria-label="资源分类"
+                        ref={filtersRef}
+                        onScroll={updateFilterOverflow}
+                        onMouseDown={onFilterMouseDown}
+                        onMouseMove={onFilterMouseMove}
+                        onMouseUp={endFilterDrag}
+                        onMouseLeave={endFilterDrag}
+                        onClickCapture={onFilterClickCapture}
+                      >
+                        {filterTags.map((category) => (
+                          <button
+                            key={category}
+                            type="button"
+                            role="tab"
+                            aria-selected={category === activeCategory}
+                            className={[
+                              "ph-filter",
+                              category === SPECIAL_FILTER ? "ph-filter--activity" : "",
+                              category === activeCategory ? "active" : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            onClick={(e) => selectCategory(category, e)}
+                          >
+                            {category}
+                          </button>
+                        ))}
+                      </div>
+                      {filterOverflow.hasOverflow && (
+                        <>
+                          <span
+                            className={
+                              "ph-filters-fade left" +
+                              (filterOverflow.left ? "" : " is-edge")
+                            }
+                            aria-hidden="true"
+                          />
+                          <span
+                            className={
+                              "ph-filters-fade right" +
+                              (filterOverflow.right ? "" : " is-edge")
+                            }
+                            aria-hidden="true"
+                          />
+                        </>
+                      )}
                     </div>
-                    {filterOverflow.left && (
-                      <span className="ph-filters-fade left" aria-hidden="true" />
-                    )}
-                    {filterOverflow.right && (
-                      <span className="ph-filters-fade right" aria-hidden="true" />
+
+                    {error && <div className="error">{error}</div>}
+
+                    {loading ? (
+                      <div className="ph-product-grid ph-product-grid-all">
+                        {Array.from({ length: 12 }).map((_, index) => (
+                          <ProductCardSkeleton key={index} size="md" />
+                        ))}
+                      </div>
+                    ) : products.length === 0 ? (
+                      <EmptyState
+                        icon={<Inbox />}
+                        title={
+                          activeCategory === SPECIAL_FILTER
+                            ? "暂无专题活动资源"
+                            : activeCategory !== "全部"
+                              ? "该分类下还没有资源"
+                              : "还没有资源，来上传第一个吧"
+                        }
+                        action={
+                          <button
+                            type="button"
+                            className="ph-empty-link"
+                            onClick={openSubmitModal}
+                          >
+                            成为第一个上传者 →
+                          </button>
+                        }
+                      />
+                    ) : (
+                      <>
+                        <div className="ph-product-grid ph-product-grid-all">
+                          {visibleProducts.map((product) => (
+                            <ProductCard
+                              key={product.id}
+                              product={product}
+                              onVote={handleVote}
+                              votingDisabled={votingId === product.id}
+                              showCategory
+                              showMeta
+                              size="md"
+                            />
+                          ))}
+                        </div>
+
+                        {hasMore && (
+                          <div className="ph-loadmore" ref={sentinelRef}>
+                            <span className="ph-spinner" aria-hidden="true" />
+                            正在加载更多…
+                          </div>
+                        )}
+                        {!hasMore && products.length > 0 && (
+                          <div className="ph-loadmore-done">— 已经到底了 —</div>
+                        )}
+                      </>
                     )}
                   </div>
+                  <aside className="ph-sidebar">
+                    <RankList />
+                  </aside>
+                </div>
+              </div>
+            </section>
+          </>
+        }
+        topics={
+          <div className="ph-section-inner">
+            <div className="ph-all-section">
+              <div className="ph-all-box">
+                <div className="ph-topic-toolbar">
+                  <h2 className="ph-section-title spaced">话题热榜</h2>
+                </div>
 
-                  {error && <div className="error">{error}</div>}
+                {activeTopicId && (
+                  <div className="ph-topic-filter-head">
+                    <span className="ph-topic-filter-label">
+                      正在浏览 #{selectedTopic?.name || "该话题"}#
+                    </span>
+                    <button
+                      type="button"
+                      className="ph-topic-filter-clear"
+                      onClick={() => {
+                        setActiveTopicId("");
+                        setSelectedTopic(null);
+                      }}
+                    >
+                      × 清除筛选
+                    </button>
+                  </div>
+                )}
 
-                  {loading ? (
+                <div className="ph-topic-filter">
+                  {topicError && <div className="error">{topicError}</div>}
+
+                  {!activeTopicId ? (
+                    <EmptyState
+                      icon={<Inbox />}
+                      title="请从右侧选择一个话题"
+                      description="选中后可查看该话题下的作品"
+                    />
+                  ) : topicLoading ? (
                     <div className="ph-product-grid ph-product-grid-all">
                       {Array.from({ length: 12 }).map((_, index) => (
                         <ProductCardSkeleton key={index} size="md" />
                       ))}
                     </div>
-                  ) : products.length === 0 ? (
+                  ) : topicProducts.length === 0 ? (
                     <EmptyState
                       icon={<Inbox />}
-                      title={
-                        activeCategory !== "全部"
-                          ? "该分类下还没有产品"
-                          : "还没有产品，来提交第一个吧"
-                      }
-                      action={
-                        <button
-                          type="button"
-                          className="ph-empty-link"
-                          onClick={openSubmitModal}
-                        >
-                          成为第一个提交者 →
-                        </button>
-                      }
+                      title="该话题下还没有资源"
                     />
                   ) : (
                     <>
                       <div className="ph-product-grid ph-product-grid-all">
-                        {visibleProducts.map((product) => (
+                        {visibleTopicProducts.map((product) => (
                           <ProductCard
                             key={product.id}
                             product={product}
                             onVote={handleVote}
                             votingDisabled={votingId === product.id}
                             showCategory
+                            showTopic
                             showMeta
                             size="md"
                           />
                         ))}
                       </div>
 
-                      {hasMore && (
-                        <div className="ph-loadmore" ref={sentinelRef}>
+                      {topicHasMore && (
+                        <div className="ph-loadmore" ref={topicSentinelRef}>
                           <span className="ph-spinner" aria-hidden="true" />
                           正在加载更多…
                         </div>
                       )}
-                      {!hasMore && products.length > 0 && (
+                      {!topicHasMore && topicProducts.length > 0 && (
                         <div className="ph-loadmore-done">— 已经到底了 —</div>
                       )}
                     </>
                   )}
                 </div>
-                <aside className="ph-sidebar">
-                  <RankList />
-                </aside>
               </div>
-            </div>
-          </section>
-        </main>
-      ) : activeView === "topics" ? (
-        <main key="topics" className="ph-section ph-view-enter">
-          <div className="ph-section-inner">
-            <TopicsView
-              topics={topicStats}
-              loading={topicsLoading}
-              activeTopicId={activeTopicId}
-              onSelect={(topicId, name) => selectTopic(topicId, name)}
-              onFollow={handleFollowTopic}
-              onCreate={openCreateTopicModal}
-            />
-
-            {activeTopicId && (
-              <div className="ph-topic-filter-head">
-                <button
-                  type="button"
-                  className="ph-topic-filter-clear"
-                  onClick={() => {
-                    setActiveTopicId("");
-                    setSelectedTopic(null);
-                  }}
-                >
-                  × 清除筛选
-                </button>
-              </div>
-            )}
-
-            <div className="ph-topic-filter">
-              {error && <div className="error">{error}</div>}
-
-              {loading ? (
-                <div className="ph-product-grid ph-product-grid-all">
-                  {Array.from({ length: 12 }).map((_, index) => (
-                    <ProductCardSkeleton key={index} size="md" />
-                  ))}
-                </div>
-              ) : products.length === 0 ? (
-                <EmptyState
-                  icon={<Inbox />}
-                  title={activeTopicId ? "该话题下还没有产品" : "还没有产品"}
+              <aside className="ph-sidebar">
+                <TopicRankList
+                  activeTopicId={activeTopicId}
+                  onSelectTopic={(topicId, name) => selectTopic(topicId, name)}
                 />
-              ) : (
-                <>
-                  <div className="ph-product-grid ph-product-grid-all">
-                    {visibleProducts.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onVote={handleVote}
-                        votingDisabled={votingId === product.id}
-                        showCategory
-                        showMeta
-                        size="md"
-                      />
-                    ))}
-                  </div>
-
-                  {hasMore && (
-                    <div className="ph-loadmore" ref={sentinelRef}>
-                      <span className="ph-spinner" aria-hidden="true" />
-                      正在加载更多…
-                    </div>
-                  )}
-                  {!hasMore && products.length > 0 && (
-                    <div className="ph-loadmore-done">— 已经到底了 —</div>
-                  )}
-                </>
-              )}
+              </aside>
             </div>
           </div>
-        </main>
-      ) : (
+        }
+      />
+
+      {activeView === "my" && (
         <main key="my" className="ph-section ph-view-enter">
           <div className="ph-section-inner">
             <div className="ph-my-toolbar">
-              <h2 className="ph-section-title">我的提交</h2>
+              <h2 className="ph-section-title">我的上传</h2>
             </div>
             {error && <div className="error">{error}</div>}
             <MyProductsList
@@ -955,7 +1076,7 @@ export default function App() {
               </svg>
             </span>
             <span className="ph-footer-text">
-              Vibe Building · 发现码道与开发者的优秀作品
+              Vibe Building · Agent 生态资源发现与互动社区
             </span>
           </div>
         </div>
@@ -974,7 +1095,7 @@ export default function App() {
               <div className="modal-header">
                 <div>
                   <p className="modal-eyebrow">发布</p>
-                  <h2 id="submit-modal-title">提交你的产品</h2>
+                  <h2 id="submit-modal-title">上传你的资源</h2>
                 </div>
                 <button
                   type="button"
@@ -989,11 +1110,11 @@ export default function App() {
 
               <form className="modal-body" onSubmit={handleSubmitProduct}>
                 <div className="modal-field">
-                  <span>产品图片</span>
+                  <span>封面图</span>
                   <div className="ph-upload">
                     {form.imageUrl ? (
                       <div className="ph-upload-preview">
-                        <img src={form.imageUrl} alt="产品图片预览" />
+                        <img src={form.imageUrl} alt="封面图预览" />
                         <button
                           type="button"
                           className="ph-upload-remove"
@@ -1020,7 +1141,11 @@ export default function App() {
                           disabled={submitting || imageUploading}
                           hidden
                         />
-                        <Upload className="ph-upload-icon" size={26} aria-hidden="true" />
+                        <Upload
+                          className="ph-upload-icon"
+                          size={26}
+                          aria-hidden="true"
+                        />
                         <span className="ph-upload-text">
                           {imageUploading ? "上传中..." : "点击上传图片"}
                         </span>
@@ -1034,12 +1159,12 @@ export default function App() {
 
                 <label className="modal-field">
                   <span>
-                    产品名称 <span className="field-required">*</span>
+                    资源名称 <span className="field-required">*</span>
                   </span>
                   <input
                     value={form.name}
                     onChange={(e) => updateForm("name", e.target.value)}
-                    placeholder="例如：LobsterAI"
+                    placeholder="例如：代码审查专家、Notion 链接器"
                     maxLength={50}
                     disabled={submitting}
                     required
@@ -1053,7 +1178,7 @@ export default function App() {
                   <input
                     value={form.tagline}
                     onChange={(e) => updateForm("tagline", e.target.value)}
-                    placeholder="用一句话说清你的产品是做什么的"
+                    placeholder="用一句话说清这个资源能做什么"
                     maxLength={100}
                     disabled={submitting}
                     required
@@ -1062,12 +1187,12 @@ export default function App() {
 
                 <label className="modal-field">
                   <span>
-                    产品链接 <span className="field-required">*</span>
+                    演示链接 <span className="field-required">*</span>
                   </span>
                   <input
                     value={form.url}
                     onChange={(e) => updateForm("url", e.target.value)}
-                    placeholder="https://your-product.com"
+                    placeholder="https://github.com/... 或在线演示地址"
                     disabled={submitting}
                     required
                   />
@@ -1098,35 +1223,21 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="modal-field">
-                  <span>关联话题</span>
-                  <select
-                    value={form.topicId}
-                    onChange={(e) => updateForm("topicId", e.target.value)}
-                    disabled={submitting}
-                  >
-                    <option value="">不关联</option>
-                    {topicStats.map((topic) => (
-                      <option key={topic.id} value={topic.id}>
-                        {topic.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
                 <label className="modal-field">
                   <span>详细介绍</span>
                   <textarea
                     value={form.description}
                     onChange={(e) => updateForm("description", e.target.value)}
-                    placeholder="产品的亮点、解决了什么问题、适合什么人群（选填）"
+                    placeholder="资源的能力说明、适用场景、使用方式（选填）"
                     rows={4}
                     maxLength={500}
                     disabled={submitting}
                   />
                 </label>
 
-                {submitError && <div className="modal-error">{submitError}</div>}
+                {submitError && (
+                  <div className="modal-error">{submitError}</div>
+                )}
 
                 <div className="modal-actions">
                   <button
@@ -1137,14 +1248,22 @@ export default function App() {
                   >
                     取消
                   </button>
-                  <button type="submit" className="modal-btn primary" disabled={submitting}>
-                    {submitting ? "提交中..." : isAdmin ? "立即发布" : "提交审核"}
+                  <button
+                    type="submit"
+                    className="modal-btn primary"
+                    disabled={submitting}
+                  >
+                    {submitting
+                      ? "上传中..."
+                      : isAdmin
+                        ? "立即发布"
+                        : "提交审核"}
                   </button>
                 </div>
               </form>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {showCreateTopicModal &&
@@ -1182,15 +1301,19 @@ export default function App() {
                     <input
                       id="topic-name"
                       className="modal-input"
-                      placeholder="输入话题名称，如：AI 工具、开源项目…"
+                      placeholder="输入话题名称，如：AI 创作、独立开发…"
                       value={topicForm.name}
                       maxLength={30}
                       autoComplete="off"
                       onChange={(e) => handleTopicNameChange(e.target.value)}
                       onFocus={() =>
-                        setTopicSuggestOpen((topicForm.name || "").trim().length > 0)
+                        setTopicSuggestOpen(
+                          (topicForm.name || "").trim().length > 0,
+                        )
                       }
-                      onBlur={() => setTimeout(() => setTopicSuggestOpen(false), 120)}
+                      onBlur={() =>
+                        setTimeout(() => setTopicSuggestOpen(false), 120)
+                      }
                     />
                     {selectedTopicId && (
                       <span className="topic-input-picked">已选话题</span>
@@ -1204,10 +1327,13 @@ export default function App() {
                               type="button"
                               key={topic.id}
                               className="topic-suggest-item"
+                              onMouseDown={(e) => e.preventDefault()}
                               onClick={() => handlePickTopic(topic)}
                             >
                               <span className="topic-suggest-info">
-                                <span className="topic-suggest-name">{topic.name}</span>
+                                <span className="topic-suggest-name">
+                                  {formatTopicName(topic.name)}
+                                </span>
                                 <span className="topic-suggest-meta">
                                   {topic.productCount ?? 0} 个作品
                                 </span>
@@ -1216,20 +1342,16 @@ export default function App() {
                           ))
                         ) : (
                           <div className="topic-suggest-empty">
-                            <SearchX className="topic-suggest-empty-icon" aria-hidden="true" />
+                            <SearchX
+                              className="topic-suggest-empty-icon"
+                              aria-hidden="true"
+                            />
                             <span>没有匹配的话题，可直接创建新话题</span>
                           </div>
                         )}
                       </div>
                     )}
                   </div>
-                  <span className="modal-hint">
-                    {selectedTopicId
-                      ? "已选中已有话题，可直接发布（若已存在将进入该话题）"
-                      : topicSuggestions().length > 0
-                        ? "匹配到已有话题，点击可直接选择；也可输入新名称创建新话题"
-                        : "输入名称即可创建新话题，输入时会出现已有话题选项"}
-                  </span>
                 </div>
 
                 <div className="modal-field">
@@ -1243,7 +1365,9 @@ export default function App() {
                     rows={3}
                     maxLength={200}
                     value={topicForm.description}
-                    onChange={(e) => updateTopicForm("description", e.target.value)}
+                    onChange={(e) =>
+                      updateTopicForm("description", e.target.value)
+                    }
                   />
                   <span className="modal-hint">不超过 200 字</span>
                 </div>
@@ -1274,7 +1398,9 @@ export default function App() {
                   </label>
                 </div>
 
-                {createTopicError && <div className="modal-error">{createTopicError}</div>}
+                {createTopicError && (
+                  <div className="modal-error">{createTopicError}</div>
+                )}
 
                 <div className="modal-actions">
                   <button
@@ -1285,7 +1411,11 @@ export default function App() {
                   >
                     取消
                   </button>
-                  <button type="submit" className="modal-btn primary" disabled={creatingTopic}>
+                  <button
+                    type="submit"
+                    className="modal-btn primary"
+                    disabled={creatingTopic}
+                  >
                     {creatingTopic
                       ? "发布中..."
                       : selectedTopicId
@@ -1296,7 +1426,7 @@ export default function App() {
               </form>
             </div>
           </div>,
-          document.body
+          document.body,
         )}
 
       {ratingProduct && (
