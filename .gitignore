@@ -11,9 +11,18 @@ build/
 !.env.example
 
 # Runtime data (local dev storage)
-server/storage/products/*
+# 默认忽略 storage 下所有文件，再白名单放行需要随仓库同步的种子数据
+server/storage/**
+!server/storage/.gitkeep
+!server/storage/banners.json
+!server/storage/navs.json
+!server/storage/topics.json
+!server/storage/topic-posts/
+!server/storage/topic-posts/**
+!server/storage/products/
 !server/storage/products/.gitkeep
 server/storage/users.json
+server/storage/uploads/**
 
 # Generated archives
 *.zip

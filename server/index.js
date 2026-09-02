@@ -7,6 +7,7 @@ import crypto from "crypto";
 import { fileURLToPath } from "url";
 import { PRODUCT_CATEGORIES, DEFAULT_CATEGORY } from "./categories.js";
 import { TOPIC_SEED } from "./topic-seed.js";
+import { TOPIC_POST_SEED } from "./topic-post-seed.js";
 import {
   initAuth,
   registerUser,
@@ -134,6 +135,7 @@ await initAuth();
 await initBanners();
 await initNavs();
 await initTopics();
+await initTopicPosts();
 
 if (IS_PRODUCTION) {
   app.use(express.static(CLIENT_DIST));
@@ -292,11 +294,33 @@ async function writeTopics(topics) {
 
 async function initTopics() {
   const existing = await readTopics();
-  if (existing.length > 0) return;
+  if (existing.length > 0) {
+    console.log(`[storage] topics.json loaded (${existing.length} items)`);
+    return;
+  }
 
   const now = new Date().toISOString();
   const seed = TOPIC_SEED.map((t) => ({ ...t, createdAt: t.createdAt || now }));
   await writeTopics(seed);
+  console.log(`[storage] topics.json seeded (${seed.length} items)`);
+}
+
+async function initTopicPosts() {
+  const existing = await listTopicPosts();
+  if (existing.length > 0) {
+    console.log(`[storage] topic-posts loaded (${existing.length} items)`);
+    return;
+  }
+
+  const now = new Date().toISOString();
+  for (const post of TOPIC_POST_SEED) {
+    await writeTopicPostFile({
+      ...post,
+      submittedAt: post.submittedAt || now,
+      reviewedAt: post.reviewedAt || now,
+    });
+  }
+  console.log(`[storage] topic-posts seeded (${TOPIC_POST_SEED.length} items)`);
 }
 
 function toPublicTopic(topic, postCount, currentUser) {
