@@ -1,0 +1,17 @@
+{
+  "id": "tpost-demo0001",
+  "topicId": "topic-hot-001",
+  "title": "Agent 工作流搭建实战：从 Prompt 到自动化",
+  "content": "分享一个完整的 Agent 编排案例：如何用技能模块 + 链接器组合出可复用的自动化任务。包含提示词设计、工具接入和错误处理的最佳实践。",
+  "imageUrl": "",
+  "linkUrl": "https://github.com",
+  "submittedBy": "admin",
+  "submittedAt": "2026-09-02T07:27:49.284Z",
+  "status": "approved",
+  "rejectReason": "",
+  "reviewedAt": "2026-09-02T07:27:49.289Z",
+  "reviewedBy": "admin",
+  "viewCount": 12,
+  "likeIds": [],
+  "comments": []
+}

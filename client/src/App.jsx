@@ -10,6 +10,9 @@ import {
   fetchProducts,
   fetchTopics,
   createTopic,
+  fetchTopicPosts,
+  submitTopicPost,
+  likeTopicPost,
   submitProduct,
   uploadImage,
   voteProduct,
@@ -21,6 +24,12 @@ import ProductCard, { ProductCardSkeleton } from "./components/ProductCard";
 import RankList from "./components/RankList";
 import RatingModal from "./components/RatingModal";
 import TopicRankList from "./components/TopicRankList";
+import EcosystemStats from "./components/EcosystemStats";
+import TopicDetailPanel from "./components/TopicDetailPanel";
+import TopicExplore from "./components/TopicExplore";
+import TopicPostCard, { TopicPostCardSkeleton } from "./components/TopicPostCard";
+import TopicPostUploadModal from "./components/TopicPostUploadModal";
+import ResourceSearchBar from "./components/ResourceSearchBar";
 import MainViewSwitch, { MainViewTabNav } from "./components/MainViewSwitch";
 import "./App.css";
 
@@ -128,17 +137,30 @@ export default function App() {
   const navigate = useNavigate();
 
   const [products, setProducts] = useState([]);
-  const [topicProducts, setTopicProducts] = useState([]);
+  const [topicPosts, setTopicPosts] = useState([]);
   const [categories, setCategories] = useState(["全部"]);
   const [activeCategory, setActiveCategory] = useState("全部");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [activeTopicId, setActiveTopicId] = useState("");
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [activeView, setActiveView] = useState("home");
 
   const [loading, setLoading] = useState(true);
-  const [topicLoading, setTopicLoading] = useState(false);
+  const [topicPostsLoading, setTopicPostsLoading] = useState(false);
   const [error, setError] = useState("");
   const [topicError, setTopicError] = useState("");
+  const [topicPostLikeId, setTopicPostLikeId] = useState("");
+  const [showTopicPostModal, setShowTopicPostModal] = useState(false);
+  const [topicPostSubmitting, setTopicPostSubmitting] = useState(false);
+  const [topicPostError, setTopicPostError] = useState("");
+  const [topicPostImageUploading, setTopicPostImageUploading] = useState(false);
+  const [topicPostForm, setTopicPostForm] = useState({
+    title: "",
+    content: "",
+    imageUrl: "",
+    linkUrl: "",
+  });
   const [votingId, setVotingId] = useState("");
   const [ratingProduct, setRatingProduct] = useState(null);
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
@@ -158,7 +180,10 @@ export default function App() {
   const [topicVisibleCount, setTopicVisibleCount] = useState(PRODUCT_PAGE_SIZE);
   const sentinelRef = useRef(null);
   const topicSentinelRef = useRef(null);
+  const homeScrollRef = useRef(null);
+  const topicScrollRef = useRef(null);
   const [topicAll, setTopicAll] = useState([]);
+  const [topicRefreshKey, setTopicRefreshKey] = useState(0);
   const [showCreateTopicModal, setShowCreateTopicModal] = useState(false);
   const [creatingTopic, setCreatingTopic] = useState(false);
   const [createTopicError, setCreateTopicError] = useState("");
@@ -191,13 +216,13 @@ export default function App() {
     () => products.slice(0, visibleCount),
     [products, visibleCount],
   );
-  const visibleTopicProducts = useMemo(
-    () => topicProducts.slice(0, topicVisibleCount),
-    [topicProducts, topicVisibleCount],
+  const visibleTopicPosts = useMemo(
+    () => topicPosts.slice(0, topicVisibleCount),
+    [topicPosts, topicVisibleCount],
   );
   const hasMore = products.length > 0 && visibleCount < products.length;
   const topicHasMore =
-    topicProducts.length > 0 && topicVisibleCount < topicProducts.length;
+    topicPosts.length > 0 && topicVisibleCount < topicPosts.length;
   const filterTags = useMemo(() => {
     const rest = categories.filter((c) => c !== "全部" && c !== "其他");
     return ["全部", SPECIAL_FILTER, ...rest];
@@ -213,7 +238,7 @@ export default function App() {
       .catch(() => setCategories(["全部"]));
   }, []);
 
-  async function loadProducts(category = activeCategory) {
+  async function loadProducts(category = activeCategory, q = appliedSearch) {
     try {
       setLoading(true);
       setError("");
@@ -221,6 +246,7 @@ export default function App() {
       const list = await fetchProducts({
         category: special ? "全部" : category,
         special,
+        q,
       });
       setProducts(list);
       setVisibleCount(PRODUCT_PAGE_SIZE);
@@ -231,24 +257,24 @@ export default function App() {
     }
   }
 
-  async function loadTopicProducts(topicId = activeTopicId) {
+  async function loadTopicPosts(topicId = activeTopicId) {
     if (!topicId) {
-      setTopicProducts([]);
+      setTopicPosts([]);
       setTopicVisibleCount(PRODUCT_PAGE_SIZE);
-      setTopicLoading(false);
+      setTopicPostsLoading(false);
       setTopicError("");
       return;
     }
     try {
-      setTopicLoading(true);
+      setTopicPostsLoading(true);
       setTopicError("");
-      const list = await fetchProducts({ topicId });
-      setTopicProducts(list);
+      const list = await fetchTopicPosts(topicId);
+      setTopicPosts(list);
       setTopicVisibleCount(PRODUCT_PAGE_SIZE);
     } catch (err) {
       setTopicError(err.message);
     } finally {
-      setTopicLoading(false);
+      setTopicPostsLoading(false);
     }
   }
 
@@ -267,13 +293,13 @@ export default function App() {
 
   useEffect(() => {
     if (activeView === "home") {
-      loadProducts(activeCategory);
+      loadProducts(activeCategory, appliedSearch);
     }
-  }, [activeCategory, activeView]);
+  }, [activeCategory, activeView, appliedSearch]);
 
   useEffect(() => {
     if (activeView === "topics") {
-      loadTopicProducts(activeTopicId);
+      loadTopicPosts(activeTopicId);
     }
   }, [activeTopicId, activeView]);
 
@@ -314,58 +340,63 @@ export default function App() {
   const loadMoreTopicRef = useRef(() => {});
   loadMoreTopicRef.current = () => {
     setTopicVisibleCount((c) =>
-      Math.min(c + PRODUCT_PAGE_SIZE, topicProducts.length),
+      Math.min(c + PRODUCT_PAGE_SIZE, topicPosts.length),
     );
   };
 
   useEffect(() => {
     if (!hasMore) return undefined;
     const el = sentinelRef.current;
-    if (!el) return undefined;
+    const root = homeScrollRef.current;
+    if (!el || !root) return undefined;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) loadMoreRef.current();
       },
-      { rootMargin: "300px 0px" },
+      { root, rootMargin: "120px 0px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [hasMore]);
+  }, [hasMore, visibleCount, products.length]);
 
   useEffect(() => {
     if (!topicHasMore) return undefined;
     const el = topicSentinelRef.current;
-    if (!el) return undefined;
+    const root = topicScrollRef.current;
+    if (!el || !root) return undefined;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) loadMoreTopicRef.current();
       },
-      { rootMargin: "300px 0px" },
+      { root, rootMargin: "120px 0px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [topicHasMore]);
+  }, [topicHasMore, topicVisibleCount, topicPosts.length]);
 
-  // 首屏不足一屏时自动补足，避免一进来就看到“已经到底了”
   useEffect(() => {
     if (!hasMore) return;
+    const root = homeScrollRef.current;
     const el = sentinelRef.current;
-    if (!el) return;
+    if (!root || !el) return;
+    const rootRect = root.getBoundingClientRect();
     const rect = el.getBoundingClientRect();
-    if (rect.top <= window.innerHeight + 300) {
+    if (rect.top <= rootRect.bottom + 120) {
       loadMoreRef.current();
     }
   }, [visibleCount, products.length, hasMore]);
 
   useEffect(() => {
     if (!topicHasMore) return;
+    const root = topicScrollRef.current;
     const el = topicSentinelRef.current;
-    if (!el) return;
+    if (!root || !el) return;
+    const rootRect = root.getBoundingClientRect();
     const rect = el.getBoundingClientRect();
-    if (rect.top <= window.innerHeight + 300) {
+    if (rect.top <= rootRect.bottom + 120) {
       loadMoreTopicRef.current();
     }
-  }, [topicVisibleCount, topicProducts.length, topicHasMore]);
+  }, [topicVisibleCount, topicPosts.length, topicHasMore]);
 
   function requireLogin() {
     if (!user) {
@@ -533,7 +564,23 @@ export default function App() {
     }
   }
 
+  function handleCategoryFromStats(category) {
+    setActiveView("home");
+    setActiveCategory(category);
+    setAppliedSearch("");
+    setSearchQuery("");
+    document.getElementById("resource-list")?.scrollIntoView({ behavior: "smooth" });
+  }
+
+  function handleSearchSubmit() {
+    setAppliedSearch(searchQuery.trim());
+    setVisibleCount(PRODUCT_PAGE_SIZE);
+    document.getElementById("resource-list")?.scrollIntoView({ behavior: "smooth" });
+  }
+
   function selectCategory(category, e) {
+    setAppliedSearch("");
+    setSearchQuery("");
     setActiveCategory(category);
     const container = filtersRef.current;
     const btn = e?.currentTarget;
@@ -648,10 +695,11 @@ export default function App() {
       setSelectedTopicId("");
       setTopicForm({ name: "", description: "", coverImage: "" });
       setTopicSuggestOpen(false);
-      // 刷新话题列表，并把新话题加入本地状态
       setTopicAll((prev) =>
         [...prev, result.topic].sort((a, b) => b.productCount - a.productCount),
       );
+      setTopicRefreshKey((k) => k + 1);
+      selectTopic(result.topic.id, result.topic.name);
       toast.success("发布成功", `话题「${name}」已创建`);
     } catch (err) {
       setCreateTopicError(err.message);
@@ -666,6 +714,104 @@ export default function App() {
       setSelectedTopic(null);
     }
     setActiveView(viewId);
+  }
+
+  function openTopicPostModal() {
+    if (!requireLogin()) return;
+    if (!activeTopicId) return;
+    setTopicPostError("");
+    setTopicPostForm({ title: "", content: "", imageUrl: "", linkUrl: "" });
+    setShowTopicPostModal(true);
+  }
+
+  function closeTopicPostModal() {
+    if (topicPostSubmitting) return;
+    setShowTopicPostModal(false);
+    setTopicPostError("");
+  }
+
+  function updateTopicPostForm(key, value) {
+    setTopicPostForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleTopicPostImageChange(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!/^image\/(jpeg|png|gif|webp)$/i.test(file.type)) {
+      setTopicPostError("仅支持 JPG / PNG / GIF / WebP 图片");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setTopicPostError("图片不能超过 2MB");
+      return;
+    }
+    try {
+      setTopicPostImageUploading(true);
+      setTopicPostError("");
+      const { url } = await uploadImage(file);
+      updateTopicPostForm("imageUrl", url);
+    } catch (err) {
+      setTopicPostError(err.message);
+    } finally {
+      setTopicPostImageUploading(false);
+    }
+  }
+
+  async function handleTopicPostSubmit(e) {
+    e.preventDefault();
+    const title = topicPostForm.title.trim();
+    const content = topicPostForm.content.trim();
+    const linkUrl = topicPostForm.linkUrl.trim();
+    if (!title) {
+      setTopicPostError("请填写标题");
+      return;
+    }
+    if (!content) {
+      setTopicPostError("请填写正文");
+      return;
+    }
+    if (linkUrl && !/^https?:\/\/.+/i.test(linkUrl)) {
+      setTopicPostError("链接需以 http:// 或 https:// 开头");
+      return;
+    }
+    try {
+      setTopicPostSubmitting(true);
+      setTopicPostError("");
+      const result = await submitTopicPost(activeTopicId, {
+        title,
+        content,
+        imageUrl: topicPostForm.imageUrl,
+        linkUrl,
+      });
+      setShowTopicPostModal(false);
+      setTopicPostForm({ title: "", content: "", imageUrl: "", linkUrl: "" });
+      toast.success("发布成功", result.message);
+      await loadTopicPosts(activeTopicId);
+    } catch (err) {
+      setTopicPostError(err.message);
+    } finally {
+      setTopicPostSubmitting(false);
+    }
+  }
+
+  async function handleTopicPostLike(post) {
+    if (!requireLogin()) return;
+    try {
+      setTopicPostLikeId(post.id);
+      const result = await likeTopicPost(post.id);
+      setTopicPosts((prev) =>
+        prev.map((item) =>
+          item.id === post.id
+            ? { ...item, likedByMe: result.liked, likeCount: result.likeCount }
+            : item,
+        ),
+      );
+    } catch (err) {
+      toast.error("操作失败", err.message);
+    } finally {
+      setTopicPostLikeId("");
+    }
   }
 
   function handleVote(product) {
@@ -686,19 +832,6 @@ export default function App() {
       setRatingSubmitting(true);
       const result = await voteProduct(ratingProduct.id, rating);
       setProducts((prev) =>
-        prev.map((item) =>
-          item.id === ratingProduct.id
-            ? {
-                ...item,
-                votedByMe: result.voted,
-                voteCount: result.voteCount,
-                avgRating: result.avgRating,
-                ratingCount: result.ratingCount,
-              }
-            : item,
-        ),
-      );
-      setTopicProducts((prev) =>
         prev.map((item) =>
           item.id === ratingProduct.id
             ? {
@@ -833,11 +966,28 @@ export default function App() {
               </div>
             </section>
 
+            <section className="ph-section ph-section-stats">
+              <div className="ph-section-inner">
+                <EcosystemStats onCategoryClick={handleCategoryFromStats} />
+              </div>
+            </section>
+
             <section className="ph-section">
               <div className="ph-section-inner">
-                <div className="ph-all-section" id="product-list">
+                <div className="ph-all-section" id="resource-list">
                   <div className="ph-all-box">
                     <h2 className="ph-section-title spaced">全部资源</h2>
+
+                    <ResourceSearchBar
+                      value={searchQuery}
+                      onChange={setSearchQuery}
+                      onSubmit={handleSearchSubmit}
+                    />
+                    {appliedSearch && (
+                      <p className="ph-search-active">
+                        搜索「{appliedSearch}」共 {products.length} 条结果
+                      </p>
+                    )}
 
                     <div
                       className={
@@ -896,6 +1046,7 @@ export default function App() {
                       )}
                     </div>
 
+                    <div className="ph-all-box-scroll" ref={homeScrollRef}>
                     {error && <div className="error">{error}</div>}
 
                     {loading ? (
@@ -908,11 +1059,13 @@ export default function App() {
                       <EmptyState
                         icon={<Inbox />}
                         title={
-                          activeCategory === SPECIAL_FILTER
-                            ? "暂无专题活动资源"
-                            : activeCategory !== "全部"
-                              ? "该分类下还没有资源"
-                              : "还没有资源，来上传第一个吧"
+                          appliedSearch
+                            ? `未找到「${appliedSearch}」相关资源`
+                            : activeCategory === SPECIAL_FILTER
+                              ? "暂无专题活动资源"
+                              : activeCategory !== "全部"
+                                ? "该分类下还没有资源"
+                                : "还没有资源，来上传第一个吧"
                         }
                         action={
                           <button
@@ -935,6 +1088,7 @@ export default function App() {
                               votingDisabled={votingId === product.id}
                               showCategory
                               showMeta
+                              showStats
                               size="md"
                             />
                           ))}
@@ -951,6 +1105,7 @@ export default function App() {
                         )}
                       </>
                     )}
+                    </div>
                   </div>
                   <aside className="ph-sidebar">
                     <RankList />
@@ -964,61 +1119,67 @@ export default function App() {
           <div className="ph-section-inner">
             <div className="ph-all-section">
               <div className="ph-all-box">
-                <div className="ph-topic-toolbar">
-                  <h2 className="ph-section-title spaced">话题热榜</h2>
-                </div>
-
-                {activeTopicId && (
-                  <div className="ph-topic-filter-head">
-                    <span className="ph-topic-filter-label">
-                      正在浏览 #{selectedTopic?.name || "该话题"}#
-                    </span>
+                {!activeTopicId ? (
+                  <div className="ph-topic-toolbar">
+                    <h2 className="ph-section-title spaced">话题热榜</h2>
                     <button
                       type="button"
-                      className="ph-topic-filter-clear"
-                      onClick={() => {
-                        setActiveTopicId("");
-                        setSelectedTopic(null);
-                      }}
+                      className="ph-btn-secondary ph-topic-create-toolbar-btn"
+                      onClick={openCreateTopicModal}
                     >
-                      × 清除筛选
+                      创建话题
                     </button>
                   </div>
+                ) : (
+                  <TopicDetailPanel
+                    topicId={activeTopicId}
+                    onClear={() => {
+                      setActiveTopicId("");
+                      setSelectedTopic(null);
+                    }}
+                    onPublish={openTopicPostModal}
+                  />
                 )}
 
+                <div className="ph-all-box-scroll" ref={topicScrollRef}>
                 <div className="ph-topic-filter">
                   {topicError && <div className="error">{topicError}</div>}
 
                   {!activeTopicId ? (
-                    <EmptyState
-                      icon={<Inbox />}
-                      title="请从右侧选择一个话题"
-                      description="选中后可查看该话题下的作品"
+                    <TopicExplore
+                      onSelectTopic={selectTopic}
+                      refreshKey={topicRefreshKey}
                     />
-                  ) : topicLoading ? (
-                    <div className="ph-product-grid ph-product-grid-all">
-                      {Array.from({ length: 12 }).map((_, index) => (
-                        <ProductCardSkeleton key={index} size="md" />
+                  ) : topicPostsLoading ? (
+                    <div className="ph-topic-post-list">
+                      {Array.from({ length: 4 }).map((_, index) => (
+                        <TopicPostCardSkeleton key={index} />
                       ))}
                     </div>
-                  ) : topicProducts.length === 0 ? (
+                  ) : topicPosts.length === 0 ? (
                     <EmptyState
                       icon={<Inbox />}
-                      title="该话题下还没有资源"
+                      title="该话题下还没有内容"
+                      description="成为第一个分享者，发布经验、教程或观点"
+                      action={
+                        <button
+                          type="button"
+                          className="ph-empty-link"
+                          onClick={openTopicPostModal}
+                        >
+                          发布第一条内容 →
+                        </button>
+                      }
                     />
                   ) : (
                     <>
-                      <div className="ph-product-grid ph-product-grid-all">
-                        {visibleTopicProducts.map((product) => (
-                          <ProductCard
-                            key={product.id}
-                            product={product}
-                            onVote={handleVote}
-                            votingDisabled={votingId === product.id}
-                            showCategory
-                            showTopic
-                            showMeta
-                            size="md"
+                      <div className="ph-topic-post-list">
+                        {visibleTopicPosts.map((post) => (
+                          <TopicPostCard
+                            key={post.id}
+                            post={post}
+                            onLike={handleTopicPostLike}
+                            likeBusy={topicPostLikeId === post.id}
                           />
                         ))}
                       </div>
@@ -1029,17 +1190,19 @@ export default function App() {
                           正在加载更多…
                         </div>
                       )}
-                      {!topicHasMore && topicProducts.length > 0 && (
+                      {!topicHasMore && topicPosts.length > 0 && (
                         <div className="ph-loadmore-done">— 已经到底了 —</div>
                       )}
                     </>
                   )}
+                </div>
                 </div>
               </div>
               <aside className="ph-sidebar">
                 <TopicRankList
                   activeTopicId={activeTopicId}
                   onSelectTopic={(topicId, name) => selectTopic(topicId, name)}
+                  refreshKey={topicRefreshKey}
                 />
               </aside>
             </div>
@@ -1198,30 +1361,28 @@ export default function App() {
                   />
                 </label>
 
-                <div className="modal-field">
+                <label className="modal-field">
                   <span>
                     分类 <span className="field-required">*</span>
                   </span>
-                  <div className="modal-category-options">
+                  <select
+                    value={form.category}
+                    onChange={(e) => updateForm("category", e.target.value)}
+                    disabled={submitting}
+                    required
+                  >
+                    <option value="" disabled>
+                      请选择分类
+                    </option>
                     {categories
                       .filter((c) => c !== "全部")
                       .map((category) => (
-                        <button
-                          key={category}
-                          type="button"
-                          className={
-                            form.category === category
-                              ? "modal-category active"
-                              : "modal-category"
-                          }
-                          onClick={() => updateForm("category", category)}
-                          disabled={submitting}
-                        >
+                        <option key={category} value={category}>
                           {category}
-                        </button>
+                        </option>
                       ))}
-                  </div>
-                </div>
+                  </select>
+                </label>
 
                 <label className="modal-field">
                   <span>详细介绍</span>
@@ -1335,7 +1496,7 @@ export default function App() {
                                   {formatTopicName(topic.name)}
                                 </span>
                                 <span className="topic-suggest-meta">
-                                  {topic.productCount ?? 0} 个作品
+                                  {topic.productCount ?? 0} 条内容
                                 </span>
                               </span>
                             </button>
@@ -1428,6 +1589,19 @@ export default function App() {
           </div>,
           document.body,
         )}
+
+      <TopicPostUploadModal
+        open={showTopicPostModal}
+        topicName={selectedTopic?.name || ""}
+        submitting={topicPostSubmitting}
+        error={topicPostError}
+        form={topicPostForm}
+        imageUploading={topicPostImageUploading}
+        onClose={closeTopicPostModal}
+        onChange={updateTopicPostForm}
+        onImageChange={handleTopicPostImageChange}
+        onSubmit={handleTopicPostSubmit}
+      />
 
       {ratingProduct && (
         <RatingModal

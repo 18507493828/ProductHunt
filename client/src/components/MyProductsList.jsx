@@ -1,4 +1,5 @@
-import { ThumbsUp, ArrowUpRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ThumbsUp, ArrowUpRight, Eye, MessageCircle } from "lucide-react";
 import EmptyState from "./EmptyState";
 
 const STATUS_LABEL = {
@@ -42,8 +43,8 @@ export default function MyProductsList({ products, loading, onSubmit }) {
   if (products.length === 0) {
     return (
       <EmptyState
-        title="还没有提交记录"
-        description="上传资源后可在这里查看审核状态和评分"
+        title="还没有上传记录"
+        description="上传资源后可在这里查看审核状态、浏览和互动数据"
         action={
           <button type="button" className="ph-empty-link" onClick={onSubmit}>
             上传第一个资源 →
@@ -57,7 +58,7 @@ export default function MyProductsList({ products, loading, onSubmit }) {
     <div className="ph-list">
       {products.map((product) => (
         <article className="ph-item" key={product.id}>
-          <div className="ph-vote-static" aria-label="当前票数">
+          <div className="ph-vote-static" aria-label="当前评分数">
             <ThumbsUp size={15} strokeWidth={2} aria-hidden="true" />
             <span>{product.voteCount ?? 0}</span>
           </div>
@@ -72,7 +73,11 @@ export default function MyProductsList({ products, loading, onSubmit }) {
 
           <div className="ph-item-main">
             <div className="ph-item-title-row">
-              <h3>{product.name}</h3>
+              <h3>
+                <Link to={`/resource/${product.id}`} className="ph-item-title-link">
+                  {product.name}
+                </Link>
+              </h3>
               <span className={`status-badge status-${product.status}`}>
                 {STATUS_LABEL[product.status] || product.status}
               </span>
@@ -80,9 +85,19 @@ export default function MyProductsList({ products, loading, onSubmit }) {
             <p className="ph-item-tagline">{product.tagline}</p>
             <p className="ph-item-meta">
               <span className="ph-category-badge">{product.category}</span>
-              <span>提交于 {formatDate(product.submittedAt)}</span>
+              <span>上传于 {formatDate(product.submittedAt)}</span>
               {product.status === "approved" && (
-                <span>{product.voteCount ?? 0} 票</span>
+                <>
+                  <span>{product.voteCount ?? 0} 评分</span>
+                  <span className="ph-item-stat">
+                    <Eye size={12} aria-hidden="true" />
+                    {product.viewCount ?? 0}
+                  </span>
+                  <span className="ph-item-stat">
+                    <MessageCircle size={12} aria-hidden="true" />
+                    {product.commentCount ?? 0}
+                  </span>
+                </>
               )}
             </p>
             {product.status === "pending" && (
@@ -97,17 +112,22 @@ export default function MyProductsList({ products, loading, onSubmit }) {
             )}
           </div>
 
-          {product.url && (
-            <a
-              className="ph-item-link"
-              href={product.url}
-              target="_blank"
-              rel="noreferrer noopener"
-            >
-              访问
-              <ArrowUpRight size={12} aria-hidden="true" />
-            </a>
-          )}
+          <div className="ph-item-actions">
+            <Link className="ph-item-link" to={`/resource/${product.id}`}>
+              详情
+            </Link>
+            {product.url && (
+              <a
+                className="ph-item-link"
+                href={product.url}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                演示
+                <ArrowUpRight size={12} aria-hidden="true" />
+              </a>
+            )}
+          </div>
         </article>
       ))}
     </div>

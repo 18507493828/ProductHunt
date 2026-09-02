@@ -51,14 +51,30 @@ export async function fetchCategoryOptions() {
   return request("/api/category-options");
 }
 
-export async function fetchProducts({ category = "全部", range = "all", topicId = "", special = false } = {}) {
+export async function fetchProducts({ category = "全部", range = "all", topicId = "", special = false, q = "" } = {}) {
   const params = new URLSearchParams();
   if (category && category !== "全部") params.set("category", category);
   if (range) params.set("range", range);
   if (topicId) params.set("topicId", topicId);
   if (special) params.set("special", "true");
+  if (q) params.set("q", q);
   const query = params.toString();
   return request(`/api/products${query ? `?${query}` : ""}`);
+}
+
+export async function fetchProduct(id) {
+  return request(`/api/products/${encodeURIComponent(id)}`);
+}
+
+export async function fetchStats() {
+  return request("/api/stats");
+}
+
+export async function postComment(productId, content) {
+  return request(`/api/products/${encodeURIComponent(productId)}/comments`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
 }
 
 export async function uploadImage(file) {
@@ -94,10 +110,12 @@ export async function voteProduct(id, rating) {
 
 /* ---------------- 话题 API ---------------- */
 
-export async function fetchTopics({ tab = "hot", city = "", page = 1, pageSize = 20, all = false } = {}) {
+export async function fetchTopics({ tab = "hot", sort = "hot", city = "", page = 1, pageSize = 20, all = false, q = "" } = {}) {
   const params = new URLSearchParams();
   if (tab) params.set("tab", tab);
+  if (sort) params.set("sort", sort);
   if (city) params.set("city", city);
+  if (q) params.set("q", q);
   if (all) params.set("all", "1");
   else {
     if (page) params.set("page", page);
@@ -111,6 +129,38 @@ export async function createTopic({ name, description, coverImage }) {
   return request("/api/topics", {
     method: "POST",
     body: JSON.stringify({ name, description, coverImage }),
+  });
+}
+
+export async function fetchTopic(id) {
+  return request(`/api/topics/${encodeURIComponent(id)}`);
+}
+
+export async function fetchTopicPosts(topicId) {
+  return request(`/api/topics/${encodeURIComponent(topicId)}/posts`);
+}
+
+export async function submitTopicPost(topicId, { title, content, imageUrl, linkUrl }) {
+  return request(`/api/topics/${encodeURIComponent(topicId)}/posts`, {
+    method: "POST",
+    body: JSON.stringify({ title, content, imageUrl, linkUrl }),
+  });
+}
+
+export async function fetchTopicPost(id) {
+  return request(`/api/topic-posts/${encodeURIComponent(id)}`);
+}
+
+export async function likeTopicPost(id) {
+  return request(`/api/topic-posts/${encodeURIComponent(id)}/like`, {
+    method: "POST",
+  });
+}
+
+export async function postTopicComment(id, content) {
+  return request(`/api/topic-posts/${encodeURIComponent(id)}/comments`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
   });
 }
 

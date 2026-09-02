@@ -12,6 +12,8 @@ import Dashboard from "./pages/admin/Dashboard.jsx";
 import Products from "./pages/admin/Products.jsx";
 import Banners from "./pages/admin/Banners.jsx";
 import Navs from "./pages/admin/Navs.jsx";
+import ResourceDetail from "./pages/ResourceDetail.jsx";
+import TopicPostDetail from "./pages/TopicPostDetail.jsx";
 import "./index.css";
 
 createRoot(document.getElementById("root")).render(
@@ -24,6 +26,8 @@ createRoot(document.getElementById("root")).render(
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/resource/:id" element={<ResourceDetail />} />
+            <Route path="/topic-post/:id" element={<TopicPostDetail />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="products" element={<Products />} />

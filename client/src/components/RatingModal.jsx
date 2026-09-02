@@ -46,9 +46,9 @@ export default function RatingModal({
           ×
         </button>
 
-        <p className="ph-rating-eyebrow">为这个作品打分</p>
+        <p className="ph-rating-eyebrow">为这个资源打分</p>
         <h2 id="rating-modal-title" className="ph-rating-title">
-          {product?.name || "作品"}
+          {product?.name || "资源"}
         </h2>
         {product?.tagline && (
           <p className="ph-rating-tagline">{product.tagline}</p>

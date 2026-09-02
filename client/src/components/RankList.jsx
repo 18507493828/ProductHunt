@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { fetchProducts } from "../api";
 import EmptyState from "./EmptyState";
 
@@ -76,38 +77,21 @@ export default function RankList() {
         />
       ) : (
         <ol className="rank-list">
-          {items.map((product, index) => {
-            const content = (
-              <>
+          {items.map((product, index) => (
+            <li className="rank-item" key={product.id}>
+              <Link className="rank-link" to={`/resource/${product.id}`}>
                 <span className="rank-num">{index + 1}</span>
                 <span className="rank-name" title={product.name}>
                   {product.name}
                 </span>
                 <span className="rank-votes">
                   <span className="rank-votes-icon">🔥</span>
-                  <span className="rank-votes-label">热度值</span>
+                  <span className="rank-votes-label">热度</span>
                   <span>{product.voteCount ?? 0}</span>
                 </span>
-              </>
-            );
-
-            return product.url ? (
-              <li className="rank-item" key={product.id}>
-                <a
-                  className="rank-link"
-                  href={product.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {content}
-                </a>
-              </li>
-            ) : (
-              <li className="rank-item" key={product.id}>
-                {content}
-              </li>
-            );
-          })}
+              </Link>
+            </li>
+          ))}
         </ol>
       )}
     </div>

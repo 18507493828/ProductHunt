@@ -31,6 +31,7 @@ const UPLOADS_DIR = path.join(__dirname, "storage", "uploads");
 const BANNERS_FILE = path.join(__dirname, "storage", "banners.json");
 const NAVS_FILE = path.join(__dirname, "storage", "navs.json");
 const TOPICS_FILE = path.join(__dirname, "storage", "topics.json");
+const TOPIC_POSTS_DIR = path.join(__dirname, "storage", "topic-posts");
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 const RANGES = ["today", "week", "month", "all"];
@@ -128,6 +129,7 @@ const DEFAULT_NAVS = [
 
 await fs.mkdir(STORAGE_DIR, { recursive: true });
 await fs.mkdir(UPLOADS_DIR, { recursive: true });
+await fs.mkdir(TOPIC_POSTS_DIR, { recursive: true });
 await initAuth();
 await initBanners();
 await initNavs();
@@ -297,8 +299,9 @@ async function initTopics() {
   await writeTopics(seed);
 }
 
-function toPublicTopic(topic, productCount, currentUser) {
+function toPublicTopic(topic, postCount, currentUser) {
   const followerIds = Array.isArray(topic.followerIds) ? topic.followerIds : [];
+  const count = postCount || 0;
   return {
     id: topic.id,
     name: topic.name || "",
@@ -310,14 +313,95 @@ function toPublicTopic(topic, productCount, currentUser) {
     createdAt: topic.createdAt || "",
     followerCount: followerIds.length,
     following: currentUser ? followerIds.includes(currentUser.id) : false,
-    productCount: productCount || 0,
-    hotScore: followerIds.length * 10 + (productCount || 0) * 50,
+    postCount: count,
+    productCount: count,
+    hotScore: followerIds.length * 10 + count * 50,
   };
 }
 
 async function getTopicById(id) {
   const topics = await readTopics();
   return topics.find((topic) => topic.id === id) || null;
+}
+
+/* ---------------- 话题内容存储 ---------------- */
+
+async function readTopicPostFile(filePath) {
+  const raw = await fs.readFile(filePath, "utf-8");
+  return JSON.parse(raw);
+}
+
+async function writeTopicPostFile(post) {
+  const filePath = path.join(TOPIC_POSTS_DIR, `${post.id}.json`);
+  await fs.writeFile(filePath, JSON.stringify(post, null, 2), "utf-8");
+}
+
+async function listTopicPosts() {
+  const entries = await fs.readdir(TOPIC_POSTS_DIR, { withFileTypes: true });
+  const posts = [];
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+    try {
+      const post = await readTopicPostFile(path.join(TOPIC_POSTS_DIR, entry.name));
+      if (post?.id) posts.push(post);
+    } catch {
+      // skip invalid
+    }
+  }
+  return posts;
+}
+
+async function getTopicPost(id) {
+  const filePath = path.join(TOPIC_POSTS_DIR, `${id}.json`);
+  try {
+    await fs.access(filePath);
+    return readTopicPostFile(filePath);
+  } catch {
+    const all = await listTopicPosts();
+    const post = all.find((item) => item.id === id);
+    if (!post) throw new Error("NOT_FOUND");
+    return post;
+  }
+}
+
+function buildPostCountMap(posts, approvedOnly = true) {
+  const map = {};
+  for (const post of posts) {
+    if (approvedOnly && (post.status || "approved") !== "approved") continue;
+    if (!post.topicId) continue;
+    map[post.topicId] = (map[post.topicId] || 0) + 1;
+  }
+  return map;
+}
+
+function toPublicTopicPost(post, currentUser, nicknameMap = null, { includeComments = false } = {}) {
+  const likeIds = Array.isArray(post.likeIds) ? post.likeIds : [];
+  const comments = Array.isArray(post.comments) ? post.comments : [];
+  const base = {
+    id: post.id,
+    topicId: post.topicId,
+    title: post.title || "",
+    content: post.content || "",
+    imageUrl: post.imageUrl || "",
+    linkUrl: post.linkUrl || "",
+    submittedBy: resolveSubmitterDisplayName(
+      { submittedBy: post.submittedBy, submittedNickname: post.submittedNickname },
+      nicknameMap,
+    ),
+    submittedAt: post.submittedAt || "",
+    status: post.status || "approved",
+    viewCount: post.viewCount || 0,
+    likeCount: likeIds.length,
+    likedByMe: currentUser ? likeIds.includes(currentUser.id) : false,
+    commentCount: comments.length,
+  };
+  if (includeComments) {
+    base.comments = comments
+      .slice()
+      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
+      .map((c) => toPublicComment(c, nicknameMap));
+  }
+  return base;
 }
 
 async function listProducts() {
@@ -377,11 +461,30 @@ function resolveSubmitterDisplayName(product, nicknameMap) {
   return product.submittedBy || "";
 }
 
-function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = null) {
+function toPublicComment(comment, nicknameMap = null) {
+  const author =
+    comment.author ||
+    (nicknameMap && comment.userId ? nicknameMap[comment.username] : "") ||
+    comment.username ||
+    "用户";
+  return {
+    id: comment.id,
+    author,
+    content: comment.content || "",
+    createdAt: comment.createdAt || "",
+  };
+}
+
+function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = null, { includeComments = false } = {}) {
   const voteCount = Array.isArray(product.voters) ? product.voters.length : 0;
   const [avgRating, ratingCount] = computeRating(product);
   const topicName = topicMap && product.topicId ? (topicMap[product.topicId] || "") : "";
-  return {
+  const comments = Array.isArray(product.comments) ? product.comments : [];
+  const myRating =
+    currentUser && product.ratings
+      ? Number(product.ratings[currentUser.id]) || 0
+      : 0;
+  const base = {
     id: product.id,
     name: product.name,
     tagline: product.tagline,
@@ -391,12 +494,16 @@ function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = nu
     topicId: product.topicId || "",
     topicName,
     imageUrl: product.imageUrl || "",
+    color: product.color || "",
     voteCount,
     avgRating,
     ratingCount,
+    viewCount: product.viewCount || 0,
+    commentCount: comments.length,
     votedByMe: currentUser
       ? Array.isArray(product.voters) && product.voters.includes(currentUser.id)
       : false,
+    myRating: myRating > 0 ? myRating : 0,
     submittedBy: resolveSubmitterDisplayName(product, nicknameMap),
     submittedAt: product.submittedAt,
     status: product.status,
@@ -404,6 +511,13 @@ function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = nu
     reviewedAt: product.reviewedAt || "",
     isSpecial: product.isSpecial === true,
   };
+  if (includeComments) {
+    base.comments = comments
+      .slice()
+      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
+      .map((c) => toPublicComment(c, nicknameMap));
+  }
+  return base;
 }
 
 function computeRating(product) {
@@ -767,6 +881,7 @@ app.get("/api/products", attachUserIfPresent, async (req, res) => {
       ? req.query.category
       : "";
     const topicId = (req.query.topicId || "").trim();
+    const keyword = (req.query.q || "").trim().toLowerCase();
     const specialOnly = req.query.special === "true";
     const rangeStart = getRangeStart(range);
 
@@ -783,6 +898,18 @@ app.get("/api/products", attachUserIfPresent, async (req, res) => {
         const submittedTime = new Date(product.submittedAt || 0).getTime();
         if (submittedTime < rangeStart) return false;
       }
+      if (keyword) {
+        const haystack = [
+          product.name,
+          product.tagline,
+          product.description,
+          product.category,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(keyword)) return false;
+      }
       return true;
     });
 
@@ -792,6 +919,101 @@ app.get("/api/products", attachUserIfPresent, async (req, res) => {
     res.json(sorted);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/stats", async (_req, res) => {
+  try {
+    const [products, topics] = await Promise.all([listProducts(), readTopics()]);
+    const approved = products.filter((p) => (p.status || "approved") === "approved");
+    let totalVotes = 0;
+    let totalViews = 0;
+    let totalComments = 0;
+    const categoryCounts = {};
+
+    for (const product of approved) {
+      totalVotes += Array.isArray(product.voters) ? product.voters.length : 0;
+      totalViews += product.viewCount || 0;
+      totalComments += Array.isArray(product.comments) ? product.comments.length : 0;
+      const cat = product.category || DEFAULT_CATEGORY;
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    }
+
+    res.json({
+      totalResources: approved.length,
+      totalTopics: topics.length,
+      totalVotes,
+      totalViews,
+      totalComments,
+      categoryCounts: Object.entries(categoryCounts)
+        .map(([category, count]) => ({ category, count }))
+        .sort((a, b) => b.count - a.count),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/products/:id", attachUserIfPresent, async (req, res) => {
+  try {
+    const product = await getProduct(req.params.id);
+    const isApproved = (product.status || "approved") === "approved";
+    const isOwner = req.user && product.submittedBy === req.user.username;
+    const isAdmin = req.user && req.user.role === "admin";
+    if (!isApproved && !isOwner && !isAdmin) {
+      return res.status(404).json({ error: "资源不存在" });
+    }
+
+    product.viewCount = (product.viewCount || 0) + 1;
+    await writeProductFile(product);
+
+    const topics = await readTopics();
+    const topicMap = Object.fromEntries(topics.map((t) => [t.id, t.name || ""]));
+    const nicknameMap = await getUsersNicknameMap();
+    res.json(
+      toPublicProduct(product, req.user, topicMap, nicknameMap, { includeComments: true }),
+    );
+  } catch {
+    res.status(404).json({ error: "资源不存在" });
+  }
+});
+
+app.post("/api/products/:id/comments", requireAuth, async (req, res) => {
+  try {
+    const product = await getProduct(req.params.id);
+    if ((product.status || "approved") !== "approved") {
+      return res.status(403).json({ error: "该资源尚未上架" });
+    }
+
+    const content = (req.body?.content || "").trim();
+    if (!content) {
+      return res.status(400).json({ error: "请填写评论内容" });
+    }
+    if (content.length > 500) {
+      return res.status(400).json({ error: "评论不能超过 500 字" });
+    }
+
+    const nicknameMap = await getUsersNicknameMap();
+    const comment = {
+      id: `cmt-${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`,
+      userId: req.user.id,
+      username: req.user.username,
+      author: nicknameMap[req.user.username] || req.user.username,
+      content,
+      createdAt: new Date().toISOString(),
+    };
+
+    product.comments = Array.isArray(product.comments) ? product.comments : [];
+    product.comments.push(comment);
+    await writeProductFile(product);
+
+    res.json({
+      message: "评论成功",
+      comment: toPublicComment(comment, nicknameMap),
+      commentCount: product.comments.length,
+    });
+  } catch {
+    res.status(404).json({ error: "资源不存在" });
   }
 });
 
@@ -926,19 +1148,15 @@ app.post("/api/products/:id/vote", requireAuth, async (req, res) => {
 app.get("/api/topics", attachUserIfPresent, async (req, res) => {
   try {
     const tab = req.query.tab === "local" ? "local" : "hot";
+    const sort = req.query.sort === "new" ? "new" : "hot";
     const city = (req.query.city || "").trim();
+    const keyword = (req.query.q || "").trim().toLowerCase();
     const all = req.query.all === "1";
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.max(1, parseInt(req.query.pageSize, 10) || 20);
 
-    const [topics, products] = await Promise.all([readTopics(), listProducts()]);
-    const approved = products.filter(
-      (p) => (p.status || "approved") === "approved"
-    );
-    const countByTopic = {};
-    for (const p of approved) {
-      if (p.topicId) countByTopic[p.topicId] = (countByTopic[p.topicId] || 0) + 1;
-    }
+    const [topics, posts] = await Promise.all([readTopics(), listTopicPosts()]);
+    const countByTopic = buildPostCountMap(posts);
 
     let pool = topics;
     // 本地榜：按城市过滤（city 缺省或"全国"时取全部）
@@ -948,12 +1166,18 @@ app.get("/api/topics", attachUserIfPresent, async (req, res) => {
           ? topics.filter((t) => (t.region || "全国") === city)
           : topics;
     }
+    if (keyword) {
+      pool = pool.filter((t) => (t.name || "").toLowerCase().includes(keyword));
+    }
 
     const sorted = pool
       .sort((a, b) => {
+        if (sort === "new") {
+          return (b.createdAt || "").localeCompare(a.createdAt || "");
+        }
         const aCount = countByTopic[a.id] || 0;
         const bCount = countByTopic[b.id] || 0;
-        // 综合热度：关注数为主、作品数为辅
+        // 综合热度：关注数为主、内容数为辅
         const ah = (a.followerIds?.length || 0) * 10 + aCount * 50;
         const bh = (b.followerIds?.length || 0) * 10 + bCount * 50;
         if (ah !== bh) return bh - ah;
@@ -968,6 +1192,104 @@ app.get("/api/topics", attachUserIfPresent, async (req, res) => {
     // 联想等场景需要全量时用 all=1；否则按页切片
     const items = all ? sorted : sorted.slice((page - 1) * pageSize, page * pageSize);
     res.json({ items, total, page, pageSize });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/topics/:id/posts", attachUserIfPresent, async (req, res) => {
+  try {
+    const topic = await getTopicById(req.params.id);
+    if (!topic) {
+      return res.status(404).json({ error: "话题不存在" });
+    }
+    const nicknameMap = await getUsersNicknameMap();
+    const all = await listTopicPosts();
+    const items = all
+      .filter(
+        (post) =>
+          post.topicId === topic.id && (post.status || "approved") === "approved",
+      )
+      .sort((a, b) => (b.submittedAt || "").localeCompare(a.submittedAt || ""))
+      .map((post) => toPublicTopicPost(post, req.user, nicknameMap));
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/topics/:id/posts", requireAuth, async (req, res) => {
+  try {
+    const topic = await getTopicById(req.params.id);
+    if (!topic) {
+      return res.status(404).json({ error: "话题不存在" });
+    }
+
+    const { title, content, imageUrl, linkUrl } = req.body || {};
+    const trimmedTitle = (title || "").trim();
+    const trimmedContent = (content || "").trim();
+    const trimmedImageUrl = (imageUrl || "").trim();
+    const trimmedLinkUrl = (linkUrl || "").trim();
+
+    if (!trimmedTitle) {
+      return res.status(400).json({ error: "请填写标题" });
+    }
+    if (trimmedTitle.length > 80) {
+      return res.status(400).json({ error: "标题不能超过 80 字" });
+    }
+    if (!trimmedContent) {
+      return res.status(400).json({ error: "请填写正文" });
+    }
+    if (trimmedContent.length > 2000) {
+      return res.status(400).json({ error: "正文不能超过 2000 字" });
+    }
+    if (trimmedImageUrl && !IMAGE_URL_PATTERN.test(trimmedImageUrl)) {
+      return res.status(400).json({ error: "图片链接格式不正确" });
+    }
+    if (trimmedLinkUrl && !URL_PATTERN.test(trimmedLinkUrl)) {
+      return res.status(400).json({ error: "链接需以 http:// 或 https:// 开头" });
+    }
+
+    const isAdmin = req.user.role === "admin";
+    const now = new Date().toISOString();
+    const post = {
+      id: `tpost-${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`,
+      topicId: topic.id,
+      title: trimmedTitle,
+      content: trimmedContent,
+      imageUrl: trimmedImageUrl,
+      linkUrl: trimmedLinkUrl,
+      submittedBy: req.user.username,
+      submittedAt: now,
+      status: isAdmin ? "approved" : "pending",
+      rejectReason: "",
+      reviewedAt: isAdmin ? now : "",
+      reviewedBy: isAdmin ? req.user.username : "",
+      viewCount: 0,
+      likeIds: [],
+      comments: [],
+    };
+
+    await writeTopicPostFile(post);
+    const nicknameMap = await getUsersNicknameMap();
+    res.json({
+      message: isAdmin ? "发布成功" : "提交成功，等待审核",
+      post: toPublicTopicPost(post, req.user, nicknameMap),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/topics/:id", attachUserIfPresent, async (req, res) => {
+  try {
+    const topic = await getTopicById(req.params.id);
+    if (!topic) {
+      return res.status(404).json({ error: "话题不存在" });
+    }
+    const posts = await listTopicPosts();
+    const postCount = buildPostCountMap(posts)[topic.id] || 0;
+    res.json(toPublicTopic(topic, postCount, req.user));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1047,6 +1369,94 @@ app.post("/api/topics/:id/follow", requireAuth, async (req, res) => {
     res.json({ following, followerCount: followers.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/topic-posts/:id", attachUserIfPresent, async (req, res) => {
+  try {
+    const post = await getTopicPost(req.params.id);
+    const isApproved = (post.status || "approved") === "approved";
+    const isOwner = req.user && post.submittedBy === req.user.username;
+    const isAdmin = req.user && req.user.role === "admin";
+    if (!isApproved && !isOwner && !isAdmin) {
+      return res.status(404).json({ error: "内容不存在" });
+    }
+
+    post.viewCount = (post.viewCount || 0) + 1;
+    await writeTopicPostFile(post);
+
+    const nicknameMap = await getUsersNicknameMap();
+    const topic = await getTopicById(post.topicId);
+    res.json({
+      ...toPublicTopicPost(post, req.user, nicknameMap, { includeComments: true }),
+      topicName: topic?.name || "",
+    });
+  } catch {
+    res.status(404).json({ error: "内容不存在" });
+  }
+});
+
+app.post("/api/topic-posts/:id/like", requireAuth, async (req, res) => {
+  try {
+    const post = await getTopicPost(req.params.id);
+    if ((post.status || "approved") !== "approved") {
+      return res.status(403).json({ error: "该内容尚未发布" });
+    }
+
+    const likeIds = Array.isArray(post.likeIds) ? post.likeIds : [];
+    const idx = likeIds.indexOf(req.user.id);
+    let liked;
+    if (idx >= 0) {
+      likeIds.splice(idx, 1);
+      liked = false;
+    } else {
+      likeIds.push(req.user.id);
+      liked = true;
+    }
+    post.likeIds = likeIds;
+    await writeTopicPostFile(post);
+    res.json({ liked, likeCount: likeIds.length });
+  } catch {
+    res.status(404).json({ error: "内容不存在" });
+  }
+});
+
+app.post("/api/topic-posts/:id/comments", requireAuth, async (req, res) => {
+  try {
+    const post = await getTopicPost(req.params.id);
+    if ((post.status || "approved") !== "approved") {
+      return res.status(403).json({ error: "该内容尚未发布" });
+    }
+
+    const content = (req.body?.content || "").trim();
+    if (!content) {
+      return res.status(400).json({ error: "请填写评论内容" });
+    }
+    if (content.length > 500) {
+      return res.status(400).json({ error: "评论不能超过 500 字" });
+    }
+
+    const nicknameMap = await getUsersNicknameMap();
+    const comment = {
+      id: `cmt-${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}`,
+      userId: req.user.id,
+      username: req.user.username,
+      author: nicknameMap[req.user.username] || req.user.username,
+      content,
+      createdAt: new Date().toISOString(),
+    };
+
+    post.comments = Array.isArray(post.comments) ? post.comments : [];
+    post.comments.push(comment);
+    await writeTopicPostFile(post);
+
+    res.json({
+      message: "评论成功",
+      comment: toPublicComment(comment, nicknameMap),
+      commentCount: post.comments.length,
+    });
+  } catch {
+    res.status(404).json({ error: "内容不存在" });
   }
 });
 

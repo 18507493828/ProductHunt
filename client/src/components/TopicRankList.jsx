@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { SearchX } from "lucide-react";
 import { fetchTopics } from "../api";
 import EmptyState from "./EmptyState";
 
@@ -12,14 +11,17 @@ function formatCount(n) {
   return String(num);
 }
 
-// 话题名统一以 #话题# 形式展示（数据里存的是裸名，展示时包装）
 function formatTopicName(name) {
   const n = (name || "").trim();
   if (!n) return "";
   return n.startsWith("#") && n.endsWith("#") ? n : `#${n}#`;
 }
 
-export default function TopicRankList({ onSelectTopic, activeTopicId }) {
+export default function TopicRankList({
+  onSelectTopic,
+  activeTopicId,
+  refreshKey = 0,
+}) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -38,7 +40,12 @@ export default function TopicRankList({ onSelectTopic, activeTopicId }) {
     else setLoadingMore(true);
     setError("");
     try {
-      const res = await fetchTopics({ tab: "hot", page, pageSize: PAGE_SIZE });
+      const res = await fetchTopics({
+        tab: "hot",
+        page,
+        pageSize: PAGE_SIZE,
+        q: keyword,
+      });
       if (ignoreRef.current) return;
       const next = res?.items || [];
       setItems((prev) => (page === 1 ? next : [...prev, ...next]));
@@ -57,18 +64,16 @@ export default function TopicRankList({ onSelectTopic, activeTopicId }) {
     }
   }
 
-  // 首屏加载第一页
   useEffect(() => {
     ignoreRef.current = false;
     pageRef.current = 1;
     hasMoreRef.current = true;
-    loadPage(1);
+    loadPage(1, search.trim());
     return () => {
       ignoreRef.current = true;
     };
-  }, []);
+  }, [refreshKey]);
 
-  // 滚动到哨兵元素（列表底部附近）时加载下一页
   useEffect(() => {
     if (!hasMoreRef.current) return undefined;
     const el = sentinelRef.current;
@@ -80,22 +85,20 @@ export default function TopicRankList({ onSelectTopic, activeTopicId }) {
           !busyRef.current &&
           hasMoreRef.current
         ) {
-          loadPage(pageRef.current + 1);
+          loadPage(pageRef.current + 1, search.trim());
         }
       },
       { rootMargin: "200px 0px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [items.length]);
+  }, [items.length, search]);
 
-  const loadedAll = !hasMoreRef.current;
-
-  // 客户端搜索过滤（对已加载的数据做本地过滤）
   const q = search.trim().toLowerCase();
   const filteredItems = q
     ? items.filter((t) => t.name.toLowerCase().includes(q))
     : items;
+  const loadedAll = !hasMoreRef.current;
 
   return (
     <div className="rank-card">
@@ -108,6 +111,14 @@ export default function TopicRankList({ onSelectTopic, activeTopicId }) {
             placeholder="搜索话题…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                pageRef.current = 1;
+                hasMoreRef.current = true;
+                loadPage(1, search.trim());
+              }
+            }}
           />
         </div>
       </div>
@@ -161,7 +172,6 @@ export default function TopicRankList({ onSelectTopic, activeTopicId }) {
             })}
           </ol>
 
-          {/* 滚动加载更多哨兵：搜索时保留占位，避免列表高度突变引起页面横移 */}
           <div
             ref={q ? undefined : sentinelRef}
             className={"topic-rank-more" + (q ? " topic-rank-more--hidden" : "")}
