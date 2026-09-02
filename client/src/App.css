@@ -792,6 +792,12 @@ main { flex: 1; }
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.ph-sidebar .rank-list::-webkit-scrollbar {
+  display: none;
 }
 
 /* product card grid */
