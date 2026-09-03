@@ -4,6 +4,7 @@ import {
   approveProduct,
   deleteProduct,
   fetchAdminProducts,
+  fetchCampaigns,
   rejectProduct,
   setProductSpecial,
 } from "../../api";
@@ -24,9 +25,18 @@ const STATUS_LABEL = {
 export default function Products() {
   const [activeStatus, setActiveStatus] = useState("pending");
   const [products, setProducts] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionId, setActionId] = useState("");
+
+  const campaignOptions = [
+    { id: "", label: "不参加活动" },
+    ...campaigns.map((item) => ({
+      id: item.id,
+      label: item.title,
+    })),
+  ];
 
   async function loadProducts(status = activeStatus) {
     try {
@@ -45,6 +55,12 @@ export default function Products() {
     loadProducts(activeStatus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStatus]);
+
+  useEffect(() => {
+    fetchCampaigns()
+      .then((list) => setCampaigns(Array.isArray(list) ? list : []))
+      .catch(() => setCampaigns([]));
+  }, []);
 
   async function handleApprove(id) {
     try {
@@ -88,11 +104,11 @@ export default function Products() {
     }
   }
 
-  async function handleSpecial(product) {
+  async function handleCampaign(product, campaign) {
     try {
       setActionId(product.id);
       setError("");
-      await setProductSpecial(product.id, !product.isSpecial);
+      await setProductSpecial(product.id, { campaign });
       await loadProducts();
     } catch (err) {
       setError(err.message);
@@ -138,10 +154,20 @@ export default function Products() {
                   {product.description ? ` —— ${product.description}` : ""}
                 </p>
                 <div className="admin-meta">
-                  <span>分类：{product.category}</span>
+                  <span>
+                    分类：
+                    {(product.categories?.length
+                      ? product.categories
+                      : [product.category]
+                    )
+                      .filter(Boolean)
+                      .join("、") || "—"}
+                  </span>
                   <span>提交者：{product.submittedBy || "未知"}</span>
                   <span>{product.voteCount ?? 0} 票</span>
-                  {product.isSpecial && <span className="special-badge">专题活动</span>}
+                  {product.campaignLabel && (
+                    <span className="special-badge">{product.campaignLabel}</span>
+                  )}
                   {product.url && (
                     <a href={product.url} target="_blank" rel="noreferrer noopener">
                       演示链接
@@ -174,14 +200,21 @@ export default function Products() {
                   </>
                 )}
                 {product.status === "approved" && (
-                  <button
-                    type="button"
-                    className={product.isSpecial ? "special-btn off" : "special-btn"}
-                    disabled={actionId === product.id}
-                    onClick={() => handleSpecial(product)}
-                  >
-                    {product.isSpecial ? "取消专题" : "设为专题"}
-                  </button>
+                  <label className="admin-campaign-field">
+                    <span className="sr-only">活动归属</span>
+                    <select
+                      className="admin-campaign-select"
+                      value={product.campaign || ""}
+                      disabled={actionId === product.id}
+                      onChange={(e) => handleCampaign(product, e.target.value)}
+                    >
+                      {campaignOptions.map((option) => (
+                        <option key={option.id || "none"} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 )}
                 <button
                   type="button"

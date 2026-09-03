@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ArrowUpRight, Eye, MessageCircle, ThumbsUp } from "lucide-react";
+import { ArrowUpRight, Eye, MessageCircle, ThumbsUp } from "lucide-react";
 import { fetchProduct, fetchProducts, postComment, voteProduct } from "../api";
 import { useAuth } from "../AuthContext";
 import { useToast } from "../Toast";
@@ -8,6 +8,9 @@ import EmptyState from "../components/EmptyState";
 import RatingModal from "../components/RatingModal";
 import ProductCard from "../components/ProductCard";
 import CachedImage from "../components/CachedImage";
+import TopicRichText from "../components/TopicRichText";
+import BrandLogo from "../components/BrandLogo";
+import { buildTopicHomePath, formatTopicName } from "../topicUtils";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -137,12 +140,8 @@ export default function ResourceDetail() {
     <div className="ph-page ph-detail-page">
       <header className="ph-detail-nav">
         <div className="ph-section-inner ph-detail-nav-inner">
-          <button type="button" className="ph-detail-back" onClick={() => navigate(-1)}>
-            <ArrowLeft size={18} aria-hidden="true" />
-            返回
-          </button>
           <Link to="/" className="ph-logo ph-detail-logo">
-            <span className="ph-logo-text">Vibe Building</span>
+            <BrandLogo />
           </Link>
         </div>
       </header>
@@ -177,11 +176,35 @@ export default function ResourceDetail() {
 
                 <div className="ph-detail-main">
                   <div className="ph-detail-badges">
-                    {resource.category && (
-                      <span className="ph-category-badge">{resource.category}</span>
+                    {(resource.categories?.length
+                      ? resource.categories
+                      : resource.category
+                        ? [resource.category]
+                        : []
+                    ).map((cat) => (
+                      <span key={cat} className="ph-category-badge">
+                        {cat}
+                      </span>
+                    ))}
+                    {resource.campaignLabel && (
+                      <span className="ph-detail-badge special">{resource.campaignLabel}</span>
                     )}
-                    {resource.isSpecial && (
-                      <span className="ph-detail-badge special">专题活动</span>
+                    {resource.topicName && (
+                      resource.topicId ? (
+                        <Link
+                          to={buildTopicHomePath({
+                            topicId: resource.topicId,
+                            topicName: resource.topicName,
+                          })}
+                          className="ph-detail-badge topic-mention"
+                        >
+                          {formatTopicName(resource.topicName)}
+                        </Link>
+                      ) : (
+                        <span className="ph-detail-badge">
+                          {formatTopicName(resource.topicName)}
+                        </span>
+                      )
                     )}
                   </div>
                   <h1 className="ph-detail-title">{resource.name}</h1>
@@ -244,7 +267,10 @@ export default function ResourceDetail() {
               {resource.description && (
                 <section className="ph-detail-section">
                   <h2>详细介绍</h2>
-                  <div className="ph-detail-desc">{resource.description}</div>
+                  <TopicRichText
+                    text={resource.description}
+                    className="ph-detail-desc"
+                  />
                 </section>
               )}
 
@@ -281,7 +307,7 @@ export default function ResourceDetail() {
                           <strong>{item.author}</strong>
                           <time>{formatDate(item.createdAt)}</time>
                         </div>
-                        <p>{item.content}</p>
+                        <TopicRichText text={item.content} as="p" />
                       </li>
                     ))}
                   </ul>

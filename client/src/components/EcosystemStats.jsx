@@ -10,18 +10,13 @@ import {
   Users,
 } from "lucide-react";
 import { fetchStats } from "../api";
+import { formatTopicName } from "../topicUtils";
 
 function formatCount(n) {
   const num = Number(n) || 0;
   if (num >= 10000) return `${(num / 10000).toFixed(1).replace(/\.0$/, "")}万`;
   if (num >= 1000) return `${(num / 1000).toFixed(1).replace(/\.0$/, "")}k`;
   return String(num);
-}
-
-function formatTopicName(name) {
-  const n = (name || "").trim();
-  if (!n) return "";
-  return n.startsWith("#") && n.endsWith("#") ? n : `#${n}#`;
 }
 
 function StatsSkeleton() {

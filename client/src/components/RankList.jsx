@@ -1,31 +1,59 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchProducts } from "../api";
+import { fetchCampaigns, fetchProducts } from "../api";
 import EmptyState from "./EmptyState";
-
-const RANK_TABS = [
-  { key: "week", label: "周榜" },
-  { key: "month", label: "月榜" },
-  { key: "all", label: "总榜" },
-  { key: "special", label: "专题活动" },
-];
 
 const TOP_N = 10;
 
 export default function RankList() {
-  const [tab, setTab] = useState("week");
+  const [campaigns, setCampaigns] = useState([]);
+  const [tab, setTab] = useState("all");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let ignore = false;
+    fetchCampaigns()
+      .then((list) => {
+        if (!ignore) setCampaigns(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {
+        if (!ignore) setCampaigns([]);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const tabs = useMemo(
+    () => [
+      { key: "all", label: "总榜", type: "all" },
+      ...campaigns.map((campaign) => ({
+        key: campaign.id,
+        label: campaign.rankLabel || campaign.title,
+        type: "campaign",
+        campaignId: campaign.id,
+      })),
+    ],
+    [campaigns],
+  );
+
+  useEffect(() => {
+    if (!tabs.some((item) => item.key === tab)) {
+      setTab("all");
+    }
+  }, [tabs, tab]);
+
+  useEffect(() => {
+    let ignore = false;
     setLoading(true);
     setError("");
+    const current = tabs.find((item) => item.key === tab);
     const promise =
-      tab === "special"
-        ? fetchProducts({ category: "全部", special: true })
-        : fetchProducts({ category: "全部", range: tab });
+      current?.type === "campaign"
+        ? fetchProducts({ category: "全部", campaign: current.campaignId })
+        : fetchProducts({ category: "全部", range: "all" });
     promise
       .then((list) => {
         if (!ignore) setItems(list.slice(0, TOP_N));
@@ -39,13 +67,15 @@ export default function RankList() {
     return () => {
       ignore = true;
     };
-  }, [tab]);
+  }, [tab, tabs]);
+
+  const activeTab = tabs.find((item) => item.key === tab);
 
   return (
     <div className="rank-card">
       <h2 className="rank-title">热门榜单</h2>
       <div className="rank-tabs" role="tablist" aria-label="榜单">
-        {RANK_TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.key}
             type="button"
@@ -73,7 +103,11 @@ export default function RankList() {
       ) : items.length === 0 ? (
         <EmptyState
           compact
-          title={tab === "special" ? "暂无专题活动" : "暂无数据"}
+          title={
+            activeTab?.type === "campaign"
+              ? `暂无${activeTab.label}`
+              : "暂无数据"
+          }
         />
       ) : (
         <ol className="rank-list">

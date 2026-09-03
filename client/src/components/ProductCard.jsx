@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ThumbsUp, Eye, MessageCircle, Star } from "lucide-react";
 import CachedImage from "./CachedImage";
+import { buildTopicHomePath, formatTopicName } from "../topicUtils";
 
 function getProductInitial(name = "") {
   return (name.trim()[0] || "P").toUpperCase();
@@ -39,10 +40,11 @@ export default function ProductCard({
   showStats = false,
   size = "md",
 }) {
+  const navigate = useNavigate();
   const mediaStyle = product.imageUrl
     ? undefined
     : {
-        background: `linear-gradient(135deg, ${product.color || "#834df0"} 0%, rgba(10,14,26,0.2) 100%)`,
+        background: `linear-gradient(135deg, ${product.color || "#fc5531"} 0%, rgba(10,14,26,0.2) 100%)`,
       };
 
   return (
@@ -64,9 +66,26 @@ export default function ProductCard({
               {rank}
             </span>
           )}
-          {showCategory && product.category && (
-            <span className="ph-product-card-category">{product.category}</span>
-          )}
+          {showCategory &&
+            (product.categories?.length
+              ? product.categories
+              : product.category
+                ? [product.category]
+                : []
+            ).length > 0 && (
+              <div className="ph-product-card-categories">
+                {(product.categories?.length
+                  ? product.categories
+                  : [product.category]
+                )
+                  .slice(0, 2)
+                  .map((cat) => (
+                    <span key={cat} className="ph-product-card-category">
+                      {cat}
+                    </span>
+                  ))}
+              </div>
+            )}
         </div>
 
         <div className="ph-product-card-body">
@@ -89,7 +108,28 @@ export default function ProductCard({
           {(showTopic || showMeta) && (
             <div className="ph-product-card-tags">
               {showTopic && product.topicName && (
-                <span className="ph-product-card-topic">{product.topicName}</span>
+                product.topicId ? (
+                  <button
+                    type="button"
+                    className="ph-product-card-topic topic-mention"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      navigate(
+                        buildTopicHomePath({
+                          topicId: product.topicId,
+                          topicName: product.topicName,
+                        }),
+                      );
+                    }}
+                  >
+                    {formatTopicName(product.topicName)}
+                  </button>
+                ) : (
+                  <span className="ph-product-card-topic">
+                    {formatTopicName(product.topicName)}
+                  </span>
+                )
               )}
               {showMeta && product.submittedBy && (
                 <span className="ph-product-card-author">{product.submittedBy}</span>

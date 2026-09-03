@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Eye, Heart, MessageCircle, ArrowUpRight } from "lucide-react";
 import CachedImage from "./CachedImage";
+import TopicRichText from "./TopicRichText";
 
 function formatDate(value) {
   if (!value) return "";
@@ -15,27 +16,46 @@ function formatDate(value) {
 }
 
 export default function TopicPostCard({ post, onLike, likeBusy }) {
+  const navigate = useNavigate();
+  const detailPath = `/topic-post/${post.id}`;
+
   return (
     <article className="ph-topic-post-card">
-      <Link to={`/topic-post/${post.id}`} className="ph-topic-post-main">
-        {post.imageUrl ? (
-          <div className="ph-topic-post-cover">
-            <CachedImage src={post.imageUrl} alt="" />
-          </div>
-        ) : (
-          <div className="ph-topic-post-cover ph-topic-post-cover--placeholder" aria-hidden="true">
-            <span>{(post.title || "话").trim()[0]}</span>
-          </div>
-        )}
+      <div className="ph-topic-post-main">
+        <button
+          type="button"
+          className="ph-topic-post-cover-btn"
+          onClick={() => navigate(detailPath)}
+          aria-label={`查看：${post.title}`}
+        >
+          {post.imageUrl ? (
+            <div className="ph-topic-post-cover">
+              <CachedImage src={post.imageUrl} alt="" />
+            </div>
+          ) : (
+            <div
+              className="ph-topic-post-cover ph-topic-post-cover--placeholder"
+              aria-hidden="true"
+            >
+              <span>{(post.title || "话").trim()[0]}</span>
+            </div>
+          )}
+        </button>
         <div className="ph-topic-post-body">
-          <h3 className="ph-topic-post-title">{post.title}</h3>
-          <p className="ph-topic-post-excerpt">{post.content}</p>
+          <h3 className="ph-topic-post-title">
+            <Link to={detailPath}>{post.title}</Link>
+          </h3>
+          <TopicRichText
+            text={post.content}
+            as="p"
+            className="ph-topic-post-excerpt"
+          />
           <div className="ph-topic-post-meta">
             <span className="ph-topic-post-author">{post.submittedBy}</span>
             <span>{formatDate(post.submittedAt)}</span>
           </div>
         </div>
-      </Link>
+      </div>
       <div className="ph-topic-post-actions">
         <button
           type="button"
@@ -46,7 +66,7 @@ export default function TopicPostCard({ post, onLike, likeBusy }) {
           <Heart size={14} aria-hidden="true" />
           {post.likeCount ?? 0}
         </button>
-        <Link to={`/topic-post/${post.id}`} className="ph-topic-post-action">
+        <Link to={detailPath} className="ph-topic-post-action">
           <MessageCircle size={14} aria-hidden="true" />
           {post.commentCount ?? 0}
         </Link>

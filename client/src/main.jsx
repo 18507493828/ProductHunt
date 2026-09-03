@@ -11,6 +11,8 @@ import AdminLayout from "./pages/admin/AdminLayout.jsx";
 import Dashboard from "./pages/admin/Dashboard.jsx";
 import Products from "./pages/admin/Products.jsx";
 import Banners from "./pages/admin/Banners.jsx";
+import Campaigns from "./pages/admin/Campaigns.jsx";
+import Categories from "./pages/admin/Categories.jsx";
 import Navs from "./pages/admin/Navs.jsx";
 import ResourceDetail from "./pages/ResourceDetail.jsx";
 import TopicPostDetail from "./pages/TopicPostDetail.jsx";
@@ -31,6 +33,8 @@ createRoot(document.getElementById("root")).render(
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="products" element={<Products />} />
+              <Route path="categories" element={<Categories />} />
+              <Route path="campaigns" element={<Campaigns />} />
               <Route path="banners" element={<Banners />} />
               <Route path="navs" element={<Navs />} />
             </Route>

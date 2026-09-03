@@ -1,9 +1,12 @@
 import { Link, Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
+import BrandLogo from "../../components/BrandLogo";
 
 const NAV_ITEMS = [
   { to: "/admin", end: true, label: "总览" },
   { to: "/admin/products", end: false, label: "资源审核" },
+  { to: "/admin/categories", end: false, label: "分类配置" },
+  { to: "/admin/campaigns", end: false, label: "活动配置" },
   { to: "/admin/banners", end: false, label: "轮播图管理" },
   { to: "/admin/navs", end: false, label: "导航管理" },
 ];
@@ -11,6 +14,8 @@ const NAV_ITEMS = [
 const TITLE_MAP = {
   "/admin": "后台总览",
   "/admin/products": "资源审核",
+  "/admin/categories": "分类配置",
+  "/admin/campaigns": "活动配置",
   "/admin/banners": "轮播图管理",
   "/admin/navs": "导航管理",
 };
@@ -48,14 +53,7 @@ export default function AdminLayout() {
         <div className="admin-layout">
           <aside className="admin-sidebar">
             <Link to="/" className="admin-sidebar-brand">
-              <span className="admin-sidebar-logo" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" width="22" height="22">
-                  <path
-                    d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"
-                    fill="currentColor"
-                  />
-                </svg>
-              </span>
+              <BrandLogo small showText={false} />
               <span className="admin-sidebar-title">返回首页</span>
             </Link>
 

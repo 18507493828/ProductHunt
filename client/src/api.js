@@ -51,11 +51,34 @@ export async function fetchCategoryOptions() {
   return request("/api/category-options");
 }
 
-export async function fetchProducts({ category = "全部", range = "all", topicId = "", special = false, q = "" } = {}) {
+export async function fetchAdminCategories() {
+  return request("/api/admin/categories");
+}
+
+export async function createCategory({ name, sort, enabled }) {
+  return request("/api/admin/categories", {
+    method: "POST",
+    body: JSON.stringify({ name, sort, enabled }),
+  });
+}
+
+export async function updateCategory(id, { name, sort, enabled }) {
+  return request(`/api/admin/categories/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ name, sort, enabled }),
+  });
+}
+
+export async function deleteCategory(id) {
+  return request(`/api/admin/categories/${id}`, { method: "DELETE" });
+}
+
+export async function fetchProducts({ category = "全部", range = "all", topicId = "", special = false, campaign = "", q = "" } = {}) {
   const params = new URLSearchParams();
   if (category && category !== "全部") params.set("category", category);
   if (range) params.set("range", range);
   if (topicId) params.set("topicId", topicId);
+  if (campaign) params.set("campaign", campaign);
   if (special) params.set("special", "true");
   if (q) params.set("q", q);
   const query = params.toString();
@@ -91,13 +114,60 @@ export async function submitProduct({
   name,
   tagline,
   url,
+  categories = [],
   category,
   description,
   imageUrl,
+  topicId = "",
+  topicName = "",
+  campaign = "",
 }) {
   return request("/api/products", {
     method: "POST",
-    body: JSON.stringify({ name, tagline, url, category, description, imageUrl }),
+    body: JSON.stringify({
+      name,
+      tagline,
+      url,
+      categories,
+      category,
+      description,
+      imageUrl,
+      topicId,
+      topicName,
+      campaign,
+    }),
+  });
+}
+
+export async function updateProduct(
+  id,
+  {
+    name,
+    tagline,
+    url,
+    categories = [],
+    category,
+    description,
+    imageUrl,
+    topicId = "",
+    topicName = "",
+    campaign = "",
+  },
+) {
+  return request(`/api/products/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      name,
+      tagline,
+      url,
+      categories,
+      category,
+      description,
+      imageUrl,
+      topicId,
+      topicName,
+      campaign,
+    }),
   });
 }
 
@@ -187,10 +257,10 @@ export async function deleteProduct(id) {
   return request(`/api/products/${id}`, { method: "DELETE" });
 }
 
-export async function setProductSpecial(id, isSpecial) {
+export async function setProductSpecial(id, { isSpecial, campaign } = {}) {
   return request(`/api/admin/products/${id}/special`, {
     method: "POST",
-    body: JSON.stringify({ isSpecial }),
+    body: JSON.stringify({ isSpecial, campaign }),
   });
 }
 
@@ -255,4 +325,32 @@ export async function reorderNavs(ids) {
     method: "PUT",
     body: JSON.stringify({ ids }),
   });
+}
+
+/* ---------------- 活动配置 API ---------------- */
+
+export async function fetchCampaigns() {
+  return request("/api/campaigns");
+}
+
+export async function fetchAdminCampaigns() {
+  return request("/api/admin/campaigns");
+}
+
+export async function createCampaign({ title, rankLabel, sort, enabled }) {
+  return request("/api/admin/campaigns", {
+    method: "POST",
+    body: JSON.stringify({ title, rankLabel, sort, enabled }),
+  });
+}
+
+export async function updateCampaign(id, { title, rankLabel, sort, enabled }) {
+  return request(`/api/admin/campaigns/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ title, rankLabel, sort, enabled }),
+  });
+}
+
+export async function deleteCampaign(id) {
+  return request(`/api/admin/campaigns/${id}`, { method: "DELETE" });
 }

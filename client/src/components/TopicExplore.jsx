@@ -2,12 +2,7 @@ import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import { fetchTopics } from "../api";
 import EmptyState from "./EmptyState";
-
-function formatTopicName(name) {
-  const n = (name || "").trim();
-  if (!n) return "";
-  return n.startsWith("#") && n.endsWith("#") ? n : `#${n}#`;
-}
+import { formatTopicName } from "../topicUtils";
 
 function formatCount(n) {
   const num = Number(n) || 0;

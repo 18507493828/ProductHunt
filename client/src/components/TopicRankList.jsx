@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchTopics } from "../api";
 import EmptyState from "./EmptyState";
+import { formatTopicName } from "../topicUtils";
 
 const PAGE_SIZE = 50;
 
@@ -9,12 +10,6 @@ function formatCount(n) {
   if (num >= 10000) return (num / 10000).toFixed(1).replace(/\.0$/, "") + "万";
   if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, "") + "k";
   return String(num);
-}
-
-function formatTopicName(name) {
-  const n = (name || "").trim();
-  if (!n) return "";
-  return n.startsWith("#") && n.endsWith("#") ? n : `#${n}#`;
 }
 
 export default function TopicRankList({

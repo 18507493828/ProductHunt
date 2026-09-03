@@ -258,7 +258,7 @@ export default function Banners() {
                   type="text"
                   value={form.title}
                   onChange={(e) => updateForm("title", e.target.value)}
-                  placeholder="例如：Agent 专家精选"
+                  placeholder="例如：AI 工具专区"
                   maxLength={40}
                 />
               </div>

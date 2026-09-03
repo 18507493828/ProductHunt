@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Eye, Heart, MessageCircle, ArrowUpRight } from "lucide-react";
+import { Eye, Heart, MessageCircle, ArrowUpRight } from "lucide-react";
 import {
   fetchTopicPost,
   likeTopicPost,
@@ -10,12 +10,9 @@ import { useAuth } from "../AuthContext";
 import { useToast } from "../Toast";
 import EmptyState from "../components/EmptyState";
 import CachedImage from "../components/CachedImage";
-
-function formatTopicName(name) {
-  const n = (name || "").trim();
-  if (!n) return "";
-  return n.startsWith("#") && n.endsWith("#") ? n : `#${n}#`;
-}
+import TopicRichText from "../components/TopicRichText";
+import BrandLogo from "../components/BrandLogo";
+import { buildTopicHomePath, formatTopicName } from "../topicUtils";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -117,12 +114,8 @@ export default function TopicPostDetail() {
     <div className="ph-page ph-detail-page">
       <header className="ph-detail-nav">
         <div className="ph-section-inner ph-detail-nav-inner">
-          <button type="button" className="ph-detail-back" onClick={() => navigate(-1)}>
-            <ArrowLeft size={18} aria-hidden="true" />
-            返回
-          </button>
           <Link to="/" className="ph-logo ph-detail-logo">
-            <span className="ph-logo-text">Vibe Building</span>
+            <BrandLogo />
           </Link>
         </div>
       </header>
@@ -141,7 +134,15 @@ export default function TopicPostDetail() {
               <article className="ph-topic-post-detail">
                 {post.topicName && (
                   <p className="ph-topic-post-detail-topic">
-                    {formatTopicName(post.topicName)}
+                    <Link
+                      to={buildTopicHomePath({
+                        topicId: post.topicId,
+                        topicName: post.topicName,
+                      })}
+                      className="topic-mention"
+                    >
+                      {formatTopicName(post.topicName)}
+                    </Link>
                   </p>
                 )}
                 <h1 className="ph-detail-title">{post.title}</h1>
@@ -155,7 +156,7 @@ export default function TopicPostDetail() {
                   </div>
                 )}
 
-                <div className="ph-detail-desc">{post.content}</div>
+                <TopicRichText text={post.content} className="ph-detail-desc" />
 
                 <div className="ph-detail-metrics">
                   <span>
@@ -229,7 +230,7 @@ export default function TopicPostDetail() {
                           <strong>{item.author}</strong>
                           <time>{formatDate(item.createdAt)}</time>
                         </div>
-                        <p>{item.content}</p>
+                        <TopicRichText text={item.content} as="p" />
                       </li>
                     ))}
                   </ul>

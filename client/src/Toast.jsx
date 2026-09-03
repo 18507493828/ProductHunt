@@ -55,7 +55,7 @@ function ToastItem({ toast, onDismiss }) {
 
   const dismiss = useCallback(() => {
     setLeaving(true);
-    window.setTimeout(() => onDismiss(toast.id), 220);
+    window.setTimeout(() => onDismiss(toast.id), 280);
   }, [onDismiss, toast.id]);
 
   useEffect(() => {
@@ -111,14 +111,19 @@ export function ToastProvider({ children }) {
 
   const showToast = useCallback((options) => {
     const id = ++idRef.current;
+    const title = (options.title || "").trim();
+    let message = (options.message || "").trim();
+    // 避免标题与正文相同，出现“两个保存成功”
+    if (message && message === title) message = "";
     const nextToast = {
       id,
       type: options.type || "info",
-      title: options.title || "",
-      message: options.message || "",
-      duration: options.duration ?? 4200,
+      title: title || message,
+      message: title ? message : "",
+      duration: options.duration ?? 3200,
     };
-    setToasts((current) => [...current, nextToast]);
+    if (!nextToast.title && !nextToast.message) return null;
+    setToasts((current) => [...current.slice(-2), nextToast]);
     return id;
   }, []);
 

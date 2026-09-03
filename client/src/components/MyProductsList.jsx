@@ -25,7 +25,7 @@ function getProductInitial(name = "") {
   return (name.trim()[0] || "P").toUpperCase();
 }
 
-export default function MyProductsList({ products, loading, onSubmit }) {
+export default function MyProductsList({ products, loading, onSubmit, onEdit }) {
   if (loading) {
     return (
       <div className="ph-list">
@@ -84,7 +84,16 @@ export default function MyProductsList({ products, loading, onSubmit }) {
             </div>
             <p className="ph-item-tagline">{product.tagline}</p>
             <p className="ph-item-meta">
-              <span className="ph-category-badge">{product.category}</span>
+              {(product.categories?.length
+                ? product.categories
+                : product.category
+                  ? [product.category]
+                  : []
+              ).map((cat) => (
+                <span key={cat} className="ph-category-badge">
+                  {cat}
+                </span>
+              ))}
               <span>上传于 {formatDate(product.submittedAt)}</span>
               {product.status === "approved" && (
                 <>
@@ -113,6 +122,13 @@ export default function MyProductsList({ products, loading, onSubmit }) {
           </div>
 
           <div className="ph-item-actions">
+            <button
+              type="button"
+              className="ph-item-link"
+              onClick={() => onEdit?.(product)}
+            >
+              编辑
+            </button>
             <Link className="ph-item-link" to={`/resource/${product.id}`}>
               详情
             </Link>

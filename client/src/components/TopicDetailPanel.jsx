@@ -1,15 +1,10 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Flame, Heart, MessageSquare, PenLine, Users } from "lucide-react";
+import { Flame, Heart, MessageSquare, PenLine, Users } from "lucide-react";
 import { fetchTopic, followTopic } from "../api";
 import { useAuth } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
 import CachedImage from "./CachedImage";
-
-function formatTopicName(name) {
-  const n = (name || "").trim();
-  if (!n) return "";
-  return n.startsWith("#") && n.endsWith("#") ? n : `#${n}#`;
-}
+import { formatTopicName } from "../topicUtils";
 
 function formatCount(n) {
   const num = Number(n) || 0;
@@ -49,7 +44,7 @@ function TopicDetailSkeleton() {
   );
 }
 
-export default function TopicDetailPanel({ topicId, onClear, onPublish }) {
+export default function TopicDetailPanel({ topicId, onPublish }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [topic, setTopic] = useState(null);
@@ -105,10 +100,6 @@ export default function TopicDetailPanel({ topicId, onClear, onPublish }) {
   if (!topic) {
     return (
       <div className="ph-topic-detail ph-topic-detail--error">
-        <button type="button" className="ph-topic-detail-back" onClick={onClear}>
-          <ArrowLeft size={16} aria-hidden="true" />
-          返回话题列表
-        </button>
         <p>话题不存在或已下线</p>
       </div>
     );
@@ -127,10 +118,6 @@ export default function TopicDetailPanel({ topicId, onClear, onPublish }) {
     <div className="ph-topic-detail">
       <div className="ph-topic-detail-hero" style={heroStyle}>
         <div className="ph-topic-detail-hero-top">
-          <button type="button" className="ph-topic-detail-back" onClick={onClear}>
-            <ArrowLeft size={16} aria-hidden="true" />
-            返回
-          </button>
           <div className="ph-topic-detail-hero-actions">
             <button
               type="button"

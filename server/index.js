@@ -5,7 +5,12 @@ import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
-import { PRODUCT_CATEGORIES, DEFAULT_CATEGORY } from "./categories.js";
+import {
+  PRODUCT_CATEGORIES,
+  DEFAULT_CATEGORIES,
+  DEFAULT_CATEGORY,
+  DEFAULT_CAMPAIGNS,
+} from "./categories.js";
 import { TOPIC_SEED } from "./topic-seed.js";
 import { TOPIC_POST_SEED } from "./topic-post-seed.js";
 import {
@@ -31,9 +36,25 @@ const STORAGE_DIR = path.join(__dirname, "storage", "products");
 const UPLOADS_DIR = path.join(__dirname, "storage", "uploads");
 const BANNERS_FILE = path.join(__dirname, "storage", "banners.json");
 const NAVS_FILE = path.join(__dirname, "storage", "navs.json");
+const CAMPAIGNS_FILE = path.join(__dirname, "storage", "campaigns.json");
+const CATEGORIES_FILE = path.join(__dirname, "storage", "categories.json");
 const TOPICS_FILE = path.join(__dirname, "storage", "topics.json");
 const TOPIC_POSTS_DIR = path.join(__dirname, "storage", "topic-posts");
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
+let campaignCache = {
+  list: [],
+  ids: [],
+  labels: {},
+  rankLabels: {},
+};
+
+let categoryCache = {
+  list: [],
+  names: [],
+  enabledNames: [],
+  defaultName: DEFAULT_CATEGORY,
+};
 
 const RANGES = ["today", "week", "month", "all"];
 const URL_PATTERN = /^https?:\/\/.+/i;
@@ -56,8 +77,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_BANNERS = [
   {
     id: "banner-ai",
-    title: "Agent 专家精选",
-    subtitle: "发现各领域 Agent 角色与专家配置，快速接入智能助手",
+    title: "AI 工具专区",
+    subtitle: "发现能真正提升生产力的 AI 产品",
     imageUrl: "/banners/banner-ai.png",
     linkUrl: "/",
     sort: 1,
@@ -67,8 +88,8 @@ const DEFAULT_BANNERS = [
   },
   {
     id: "banner-dev",
-    title: "技能与链接器",
-    subtitle: "技能模块、MCP 工具与外部集成，扩展 Agent 能力边界",
+    title: "开发者利器",
+    subtitle: "从编辑器插件到部署平台，汇聚开发者精心打磨的工具",
     imageUrl: "/banners/banner-dev.png",
     linkUrl: "/",
     sort: 2,
@@ -78,8 +99,8 @@ const DEFAULT_BANNERS = [
   },
   {
     id: "banner-open",
-    title: "自动化模版",
-    subtitle: "工作流与任务模版，一键复用成熟 Agent 编排方案",
+    title: "开源项目巡礼",
+    subtitle: "每周精选值得关注的开源项目，让优秀作品被更多人看见",
     imageUrl: "/banners/banner-open.png",
     linkUrl: "/",
     sort: 3,
@@ -134,6 +155,8 @@ await fs.mkdir(TOPIC_POSTS_DIR, { recursive: true });
 await initAuth();
 await initBanners();
 await initNavs();
+await initCampaigns();
+await initCategories();
 await initTopics();
 await initTopicPosts();
 
@@ -302,6 +325,159 @@ async function getNavById(id) {
 
 async function sortNavs(navs) {
   return navs.sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0));
+}
+
+/* ---------------- 活动配置存储 ---------------- */
+
+async function readCampaigns() {
+  try {
+    const raw = await fs.readFile(CAMPAIGNS_FILE, "utf-8");
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeCampaigns(campaigns) {
+  await fs.writeFile(CAMPAIGNS_FILE, JSON.stringify(campaigns, null, 2), "utf-8");
+  await refreshCampaignCache(campaigns);
+}
+
+async function refreshCampaignCache(list) {
+  const campaigns = Array.isArray(list) ? list : await readCampaigns();
+  campaignCache = {
+    list: campaigns,
+    ids: campaigns.map((item) => item.id),
+    labels: Object.fromEntries(
+      campaigns.map((item) => [item.id, item.title || item.label || ""]),
+    ),
+    rankLabels: Object.fromEntries(
+      campaigns.map((item) => [
+        item.id,
+        item.rankLabel || item.title || item.label || "",
+      ]),
+    ),
+  };
+}
+
+async function initCampaigns() {
+  const existing = await readCampaigns();
+  if (existing.length > 0) {
+    await refreshCampaignCache(existing);
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const seed = DEFAULT_CAMPAIGNS.map((item, index) => ({
+    id: item.id,
+    title: item.title,
+    rankLabel: item.rankLabel || item.title,
+    enabled: item.enabled !== false,
+    sort: Number(item.sort) || index + 1,
+    createdAt: now,
+    updatedAt: now,
+  }));
+  await writeCampaigns(seed);
+}
+
+function toPublicCampaign(campaign) {
+  return {
+    id: campaign.id,
+    title: campaign.title || "",
+    rankLabel: campaign.rankLabel || campaign.title || "",
+    sort: Number(campaign.sort) || 0,
+    enabled: campaign.enabled !== false,
+    createdAt: campaign.createdAt || "",
+    updatedAt: campaign.updatedAt || "",
+  };
+}
+
+async function getCampaignById(id) {
+  const campaigns = await readCampaigns();
+  return campaigns.find((item) => item.id === id) || null;
+}
+
+function isKnownCampaign(id) {
+  return Boolean(id && campaignCache.ids.includes(id));
+}
+
+/* ---------------- 分类配置存储 ---------------- */
+
+async function readCategories() {
+  try {
+    const raw = await fs.readFile(CATEGORIES_FILE, "utf-8");
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeCategories(categories) {
+  await fs.writeFile(
+    CATEGORIES_FILE,
+    JSON.stringify(categories, null, 2),
+    "utf-8",
+  );
+  await refreshCategoryCache(categories);
+}
+
+async function refreshCategoryCache(list) {
+  const categories = Array.isArray(list) ? list : await readCategories();
+  const sorted = categories
+    .slice()
+    .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0));
+  const enabled = sorted.filter((item) => item.enabled !== false);
+  const enabledNames = enabled.map((item) => item.name).filter(Boolean);
+  const allNames = sorted.map((item) => item.name).filter(Boolean);
+  categoryCache = {
+    list: sorted,
+    names: allNames.length > 0 ? allNames : [...PRODUCT_CATEGORIES],
+    enabledNames:
+      enabledNames.length > 0 ? enabledNames : [...PRODUCT_CATEGORIES],
+    defaultName: enabledNames.includes(DEFAULT_CATEGORY)
+      ? DEFAULT_CATEGORY
+      : enabledNames[0] || DEFAULT_CATEGORY,
+  };
+}
+
+async function initCategories() {
+  const existing = await readCategories();
+  if (existing.length > 0) {
+    await refreshCategoryCache(existing);
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const seed = DEFAULT_CATEGORIES.map((item, index) => ({
+    id: item.id || `cat-${index + 1}`,
+    name: item.name,
+    sort: Number(item.sort) || index + 1,
+    enabled: item.enabled !== false,
+    createdAt: now,
+    updatedAt: now,
+  }));
+  await writeCategories(seed);
+}
+
+function toPublicCategory(category) {
+  return {
+    id: category.id,
+    name: category.name || "",
+    sort: Number(category.sort) || 0,
+    enabled: category.enabled !== false,
+    createdAt: category.createdAt || "",
+    updatedAt: category.updatedAt || "",
+  };
+}
+
+function isEnabledCategory(name) {
+  return Boolean(name && categoryCache.enabledNames.includes(name));
+}
+
+function getDefaultCategoryName() {
+  return categoryCache.defaultName || DEFAULT_CATEGORY;
 }
 
 /* ---------------- 话题存储 ---------------- */
@@ -513,6 +689,76 @@ function resolveSubmitterDisplayName(product, nicknameMap) {
   return product.submittedBy || "";
 }
 
+function getProductCategories(product) {
+  const cats = [];
+  if (Array.isArray(product.categories)) {
+    for (const raw of product.categories) {
+      if (raw && !cats.includes(raw)) cats.push(raw);
+    }
+  }
+  const legacy = product.category;
+  if (legacy && !cats.includes(legacy)) {
+    cats.unshift(legacy);
+  }
+  return cats.length > 0 ? cats : [getDefaultCategoryName()];
+}
+
+function getProductTopicIds(product) {
+  const ids = [];
+  if (Array.isArray(product.topicIds)) {
+    for (const raw of product.topicIds) {
+      const id = (raw || "").trim();
+      if (id && !ids.includes(id)) ids.push(id);
+    }
+  }
+  const legacy = (product.topicId || "").trim();
+  if (legacy && !ids.includes(legacy)) ids.unshift(legacy);
+  return ids.slice(0, 3);
+}
+
+async function resolveOrCreateTopic({ topicId, topicName }, user) {
+  const trimmedId = (topicId || "").trim();
+  let trimmedName = (topicName || "").trim().replace(/^#+|#+$/g, "");
+  if (!trimmedId && !trimmedName) return { topicId: "", topics: null };
+
+  const topics = await readTopics();
+  if (trimmedId) {
+    const found = topics.find((t) => t.id === trimmedId);
+    if (!found) {
+      const err = new Error("所选话题不存在或已下线");
+      err.status = 400;
+      throw err;
+    }
+    return { topicId: found.id, topics };
+  }
+
+  if (trimmedName.length > 30) {
+    const err = new Error("话题名称不能超过 30 字");
+    err.status = 400;
+    throw err;
+  }
+
+  const existing = topics.find(
+    (t) => (t.name || "").toLowerCase() === trimmedName.toLowerCase(),
+  );
+  if (existing) return { topicId: existing.id, topics };
+
+  const now = new Date().toISOString();
+  const topic = {
+    id: `topic-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`,
+    name: trimmedName,
+    description: "",
+    coverImage: "",
+    color: pickAvatarColor(trimmedName),
+    createdBy: user.username,
+    createdAt: now,
+    followerIds: [user.id],
+  };
+  topics.push(topic);
+  await writeTopics(topics);
+  return { topicId: topic.id, topics };
+}
+
 function toPublicComment(comment, nicknameMap = null) {
   const author =
     comment.author ||
@@ -530,7 +776,10 @@ function toPublicComment(comment, nicknameMap = null) {
 function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = null, { includeComments = false } = {}) {
   const voteCount = Array.isArray(product.voters) ? product.voters.length : 0;
   const [avgRating, ratingCount] = computeRating(product);
-  const topicName = topicMap && product.topicId ? (topicMap[product.topicId] || "") : "";
+  const categories = getProductCategories(product);
+  const topicIds = getProductTopicIds(product);
+  const topicId = topicIds[0] || "";
+  const topicName = topicMap && topicId ? topicMap[topicId] || "" : "";
   const comments = Array.isArray(product.comments) ? product.comments : [];
   const myRating =
     currentUser && product.ratings
@@ -542,8 +791,9 @@ function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = nu
     tagline: product.tagline,
     description: product.description,
     url: product.url,
-    category: product.category,
-    topicId: product.topicId || "",
+    category: categories[0] || getDefaultCategoryName(),
+    categories,
+    topicId,
     topicName,
     imageUrl: product.imageUrl || "",
     color: product.color || "",
@@ -561,7 +811,9 @@ function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = nu
     status: product.status,
     rejectReason: product.rejectReason || "",
     reviewedAt: product.reviewedAt || "",
-    isSpecial: product.isSpecial === true,
+    campaign: isKnownCampaign(product.campaign) ? product.campaign : "",
+    campaignLabel: campaignCache.labels[product.campaign] || "",
+    isSpecial: isKnownCampaign(product.campaign) || product.isSpecial === true,
   };
   if (includeComments) {
     base.comments = comments
@@ -636,8 +888,244 @@ app.get("/api/auth/me", requireAuth, async (req, res) => {
   }
 });
 
-app.get("/api/category-options", (_req, res) => {
-  res.json({ categories: PRODUCT_CATEGORIES });
+app.get("/api/category-options", async (_req, res) => {
+  try {
+    res.json({ categories: categoryCache.enabledNames });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/categories", requireAdmin, async (_req, res) => {
+  try {
+    const categories = (await readCategories())
+      .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0))
+      .map(toPublicCategory);
+    res.json(categories);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/admin/categories", requireAdmin, async (req, res) => {
+  try {
+    const name = (req.body?.name || "").trim();
+    const sort = Number(req.body?.sort);
+    const enabled = req.body?.enabled !== false;
+    if (!name) {
+      return res.status(400).json({ error: "请填写分类名称" });
+    }
+    if (name.length > 20) {
+      return res.status(400).json({ error: "分类名称不能超过 20 字" });
+    }
+
+    const categories = await readCategories();
+    if (categories.some((item) => item.name === name)) {
+      return res.status(400).json({ error: "该分类已存在" });
+    }
+
+    const idBase = (req.body?.id || name)
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9\u4e00-\u9fff_-]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 32);
+    let id = idBase || `cat-${crypto.randomUUID().slice(0, 8)}`;
+    if (categories.some((item) => item.id === id)) {
+      id = `${id}-${crypto.randomUUID().slice(0, 4)}`;
+    }
+
+    const now = new Date().toISOString();
+    const category = {
+      id,
+      name,
+      sort: Number.isFinite(sort) ? sort : categories.length + 1,
+      enabled,
+      createdAt: now,
+      updatedAt: now,
+    };
+    categories.push(category);
+    await writeCategories(categories);
+    res.json({ message: "分类已添加", category: toPublicCategory(category) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/admin/categories/:id", requireAdmin, async (req, res) => {
+  try {
+    const categories = await readCategories();
+    const index = categories.findIndex((item) => item.id === req.params.id);
+    if (index < 0) {
+      return res.status(404).json({ error: "分类不存在" });
+    }
+
+    const name = (req.body?.name || "").trim();
+    if (!name) {
+      return res.status(400).json({ error: "请填写分类名称" });
+    }
+    if (name.length > 20) {
+      return res.status(400).json({ error: "分类名称不能超过 20 字" });
+    }
+    if (
+      categories.some(
+        (item, i) => i !== index && item.name === name,
+      )
+    ) {
+      return res.status(400).json({ error: "该分类已存在" });
+    }
+
+    const sort = Number(req.body?.sort);
+    categories[index] = {
+      ...categories[index],
+      name,
+      sort: Number.isFinite(sort) ? sort : categories[index].sort,
+      enabled: req.body?.enabled !== false,
+      updatedAt: new Date().toISOString(),
+    };
+    await writeCategories(categories);
+    res.json({
+      message: "分类已更新",
+      category: toPublicCategory(categories[index]),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/admin/categories/:id", requireAdmin, async (req, res) => {
+  try {
+    const categories = await readCategories();
+    const index = categories.findIndex((item) => item.id === req.params.id);
+    if (index < 0) {
+      return res.status(404).json({ error: "分类不存在" });
+    }
+    if (categories.length <= 1) {
+      return res.status(400).json({ error: "至少保留一个分类" });
+    }
+
+    const [removed] = categories.splice(index, 1);
+    await writeCategories(categories);
+    res.json({ message: "分类已删除", category: toPublicCategory(removed) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ---------------- 活动配置 API ---------------- */
+
+// 公开：获取启用的活动（按 sort 升序）—— 当前先全部展示
+app.get("/api/campaigns", async (_req, res) => {
+  try {
+    const campaigns = (await readCampaigns())
+      .filter((item) => item.enabled !== false)
+      .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0))
+      .map(toPublicCampaign);
+    res.json(campaigns);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/campaigns", requireAdmin, async (_req, res) => {
+  try {
+    const campaigns = (await readCampaigns())
+      .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0))
+      .map(toPublicCampaign);
+    res.json(campaigns);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/admin/campaigns", requireAdmin, async (req, res) => {
+  try {
+    const title = (req.body?.title || "").trim();
+    const rankLabel = (req.body?.rankLabel || "").trim();
+    const sort = Number(req.body?.sort);
+    const enabled = req.body?.enabled !== false;
+    if (!title) {
+      return res.status(400).json({ error: "请填写活动名称" });
+    }
+
+    const campaigns = await readCampaigns();
+    const idBase = (req.body?.id || title)
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9\u4e00-\u9fff_-]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 32);
+    let id = idBase || `campaign-${crypto.randomUUID().slice(0, 8)}`;
+    if (campaigns.some((item) => item.id === id)) {
+      id = `${id}-${crypto.randomUUID().slice(0, 4)}`;
+    }
+
+    const now = new Date().toISOString();
+    const campaign = {
+      id,
+      title,
+      rankLabel: rankLabel || title,
+      sort: Number.isFinite(sort) ? sort : campaigns.length + 1,
+      enabled,
+      createdAt: now,
+      updatedAt: now,
+    };
+    campaigns.push(campaign);
+    await writeCampaigns(campaigns);
+    res.json({ message: "活动已添加", campaign: toPublicCampaign(campaign) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/admin/campaigns/:id", requireAdmin, async (req, res) => {
+  try {
+    const campaigns = await readCampaigns();
+    const index = campaigns.findIndex((item) => item.id === req.params.id);
+    if (index < 0) {
+      return res.status(404).json({ error: "活动不存在" });
+    }
+
+    const title = (req.body?.title || "").trim();
+    const rankLabel = (req.body?.rankLabel || "").trim();
+    if (!title) {
+      return res.status(400).json({ error: "请填写活动名称" });
+    }
+
+    const sort = Number(req.body?.sort);
+    campaigns[index] = {
+      ...campaigns[index],
+      title,
+      rankLabel: rankLabel || title,
+      sort: Number.isFinite(sort) ? sort : campaigns[index].sort,
+      enabled: req.body?.enabled !== false,
+      updatedAt: new Date().toISOString(),
+    };
+    await writeCampaigns(campaigns);
+    res.json({
+      message: "活动已更新",
+      campaign: toPublicCampaign(campaigns[index]),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/admin/campaigns/:id", requireAdmin, async (req, res) => {
+  try {
+    const campaigns = await readCampaigns();
+    const index = campaigns.findIndex((item) => item.id === req.params.id);
+    if (index < 0) {
+      return res.status(404).json({ error: "活动不存在" });
+    }
+    const [removed] = campaigns.splice(index, 1);
+    await writeCampaigns(campaigns);
+    res.json({ message: "活动已删除", campaign: toPublicCampaign(removed) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /* ---------------- 轮播图 API ---------------- */
@@ -934,6 +1422,7 @@ app.get("/api/products", attachUserIfPresent, async (req, res) => {
       : "";
     const topicId = (req.query.topicId || "").trim();
     const keyword = (req.query.q || "").trim().toLowerCase();
+    const campaign = (req.query.campaign || "").trim();
     const specialOnly = req.query.special === "true";
     const rangeStart = getRangeStart(range);
 
@@ -943,9 +1432,14 @@ app.get("/api/products", attachUserIfPresent, async (req, res) => {
     const nicknameMap = await getUsersNicknameMap();
     const approved = all.filter((product) => (product.status || "approved") === "approved");
     const filtered = approved.filter((product) => {
-      if (category && product.category !== category) return false;
-      if (topicId && product.topicId !== topicId) return false;
-      if (specialOnly && product.isSpecial !== true) return false;
+      if (category && !getProductCategories(product).includes(category)) return false;
+      if (topicId && !getProductTopicIds(product).includes(topicId)) return false;
+      if (campaign) {
+        if (product.campaign !== campaign) return false;
+      } else if (specialOnly) {
+        const inCampaign = isKnownCampaign(product.campaign);
+        if (!inCampaign && product.isSpecial !== true) return false;
+      }
       if (rangeStart > 0) {
         const submittedTime = new Date(product.submittedAt || 0).getTime();
         if (submittedTime < rangeStart) return false;
@@ -955,7 +1449,7 @@ app.get("/api/products", attachUserIfPresent, async (req, res) => {
           product.name,
           product.tagline,
           product.description,
-          product.category,
+          ...getProductCategories(product),
         ]
           .filter(Boolean)
           .join(" ")
@@ -1005,8 +1499,9 @@ app.get("/api/stats", async (_req, res) => {
         ratingCount += count;
       }
       if ((product.submittedAt || "") >= weekAgo) recentResources7d += 1;
-      const cat = product.category || DEFAULT_CATEGORY;
-      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+      for (const cat of getProductCategories(product)) {
+        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+      }
     }
 
     let totalTopicLikes = 0;
@@ -1140,10 +1635,12 @@ app.post("/api/products/:id/comments", requireAuth, async (req, res) => {
 app.get("/api/me/products", requireAuth, async (req, res) => {
   try {
     const all = await listProducts();
+    const topics = await readTopics();
+    const topicMap = Object.fromEntries(topics.map((t) => [t.id, t.name || ""]));
     const mine = all
       .filter((product) => product.submittedBy === req.user.username)
       .sort((a, b) => (b.submittedAt || "").localeCompare(a.submittedAt || ""))
-      .map((product) => toPublicProduct(product, req.user));
+      .map((product) => toPublicProduct(product, req.user, topicMap));
     res.json(mine);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1152,7 +1649,18 @@ app.get("/api/me/products", requireAuth, async (req, res) => {
 
 app.post("/api/products", requireAuth, async (req, res) => {
   try {
-    const { name, tagline, description, url, category, imageUrl, topicId } = req.body || {};
+    const {
+      name,
+      tagline,
+      description,
+      url,
+      category,
+      categories,
+      imageUrl,
+      topicId,
+      topicName,
+      campaign,
+    } = req.body || {};
 
     const trimmedName = (name || "").trim();
     const trimmedTagline = (tagline || "").trim();
@@ -1185,9 +1693,41 @@ app.post("/api/products", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "图片链接格式不正确" });
     }
 
-    const finalCategory = PRODUCT_CATEGORIES.includes(category)
-      ? category
-      : DEFAULT_CATEGORY;
+    const requestedCategories = [];
+    const rawCategories = Array.isArray(categories)
+      ? categories
+      : category
+        ? [category]
+        : [];
+    for (const raw of rawCategories) {
+      const name = (raw || "").trim();
+      if (isEnabledCategory(name) && !requestedCategories.includes(name)) {
+        requestedCategories.push(name);
+      }
+    }
+    if (requestedCategories.length === 0) {
+      return res.status(400).json({ error: "请至少选择一个分类" });
+    }
+
+    const requestedCampaign = (campaign || "").trim();
+    if (requestedCampaign && !isKnownCampaign(requestedCampaign)) {
+      return res.status(400).json({ error: "所选活动不存在或已下线" });
+    }
+
+    let resolvedTopicId = "";
+    let topicsForMap = null;
+    try {
+      const resolved = await resolveOrCreateTopic(
+        { topicId, topicName },
+        req.user,
+      );
+      resolvedTopicId = resolved.topicId;
+      topicsForMap = resolved.topics;
+    } catch (topicErr) {
+      return res
+        .status(topicErr.status || 400)
+        .json({ error: topicErr.message || "话题处理失败" });
+    }
 
     const isAdmin = req.user.role === "admin";
     const now = new Date().toISOString();
@@ -1198,8 +1738,10 @@ app.post("/api/products", requireAuth, async (req, res) => {
       tagline: trimmedTagline,
       description: trimmedDescription,
       url: trimmedUrl,
-      category: finalCategory,
-      topicId: (topicId || "").trim(),
+      category: requestedCategories[0],
+      categories: requestedCategories,
+      campaign: requestedCampaign,
+      topicId: resolvedTopicId,
       color: pickAvatarColor(trimmedName),
       imageUrl: trimmedImageUrl,
       voters: [],
@@ -1213,13 +1755,160 @@ app.post("/api/products", requireAuth, async (req, res) => {
 
     await writeProductFile(product);
 
+    if (!topicsForMap) topicsForMap = await readTopics();
+    const topicMap = Object.fromEntries(
+      topicsForMap.map((t) => [t.id, t.name || ""]),
+    );
     res.json({
       message: isAdmin
         ? "发布成功，资源已上架"
         : "提交成功，等待管理员审核",
-      product: toPublicProduct(product, req.user),
+      product: toPublicProduct(product, req.user, topicMap),
     });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/products/:id", requireAuth, async (req, res) => {
+  try {
+    const product = await getProduct(req.params.id);
+    const isOwner = product.submittedBy === req.user.username;
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "只能编辑自己上传的资源" });
+    }
+
+    const {
+      name,
+      tagline,
+      description,
+      url,
+      category,
+      categories,
+      imageUrl,
+      topicId,
+      topicName,
+      campaign,
+    } = req.body || {};
+
+    const trimmedName = (name || "").trim();
+    const trimmedTagline = (tagline || "").trim();
+    const trimmedUrl = (url || "").trim();
+    const trimmedDescription = (description || "").trim();
+    const trimmedImageUrl = (imageUrl || "").trim();
+
+    if (!trimmedName) {
+      return res.status(400).json({ error: "请填写资源名称" });
+    }
+    if (trimmedName.length > 50) {
+      return res.status(400).json({ error: "资源名称不能超过 50 字" });
+    }
+    if (!trimmedTagline) {
+      return res.status(400).json({ error: "请填写一句话介绍" });
+    }
+    if (trimmedTagline.length > 100) {
+      return res.status(400).json({ error: "一句话介绍不能超过 100 字" });
+    }
+    if (!trimmedUrl) {
+      return res.status(400).json({ error: "请填写演示链接" });
+    }
+    if (!URL_PATTERN.test(trimmedUrl)) {
+      return res.status(400).json({ error: "演示链接需以 http:// 或 https:// 开头" });
+    }
+    if (trimmedImageUrl && trimmedImageUrl.length > 500) {
+      return res.status(400).json({ error: "图片链接过长" });
+    }
+    if (trimmedImageUrl && !IMAGE_URL_PATTERN.test(trimmedImageUrl)) {
+      return res.status(400).json({ error: "图片链接格式不正确" });
+    }
+
+    const previousCategories = getProductCategories(product);
+    const requestedCategories = [];
+    const rawCategories = Array.isArray(categories)
+      ? categories
+      : category
+        ? [category]
+        : [];
+    for (const raw of rawCategories) {
+      const catName = (raw || "").trim();
+      const allowed =
+        isEnabledCategory(catName) || previousCategories.includes(catName);
+      if (catName && allowed && !requestedCategories.includes(catName)) {
+        requestedCategories.push(catName);
+      }
+    }
+    if (requestedCategories.length === 0) {
+      return res.status(400).json({ error: "请至少选择一个分类" });
+    }
+
+    const requestedCampaign = (campaign || "").trim();
+    if (requestedCampaign && !isKnownCampaign(requestedCampaign)) {
+      return res.status(400).json({ error: "所选活动不存在或已下线" });
+    }
+
+    let resolvedTopicId = "";
+    let topicsForMap = null;
+    try {
+      const resolved = await resolveOrCreateTopic(
+        { topicId, topicName },
+        req.user,
+      );
+      resolvedTopicId = resolved.topicId;
+      topicsForMap = resolved.topics;
+    } catch (topicErr) {
+      return res
+        .status(topicErr.status || 400)
+        .json({ error: topicErr.message || "话题处理失败" });
+    }
+
+    const now = new Date().toISOString();
+    const prevStatus = product.status || "approved";
+    let nextStatus = prevStatus;
+    let rejectReason = product.rejectReason || "";
+    let reviewedAt = product.reviewedAt || "";
+    let reviewedBy = product.reviewedBy || "";
+
+    if (!isAdmin && prevStatus === "rejected") {
+      nextStatus = "pending";
+      rejectReason = "";
+      reviewedAt = "";
+      reviewedBy = "";
+    }
+
+    product.name = trimmedName;
+    product.tagline = trimmedTagline;
+    product.description = trimmedDescription;
+    product.url = trimmedUrl;
+    product.category = requestedCategories[0];
+    product.categories = requestedCategories;
+    product.campaign = requestedCampaign;
+    product.topicId = resolvedTopicId;
+    product.imageUrl = trimmedImageUrl;
+    product.color = product.color || pickAvatarColor(trimmedName);
+    product.status = nextStatus;
+    product.rejectReason = rejectReason;
+    product.reviewedAt = reviewedAt;
+    product.reviewedBy = reviewedBy;
+    product.updatedAt = now;
+
+    await writeProductFile(product);
+
+    if (!topicsForMap) topicsForMap = await readTopics();
+    const topicMap = Object.fromEntries(
+      topicsForMap.map((t) => [t.id, t.name || ""]),
+    );
+    res.json({
+      message:
+        !isAdmin && nextStatus === "pending" && prevStatus === "rejected"
+          ? "已保存并重新提交审核"
+          : "保存成功",
+      product: toPublicProduct(product, req.user, topicMap),
+    });
+  } catch (err) {
+    if (err.message === "NOT_FOUND") {
+      return res.status(404).json({ error: "资源不存在" });
+    }
     res.status(500).json({ error: err.message });
   }
 });
@@ -1418,7 +2107,7 @@ app.get("/api/topics/:id", attachUserIfPresent, async (req, res) => {
 app.post("/api/topics", requireAuth, async (req, res) => {
   try {
     const { name, description, coverImage } = req.body || {};
-    // 话题名统一存裸名：输入若带首尾 ## 则剥离，展示层负责包装成 #话题#
+    // 话题名统一存裸名：输入若带首尾 # 则剥离，展示层包装成 #话题
     const trimmedName = (name || "").trim().replace(/^#+|#+$/g, "");
     const trimmedDescription = (description || "").trim();
     const trimmedCover = (coverImage || "").trim();
@@ -1627,11 +2316,27 @@ app.post("/api/admin/products/:id/reject", requireAdmin, async (req, res) => {
 app.post("/api/admin/products/:id/special", requireAdmin, async (req, res) => {
   try {
     const product = await getProduct(req.params.id);
-    const isSpecial = req.body?.isSpecial === true;
-    product.isSpecial = isSpecial;
+    const campaign = (req.body?.campaign || "").trim();
+    if (campaign && !isKnownCampaign(campaign)) {
+      return res.status(400).json({ error: "活动类型无效" });
+    }
+    if (campaign) {
+      product.campaign = campaign;
+      product.isSpecial = true;
+    } else if (req.body?.isSpecial === true) {
+      product.campaign =
+        product.campaign && isKnownCampaign(product.campaign)
+          ? product.campaign
+          : campaignCache.ids[0] || "madao";
+      product.isSpecial = true;
+    } else {
+      product.campaign = "";
+      product.isSpecial = false;
+    }
     await writeProductFile(product);
+    const label = campaignCache.labels[product.campaign] || "";
     res.json({
-      message: isSpecial ? "已加入专题活动" : "已取消专题活动",
+      message: product.campaign ? `已加入${label}` : "已取消活动",
       product: toPublicProduct(product, req.user),
     });
   } catch {

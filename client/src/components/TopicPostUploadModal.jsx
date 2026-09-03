@@ -28,7 +28,7 @@ export default function TopicPostUploadModal({
           <div>
             <p className="modal-eyebrow">话题内容</p>
             <h2 id="topic-post-modal-title">
-              发布到 {topicName ? `#${topicName}#` : "话题"}
+              发布到 {topicName ? `#${topicName.replace(/^#+|#+$/g, "")}` : "话题"}
             </h2>
           </div>
           <button
