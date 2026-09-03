@@ -28,7 +28,7 @@ export default function Login() {
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1>登录</h1>
-        <p className="auth-tip">登录后可上传资源，并为喜欢的资源评分</p>
+        <p className="auth-tip">登录后可上传资源，并为喜欢的作品评分</p>
 
         <label>
           登录账号
