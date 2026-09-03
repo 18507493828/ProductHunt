@@ -87,3 +87,10 @@ sudo systemctl reload nginx
 
 cd /www/wwwroot/ProductHunt/client && npm ci && npm run build
 cd .. && pm2 reload ecosystem.config.cjs
+
+远程部署
+git pull origin 分支
+
+npm run build
+
+pm2 restart vibe-building

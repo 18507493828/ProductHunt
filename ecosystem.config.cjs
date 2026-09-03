@@ -6,7 +6,7 @@ module.exports = {
       cwd: __dirname,
       env: {
         NODE_ENV: "production",
-        PORT: 3003,
+        PORT: 3001,
         HOST: "0.0.0.0",
         JWT_SECRET: "change-this-to-a-long-random-string",
         ADMIN_USERNAME: "admin",
