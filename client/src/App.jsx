@@ -4,6 +4,8 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Upload, Inbox, SearchX, Sparkles } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { useToast } from "./Toast";
+import { redirectToLogin } from "./authRedirect";
+import { useModalMotion } from "./useModalMotion";
 import {
   fetchCategoryOptions,
   fetchMyProducts,
@@ -33,6 +35,7 @@ import TopicPostCard, {
 } from "./components/TopicPostCard";
 import TopicPostUploadModal from "./components/TopicPostUploadModal";
 import ResourceSearchBar from "./components/ResourceSearchBar";
+import CampaignZone from "./components/CampaignZone";
 import MainViewSwitch, { MainViewTabNav } from "./components/MainViewSwitch";
 import BrandLogo from "./components/BrandLogo";
 import { bareTopicName, formatTopicName } from "./topicUtils";
@@ -147,7 +150,6 @@ export default function App() {
   const [categories, setCategories] = useState(["全部"]);
   const [campaigns, setCampaigns] = useState([]);
   const [activeCategory, setActiveCategory] = useState("全部");
-  const [activeScope, setActiveScope] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [activeTopicId, setActiveTopicId] = useState("");
@@ -208,7 +210,9 @@ export default function App() {
   const [myLoading, setMyLoading] = useState(false);
 
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const submitModalMotion = useModalMotion(showSubmitModal);
   const [editingProductId, setEditingProductId] = useState("");
+  const [submitReturnCampaignId, setSubmitReturnCampaignId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [imageUploading, setImageUploading] = useState(false);
@@ -236,16 +240,6 @@ export default function App() {
   const hasMore = products.length > 0 && visibleCount < products.length;
   const topicHasMore =
     topicPosts.length > 0 && topicVisibleCount < topicPosts.length;
-  const homeScopes = useMemo(
-    () => [
-      { id: "all", label: "全部标签" },
-      ...campaigns.map((campaign) => ({
-        id: campaign.id,
-        label: campaign.title,
-      })),
-    ],
-    [campaigns],
-  );
   const filterTags = useMemo(() => {
     const rest = categories.filter((c) => c !== "全部" && c !== "其他");
     return ["全部", ...rest];
@@ -254,12 +248,6 @@ export default function App() {
   useEffect(() => {
     if (activeCategory === "其他") setActiveCategory("全部");
   }, [activeCategory]);
-
-  useEffect(() => {
-    if (!homeScopes.some((scope) => scope.id === activeScope)) {
-      setActiveScope("all");
-    }
-  }, [homeScopes, activeScope]);
 
   useEffect(() => {
     fetchCategoryOptions()
@@ -273,17 +261,12 @@ export default function App() {
       .catch(() => setCampaigns([]));
   }, []);
 
-  async function loadProducts(
-    category = activeCategory,
-    q = appliedSearch,
-    scope = activeScope,
-  ) {
+  async function loadProducts(category = activeCategory, q = appliedSearch) {
     try {
       setLoading(true);
       setError("");
       const list = await fetchProducts({
         category,
-        campaign: scope === "all" ? "" : scope,
         q,
       });
       setProducts(list);
@@ -331,9 +314,9 @@ export default function App() {
 
   useEffect(() => {
     if (activeView === "home") {
-      loadProducts(activeCategory, appliedSearch, activeScope);
+      loadProducts(activeCategory, appliedSearch);
     }
-  }, [activeCategory, activeScope, activeView, appliedSearch]);
+  }, [activeCategory, activeView, appliedSearch]);
 
   useEffect(() => {
     if (activeView === "topics") {
@@ -343,7 +326,7 @@ export default function App() {
 
   useEffect(() => {
     setVisibleCount(PRODUCT_PAGE_SIZE);
-  }, [activeCategory, activeScope]);
+  }, [activeCategory]);
 
   useEffect(() => {
     if (user && activeView === "my") {
@@ -465,24 +448,27 @@ export default function App() {
 
   function requireLogin() {
     if (!user) {
-      navigate("/login");
+      redirectToLogin(navigate);
       return false;
     }
     return true;
   }
 
-  function openSubmitModal() {
+  function openSubmitModal(presetCampaignId = "") {
     if (!requireLogin()) return;
+    const campaignId =
+      typeof presetCampaignId === "string" ? presetCampaignId.trim() : "";
     setEditingProductId("");
     setSubmitError("");
     setSubmitSelectedTopicId("");
     setSubmitTopicSuggestOpen(false);
+    setSubmitReturnCampaignId(campaignId);
     setForm({
       name: "",
       tagline: "",
       url: "",
       categories: [],
-      campaign: "",
+      campaign: campaignId,
       description: "",
       imageUrl: "",
       topicName: "",
@@ -537,6 +523,7 @@ export default function App() {
     setSubmitError("");
     setSubmitSelectedTopicId("");
     setSubmitTopicSuggestOpen(false);
+    setSubmitReturnCampaignId("");
   }
 
   function updateForm(key, value) {
@@ -645,10 +632,14 @@ export default function App() {
       const result = isEditing
         ? await updateProduct(editingProductId, payload)
         : await submitProduct(payload);
+      const returnCampaignId =
+        submitReturnCampaignId ||
+        (typeof payload.campaign === "string" ? payload.campaign : "");
       setShowSubmitModal(false);
       setEditingProductId("");
       setSubmitSelectedTopicId("");
       setSubmitTopicSuggestOpen(false);
+      setSubmitReturnCampaignId("");
       setForm({
         name: "",
         tagline: "",
@@ -667,15 +658,19 @@ export default function App() {
           ? result.message
           : "",
       );
+      if (!isEditing && returnCampaignId) {
+        navigate(`/campaign/${encodeURIComponent(returnCampaignId)}`);
+        return;
+      }
       if (isEditing || !isAdmin) {
         setSearchParams({ view: "my" });
         await loadMyProducts();
       }
       if (isAdmin && !isEditing) {
         setSearchParams({});
-        await loadProducts(activeCategory, appliedSearch, activeScope);
+        await loadProducts(activeCategory, appliedSearch);
       } else if (isAdmin && isEditing) {
-        await loadProducts(activeCategory, appliedSearch, activeScope);
+        await loadProducts(activeCategory, appliedSearch);
       }
     } catch (err) {
       setSubmitError(err.message);
@@ -752,11 +747,9 @@ export default function App() {
       ?.scrollIntoView({ behavior: "smooth" });
   }
 
-  function selectScope(scopeId) {
-    setActiveScope(scopeId);
-    setActiveCategory("全部");
-    setAppliedSearch("");
-    setSearchQuery("");
+  function openCampaignDetail(campaignId) {
+    if (!campaignId) return;
+    navigate(`/campaign/${encodeURIComponent(campaignId)}`);
   }
 
   function selectCategory(category, e) {
@@ -859,6 +852,16 @@ export default function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, topicAll]);
+
+  // 活动页一键参与：/?publish=<campaignId> 仍兼容，进入对应活动详情并打开弹窗
+  useEffect(() => {
+    const publishCampaign = (searchParams.get("publish") || "").trim();
+    if (!publishCampaign) return;
+    navigate(`/campaign/${encodeURIComponent(publishCampaign)}?join=1`, {
+      replace: true,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   function openCreateTopicModal() {
     if (!requireLogin()) return;
@@ -1260,41 +1263,13 @@ export default function App() {
 
             <section className="ph-section">
               <div className="ph-section-inner">
+                <CampaignZone
+                  campaigns={campaigns}
+                  onOpenCampaign={openCampaignDetail}
+                />
+
                 <div className="ph-all-section" id="resource-list">
                   <div className="ph-all-box">
-                    <div
-                      className="ph-scope-tabs"
-                      role="tablist"
-                      aria-label="资源范围"
-                    >
-                      {homeScopes.map((scope) => (
-                        <button
-                          key={scope.id}
-                          type="button"
-                          role="tab"
-                          aria-selected={scope.id === activeScope}
-                          className={
-                            "ph-scope-tab" +
-                            (scope.id === activeScope ? " active" : "") +
-                            (scope.id !== "all"
-                              ? " ph-scope-tab--campaign"
-                              : "")
-                          }
-                          onClick={() => selectScope(scope.id)}
-                        >
-                          {scope.id !== "all" && (
-                            <span
-                              className="ph-scope-tab-dot"
-                              aria-hidden="true"
-                            />
-                          )}
-                          <span className="ph-scope-tab-label">
-                            {scope.label}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-
                     <ResourceSearchBar
                       value={searchQuery}
                       onChange={setSearchQuery}
@@ -1377,11 +1352,9 @@ export default function App() {
                           title={
                             appliedSearch
                               ? `未找到「${appliedSearch}」相关资源`
-                              : activeScope !== "all"
-                                ? `暂无${homeScopes.find((s) => s.id === activeScope)?.label || "活动"}资源`
-                                : activeCategory !== "全部"
-                                  ? "该分类下还没有资源"
-                                  : "还没有资源，来上传第一个吧"
+                              : activeCategory !== "全部"
+                                ? "该分类下还没有资源"
+                                : "还没有资源，来上传第一个吧"
                           }
                           action={
                             <button
@@ -1563,11 +1536,14 @@ export default function App() {
         </div>
       </footer>
 
-      {showSubmitModal &&
+      {submitModalMotion.mounted &&
         createPortal(
-          <div className="modal-overlay" onClick={closeSubmitModal}>
+          <div
+            className={submitModalMotion.overlayClassName}
+            onClick={closeSubmitModal}
+          >
             <div
-              className="modal"
+              className={submitModalMotion.panelClassName}
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"

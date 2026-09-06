@@ -26,7 +26,7 @@ export default function ForgotPassword() {
       setSuccess("");
       const result = await forgotPassword(username, nickname, password);
       setSuccess(result.message || "密码已重置，请使用新密码登录");
-      setTimeout(() => navigate("/login"), 1500);
+      setTimeout(() => navigate("/login", { replace: true }), 1500);
     } catch (err) {
       setError(err.message);
     } finally {

@@ -1,16 +1,34 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 
+function resolvePostAuthTarget(searchParams, user) {
+  const from = (searchParams.get("from") || "").trim();
+  if (user?.role === "admin") return "/admin";
+  if (from.startsWith("/")) return from;
+  return "/";
+}
+
 export default function Register() {
-  const { register } = useAuth();
+  const { user, loading: authLoading, register } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [username, setUsername] = useState("");
   const [nickname, setNickname] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const fromQuery = searchParams.get("from");
+  const loginHref = fromQuery
+    ? `/login?from=${encodeURIComponent(fromQuery)}`
+    : "/login";
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    navigate(resolvePostAuthTarget(searchParams, user), { replace: true });
+  }, [authLoading, user, searchParams, navigate]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -22,13 +40,25 @@ export default function Register() {
     try {
       setLoading(true);
       setError("");
-      await register(username, nickname, password);
-      navigate("/");
+      const result = await register(username, nickname, password);
+      navigate(resolvePostAuthTarget(searchParams, result.user), {
+        replace: true,
+      });
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  }
+
+  if (authLoading || user) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <p className="auth-tip">正在进入…</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -95,10 +125,7 @@ export default function Register() {
         </button>
 
         <p className="auth-switch">
-          已有账号？<Link to="/login">去登录</Link>
-        </p>
-        <p className="auth-switch">
-          <Link to="/">返回首页</Link>
+          已有账号？<Link to={loginHref}>去登录</Link>
         </p>
       </form>
     </div>

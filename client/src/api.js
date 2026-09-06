@@ -333,21 +333,25 @@ export async function fetchCampaigns() {
   return request("/api/campaigns");
 }
 
+export async function fetchCampaign(id) {
+  return request(`/api/campaigns/${encodeURIComponent(id)}`);
+}
+
 export async function fetchAdminCampaigns() {
   return request("/api/admin/campaigns");
 }
 
-export async function createCampaign({ title, rankLabel, sort, enabled }) {
+export async function createCampaign(payload) {
   return request("/api/admin/campaigns", {
     method: "POST",
-    body: JSON.stringify({ title, rankLabel, sort, enabled }),
+    body: JSON.stringify(payload || {}),
   });
 }
 
-export async function updateCampaign(id, { title, rankLabel, sort, enabled }) {
+export async function updateCampaign(id, payload) {
   return request(`/api/admin/campaigns/${id}`, {
     method: "PUT",
-    body: JSON.stringify({ title, rankLabel, sort, enabled }),
+    body: JSON.stringify(payload || {}),
   });
 }
 

@@ -1,14 +1,29 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
 
+function resolvePostLoginTarget(searchParams, user) {
+  const from = (searchParams.get("from") || "").trim();
+  if (user?.role === "admin") return "/admin";
+  if (from.startsWith("/")) return from;
+  return "/";
+}
+
 export default function Login() {
-  const { login } = useAuth();
+  const { user, loading: authLoading, login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // 已登录时不应停留在登录页（含浏览器返回又进登录的情况）
+  useEffect(() => {
+    if (authLoading || !user) return;
+    const target = resolvePostLoginTarget(searchParams, user);
+    navigate(target, { replace: true });
+  }, [authLoading, user, searchParams, navigate]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -16,12 +31,24 @@ export default function Login() {
       setLoading(true);
       setError("");
       const result = await login(username, password);
-      navigate(result.user?.role === "admin" ? "/admin" : "/");
+      const target = resolvePostLoginTarget(searchParams, result.user);
+      // replace：用目标页替换登录页，避免返回键回到登录
+      navigate(target, { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  }
+
+  if (authLoading || user) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <p className="auth-tip">正在进入…</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -65,7 +92,10 @@ export default function Login() {
         </button>
 
         <p className="auth-switch">
-          还没有账号？<Link to="/register">去注册</Link>
+          还没有账号？
+          <Link to={`/register${searchParams.get("from") ? `?from=${encodeURIComponent(searchParams.get("from"))}` : ""}`}>
+            去注册
+          </Link>
         </p>
         <p className="auth-switch">
           <Link to="/">返回首页</Link>

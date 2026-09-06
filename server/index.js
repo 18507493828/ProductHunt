@@ -10,6 +10,7 @@ import {
   DEFAULT_CATEGORIES,
   DEFAULT_CATEGORY,
   DEFAULT_CAMPAIGNS,
+  DEFAULT_CAMPAIGN_ZONE,
 } from "./categories.js";
 import { TOPIC_SEED } from "./topic-seed.js";
 import { TOPIC_POST_SEED } from "./topic-post-seed.js";
@@ -37,6 +38,7 @@ const UPLOADS_DIR = path.join(__dirname, "storage", "uploads");
 const BANNERS_FILE = path.join(__dirname, "storage", "banners.json");
 const NAVS_FILE = path.join(__dirname, "storage", "navs.json");
 const CAMPAIGNS_FILE = path.join(__dirname, "storage", "campaigns.json");
+const CAMPAIGN_ZONE_FILE = path.join(__dirname, "storage", "campaign-zone.json");
 const CATEGORIES_FILE = path.join(__dirname, "storage", "categories.json");
 const TOPICS_FILE = path.join(__dirname, "storage", "topics.json");
 const TOPIC_POSTS_DIR = path.join(__dirname, "storage", "topic-posts");
@@ -364,7 +366,38 @@ async function refreshCampaignCache(list) {
 async function initCampaigns() {
   const existing = await readCampaigns();
   if (existing.length > 0) {
-    await refreshCampaignCache(existing);
+    // 为旧数据补齐活动详情字段，不覆盖已有文案
+    let changed = false;
+    const seedMap = Object.fromEntries(
+      DEFAULT_CAMPAIGNS.map((item) => [item.id, item]),
+    );
+    const merged = existing.map((item) => {
+      const seed = seedMap[item.id] || {};
+      const next = { ...item };
+      for (const key of [
+        "description",
+        "coverImage",
+        "timeText",
+        "rules",
+        "rewards",
+      ]) {
+        if (next[key] == null || next[key] === "") {
+          if (seed[key]) {
+            next[key] = seed[key];
+            changed = true;
+          } else if (next[key] == null) {
+            next[key] = "";
+            changed = true;
+          }
+        }
+      }
+      return next;
+    });
+    if (changed) {
+      await writeCampaigns(merged);
+    } else {
+      await refreshCampaignCache(existing);
+    }
     return;
   }
 
@@ -373,6 +406,11 @@ async function initCampaigns() {
     id: item.id,
     title: item.title,
     rankLabel: item.rankLabel || item.title,
+    description: item.description || "",
+    coverImage: item.coverImage || "",
+    timeText: item.timeText || "",
+    rules: item.rules || "",
+    rewards: item.rewards || "",
     enabled: item.enabled !== false,
     sort: Number(item.sort) || index + 1,
     createdAt: now,
@@ -381,15 +419,117 @@ async function initCampaigns() {
   await writeCampaigns(seed);
 }
 
+function normalizeCampaignImage(url) {
+  const value = String(url || "").trim();
+  if (!value) return "";
+  if (IMAGE_URL_PATTERN.test(value)) return value;
+  return "";
+}
+
+function pickCampaignFields(body = {}, existing = {}) {
+  const title = (body.title ?? existing.title ?? "").toString().trim();
+  const rankLabel = (body.rankLabel ?? existing.rankLabel ?? "").toString().trim();
+  const description = (
+    body.description !== undefined ? body.description : existing.description || ""
+  )
+    .toString()
+    .trim();
+  const timeText = (
+    body.timeText !== undefined ? body.timeText : existing.timeText || ""
+  )
+    .toString()
+    .trim();
+  const rules = (body.rules !== undefined ? body.rules : existing.rules || "")
+    .toString()
+    .trim();
+  const rewards = (
+    body.rewards !== undefined ? body.rewards : existing.rewards || ""
+  )
+    .toString()
+    .trim();
+  const coverRaw =
+    body.coverImage !== undefined ? body.coverImage : existing.coverImage || "";
+  return {
+    title,
+    rankLabel: rankLabel || title,
+    description,
+    coverImage: normalizeCampaignImage(coverRaw),
+    timeText,
+    rules,
+    rewards,
+  };
+}
+
 function toPublicCampaign(campaign) {
   return {
     id: campaign.id,
     title: campaign.title || "",
     rankLabel: campaign.rankLabel || campaign.title || "",
+    description: campaign.description || "",
+    coverImage: campaign.coverImage || "",
+    timeText: campaign.timeText || "",
+    rules: campaign.rules || "",
+    rewards: campaign.rewards || "",
     sort: Number(campaign.sort) || 0,
     enabled: campaign.enabled !== false,
     createdAt: campaign.createdAt || "",
     updatedAt: campaign.updatedAt || "",
+  };
+}
+
+async function getCampaignStatsMap() {
+  const products = await listProducts();
+  const map = {};
+  for (const product of products) {
+    const campaignId = product.campaign;
+    if (!campaignId) continue;
+    if (!map[campaignId]) {
+      map[campaignId] = {
+        productCount: 0,
+        approvedCount: 0,
+        pendingCount: 0,
+        voteCount: 0,
+        submitters: new Set(),
+      };
+    }
+    const bucket = map[campaignId];
+    bucket.productCount += 1;
+    const status = product.status || "approved";
+    if (status === "approved") bucket.approvedCount += 1;
+    if (status === "pending") bucket.pendingCount += 1;
+    bucket.voteCount += Number(product.voteCount) || 0;
+    if (product.submittedBy) bucket.submitters.add(product.submittedBy);
+  }
+
+  const result = {};
+  for (const [id, bucket] of Object.entries(map)) {
+    result[id] = {
+      productCount: bucket.productCount,
+      approvedCount: bucket.approvedCount,
+      pendingCount: bucket.pendingCount,
+      voteCount: bucket.voteCount,
+      participantCount: bucket.submitters.size,
+    };
+  }
+  return result;
+}
+
+function withCampaignStats(campaign, statsMap = {}, { includePending = false } = {}) {
+  const stats = statsMap[campaign.id] || {
+    productCount: 0,
+    approvedCount: 0,
+    pendingCount: 0,
+    voteCount: 0,
+    participantCount: 0,
+  };
+  const base = toPublicCampaign(campaign);
+  return {
+    ...base,
+    productCount: includePending ? stats.productCount : stats.approvedCount,
+    approvedCount: stats.approvedCount,
+    pendingCount: includePending ? stats.pendingCount : undefined,
+    voteCount: stats.voteCount,
+    participantCount: stats.participantCount,
   };
 }
 
@@ -400,6 +540,43 @@ async function getCampaignById(id) {
 
 function isKnownCampaign(id) {
   return Boolean(id && campaignCache.ids.includes(id));
+}
+
+/* ---------------- 活动专区容器配置 ---------------- */
+
+async function readCampaignZone() {
+  try {
+    const raw = await fs.readFile(CAMPAIGN_ZONE_FILE, "utf-8");
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== "object") {
+      return { ...DEFAULT_CAMPAIGN_ZONE };
+    }
+    return {
+      title: String(data.title || DEFAULT_CAMPAIGN_ZONE.title).trim() || DEFAULT_CAMPAIGN_ZONE.title,
+      enabled: data.enabled !== false,
+    };
+  } catch {
+    return { ...DEFAULT_CAMPAIGN_ZONE };
+  }
+}
+
+async function writeCampaignZone(zone) {
+  await fs.writeFile(CAMPAIGN_ZONE_FILE, JSON.stringify(zone, null, 2), "utf-8");
+}
+
+async function initCampaignZone() {
+  try {
+    await fs.access(CAMPAIGN_ZONE_FILE);
+  } catch {
+    await writeCampaignZone({ ...DEFAULT_CAMPAIGN_ZONE });
+  }
+}
+
+function toPublicCampaignZone(zone) {
+  return {
+    title: zone?.title || DEFAULT_CAMPAIGN_ZONE.title,
+    enabled: zone?.enabled !== false,
+  };
 }
 
 /* ---------------- 分类配置存储 ---------------- */
@@ -1018,11 +1195,25 @@ app.delete("/api/admin/categories/:id", requireAdmin, async (req, res) => {
 // 公开：获取启用的活动（按 sort 升序）—— 当前先全部展示
 app.get("/api/campaigns", async (_req, res) => {
   try {
+    const statsMap = await getCampaignStatsMap();
     const campaigns = (await readCampaigns())
       .filter((item) => item.enabled !== false)
       .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0))
-      .map(toPublicCampaign);
+      .map((item) => withCampaignStats(item, statsMap));
     res.json(campaigns);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/campaigns/:id", async (req, res) => {
+  try {
+    const campaign = await getCampaignById(req.params.id);
+    if (!campaign || campaign.enabled === false) {
+      return res.status(404).json({ error: "活动不存在或已下线" });
+    }
+    const statsMap = await getCampaignStatsMap();
+    res.json(withCampaignStats(campaign, statsMap));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1030,9 +1221,12 @@ app.get("/api/campaigns", async (_req, res) => {
 
 app.get("/api/admin/campaigns", requireAdmin, async (_req, res) => {
   try {
+    const statsMap = await getCampaignStatsMap();
     const campaigns = (await readCampaigns())
       .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0))
-      .map(toPublicCampaign);
+      .map((item) =>
+        withCampaignStats(item, statsMap, { includePending: true }),
+      );
     res.json(campaigns);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1041,16 +1235,15 @@ app.get("/api/admin/campaigns", requireAdmin, async (_req, res) => {
 
 app.post("/api/admin/campaigns", requireAdmin, async (req, res) => {
   try {
-    const title = (req.body?.title || "").trim();
-    const rankLabel = (req.body?.rankLabel || "").trim();
+    const fields = pickCampaignFields(req.body || {});
     const sort = Number(req.body?.sort);
     const enabled = req.body?.enabled !== false;
-    if (!title) {
+    if (!fields.title) {
       return res.status(400).json({ error: "请填写活动名称" });
     }
 
     const campaigns = await readCampaigns();
-    const idBase = (req.body?.id || title)
+    const idBase = (req.body?.id || fields.title)
       .toString()
       .trim()
       .toLowerCase()
@@ -1065,8 +1258,7 @@ app.post("/api/admin/campaigns", requireAdmin, async (req, res) => {
     const now = new Date().toISOString();
     const campaign = {
       id,
-      title,
-      rankLabel: rankLabel || title,
+      ...fields,
       sort: Number.isFinite(sort) ? sort : campaigns.length + 1,
       enabled,
       createdAt: now,
@@ -1088,19 +1280,20 @@ app.put("/api/admin/campaigns/:id", requireAdmin, async (req, res) => {
       return res.status(404).json({ error: "活动不存在" });
     }
 
-    const title = (req.body?.title || "").trim();
-    const rankLabel = (req.body?.rankLabel || "").trim();
-    if (!title) {
+    const fields = pickCampaignFields(req.body || {}, campaigns[index]);
+    if (!fields.title) {
       return res.status(400).json({ error: "请填写活动名称" });
     }
 
     const sort = Number(req.body?.sort);
     campaigns[index] = {
       ...campaigns[index],
-      title,
-      rankLabel: rankLabel || title,
+      ...fields,
       sort: Number.isFinite(sort) ? sort : campaigns[index].sort,
-      enabled: req.body?.enabled !== false,
+      enabled:
+        req.body?.enabled !== undefined
+          ? req.body.enabled !== false
+          : campaigns[index].enabled !== false,
       updatedAt: new Date().toISOString(),
     };
     await writeCampaigns(campaigns);

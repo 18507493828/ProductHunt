@@ -7,6 +7,7 @@ import {
   postTopicComment,
 } from "../api";
 import { useAuth } from "../AuthContext";
+import { redirectToLogin } from "../authRedirect";
 import { useToast } from "../Toast";
 import EmptyState from "../components/EmptyState";
 import CachedImage from "../components/CachedImage";
@@ -61,7 +62,7 @@ export default function TopicPostDetail() {
 
   function requireLogin() {
     if (!user) {
-      navigate("/login");
+      redirectToLogin(navigate);
       return false;
     }
     return true;

@@ -1,15 +1,22 @@
 import { useEffect, useState } from "react";
+import { Upload } from "lucide-react";
 import EmptyState from "../../components/EmptyState";
 import {
   createCampaign,
   deleteCampaign,
   fetchAdminCampaigns,
   updateCampaign,
+  uploadImage,
 } from "../../api";
 
 const EMPTY_FORM = {
   title: "",
   rankLabel: "",
+  description: "",
+  coverImage: "",
+  timeText: "",
+  rules: "",
+  rewards: "",
   sort: 0,
   enabled: true,
 };
@@ -22,6 +29,7 @@ export default function Campaigns() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
 
   async function loadCampaigns() {
     try {
@@ -44,6 +52,11 @@ export default function Campaigns() {
         ? {
             title: campaign.title || "",
             rankLabel: campaign.rankLabel || "",
+            description: campaign.description || "",
+            coverImage: campaign.coverImage || "",
+            timeText: campaign.timeText || "",
+            rules: campaign.rules || "",
+            rewards: campaign.rewards || "",
             sort: campaign.sort ?? 0,
             enabled: campaign.enabled !== false,
           }
@@ -57,10 +70,25 @@ export default function Campaigns() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  async function handleCoverUpload(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      setCoverUploading(true);
+      setError("");
+      const { url } = await uploadImage(file);
+      updateForm("coverImage", url);
+    } catch (err) {
+      setError(err.message || "封面上传失败");
+    } finally {
+      setCoverUploading(false);
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     const title = form.title.trim();
-    const rankLabel = form.rankLabel.trim();
     if (!title) {
       setError("请填写活动名称");
       return;
@@ -71,7 +99,12 @@ export default function Campaigns() {
       setError("");
       const payload = {
         title,
-        rankLabel: rankLabel || title,
+        rankLabel: form.rankLabel.trim() || title,
+        description: form.description.trim(),
+        coverImage: form.coverImage.trim(),
+        timeText: form.timeText.trim(),
+        rules: form.rules.trim(),
+        rewards: form.rewards.trim(),
         sort: Number(form.sort) || 0,
         enabled: form.enabled !== false,
       };
@@ -108,9 +141,7 @@ export default function Campaigns() {
       setActionId(campaign.id);
       setError("");
       await updateCampaign(campaign.id, {
-        title: campaign.title,
-        rankLabel: campaign.rankLabel,
-        sort: campaign.sort,
+        ...campaign,
         enabled: !(campaign.enabled !== false),
       });
       await loadCampaigns();
@@ -125,7 +156,7 @@ export default function Campaigns() {
     <>
       <div className="admin-toolbar">
         <p className="admin-toolbar-hint">
-          配置首页活动分区与热门榜单活动入口。当前先全部展示。
+          配置活动封面、时间/规则/奖励与首页「活动专区」入口，作品按活动聚合展示。
         </p>
         <button type="button" className="add-banner-btn" onClick={() => openModal()}>
           新增活动
@@ -146,7 +177,9 @@ export default function Campaigns() {
                   <span
                     className={
                       "status-badge " +
-                      (campaign.enabled !== false ? "status-approved" : "status-rejected")
+                      (campaign.enabled !== false
+                        ? "status-approved"
+                        : "status-rejected")
                     }
                   >
                     {campaign.enabled !== false ? "展示中" : "已隐藏"}
@@ -156,7 +189,16 @@ export default function Campaigns() {
                   <span>ID：{campaign.id}</span>
                   <span>榜单名：{campaign.rankLabel || campaign.title}</span>
                   <span>排序：{campaign.sort ?? 0}</span>
+                  {campaign.timeText && <span>时间：{campaign.timeText}</span>}
+                  <span>作品：{campaign.productCount ?? 0}</span>
+                  <span>已上架：{campaign.approvedCount ?? 0}</span>
+                  <span>待审：{campaign.pendingCount ?? 0}</span>
+                  <span>参与人：{campaign.participantCount ?? 0}</span>
+                  <span>评分：{campaign.voteCount ?? 0}</span>
                 </div>
+                {campaign.description && (
+                  <p className="admin-item-desc">{campaign.description}</p>
+                )}
               </div>
               <div className="admin-actions">
                 <button
@@ -192,9 +234,12 @@ export default function Campaigns() {
       )}
 
       {modalOpen && (
-        <div className="modal-overlay" onClick={() => !saving && setModalOpen(false)}>
+        <div
+          className="modal-overlay"
+          onClick={() => !saving && setModalOpen(false)}
+        >
           <form
-            className="modal-card"
+            className="modal-card modal-card-wide"
             onClick={(e) => e.stopPropagation()}
             onSubmit={handleSubmit}
           >
@@ -233,6 +278,96 @@ export default function Campaigns() {
                   maxLength={20}
                 />
               </label>
+              <label className="modal-field">
+                <span>活动介绍</span>
+                <textarea
+                  rows={3}
+                  value={form.description}
+                  onChange={(e) => updateForm("description", e.target.value)}
+                  placeholder="一句话说明活动目的与参与方式"
+                  maxLength={300}
+                />
+              </label>
+              <label className="modal-field">
+                <span>活动时间</span>
+                <input
+                  value={form.timeText}
+                  onChange={(e) => updateForm("timeText", e.target.value)}
+                  placeholder="例如：2026.09.01 - 2026.10.24"
+                  maxLength={80}
+                />
+              </label>
+              <label className="modal-field">
+                <span>活动规则</span>
+                <textarea
+                  rows={4}
+                  value={form.rules}
+                  onChange={(e) => updateForm("rules", e.target.value)}
+                  placeholder="参与条件、提交要求、禁止事项等"
+                  maxLength={1200}
+                />
+              </label>
+              <label className="modal-field">
+                <span>活动奖励</span>
+                <textarea
+                  rows={3}
+                  value={form.rewards}
+                  onChange={(e) => updateForm("rewards", e.target.value)}
+                  placeholder="曝光、礼品、证书等奖励说明"
+                  maxLength={600}
+                />
+              </label>
+              <div className="modal-field">
+                <span>活动封面</span>
+                <div className="banner-upload">
+                  {form.coverImage ? (
+                    <div className="banner-upload-preview">
+                      <img src={form.coverImage} alt="活动封面预览" />
+                      <button
+                        type="button"
+                        className="ph-upload-remove"
+                        onClick={() => updateForm("coverImage", "")}
+                        aria-label="移除封面"
+                        title="移除封面"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <label
+                      className={
+                        coverUploading
+                          ? "ph-upload-trigger uploading"
+                          : "ph-upload-trigger"
+                      }
+                    >
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        onChange={handleCoverUpload}
+                        disabled={coverUploading || saving}
+                        hidden
+                      />
+                      <Upload
+                        className="ph-upload-icon"
+                        size={26}
+                        aria-hidden="true"
+                      />
+                      <span className="ph-upload-text">
+                        {coverUploading ? "上传中..." : "点击上传封面"}
+                      </span>
+                      <span className="ph-upload-sub">
+                        JPG / PNG / GIF / WebP，建议横图
+                      </span>
+                    </label>
+                  )}
+                </div>
+                <input
+                  value={form.coverImage}
+                  onChange={(e) => updateForm("coverImage", e.target.value)}
+                  placeholder="或粘贴封面图片 URL"
+                />
+              </div>
               <label className="modal-field">
                 <span>排序</span>
                 <input

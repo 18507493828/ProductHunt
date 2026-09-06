@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Flame, Heart, MessageSquare, PenLine, Users } from "lucide-react";
 import { fetchTopic, followTopic } from "../api";
 import { useAuth } from "../AuthContext";
+import { redirectToLogin } from "../authRedirect";
 import { useNavigate } from "react-router-dom";
 import CachedImage from "./CachedImage";
 import { formatTopicName } from "../topicUtils";
@@ -80,7 +81,7 @@ export default function TopicDetailPanel({ topicId, onPublish }) {
 
   async function handleFollow() {
     if (!user) {
-      navigate("/login");
+      redirectToLogin(navigate);
       return;
     }
     try {

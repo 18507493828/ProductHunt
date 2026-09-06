@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowUpRight, Eye, MessageCircle, ThumbsUp } from "lucide-react";
 import { fetchProduct, fetchProducts, postComment, voteProduct } from "../api";
 import { useAuth } from "../AuthContext";
+import { redirectToLogin } from "../authRedirect";
 import { useToast } from "../Toast";
 import EmptyState from "../components/EmptyState";
 import RatingModal from "../components/RatingModal";
@@ -78,7 +79,7 @@ export default function ResourceDetail() {
 
   function requireLogin() {
     if (!user) {
-      navigate("/login");
+      redirectToLogin(navigate);
       return false;
     }
     return true;
