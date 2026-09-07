@@ -242,10 +242,9 @@ export default function SubmitProductModal({
   const lockedCampaign = campaigns.find((c) => c.id === lockedCampaignId);
 
   return createPortal(
-    <div className={overlayClassName} onClick={handleClose}>
+    <div className={overlayClassName}>
       <div
         className={panelClassName}
-        onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="submit-product-modal-title"

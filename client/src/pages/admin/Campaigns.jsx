@@ -234,13 +234,9 @@ export default function Campaigns() {
       )}
 
       {modalOpen && (
-        <div
-          className="modal-overlay"
-          onClick={() => !saving && setModalOpen(false)}
-        >
+        <div className="modal-overlay">
           <form
             className="modal-card modal-card-wide"
-            onClick={(e) => e.stopPropagation()}
             onSubmit={handleSubmit}
           >
             <div className="modal-header">

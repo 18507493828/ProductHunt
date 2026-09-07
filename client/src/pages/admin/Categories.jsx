@@ -195,15 +195,8 @@ export default function Categories() {
       )}
 
       {modalOpen && (
-        <div
-          className="modal-overlay"
-          onClick={() => !saving && setModalOpen(false)}
-        >
-          <form
-            className="modal-card"
-            onClick={(e) => e.stopPropagation()}
-            onSubmit={handleSubmit}
-          >
+        <div className="modal-overlay">
+          <form className="modal-card" onSubmit={handleSubmit}>
             <div className="modal-header">
               <div>
                 <p className="modal-eyebrow">分类</p>

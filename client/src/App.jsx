@@ -1538,13 +1538,9 @@ export default function App() {
 
       {submitModalMotion.mounted &&
         createPortal(
-          <div
-            className={submitModalMotion.overlayClassName}
-            onClick={closeSubmitModal}
-          >
+          <div className={submitModalMotion.overlayClassName}>
             <div
               className={submitModalMotion.panelClassName}
-              onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
               aria-labelledby="submit-modal-title"
@@ -1846,10 +1842,9 @@ export default function App() {
 
       {showCreateTopicModal &&
         createPortal(
-          <div className="modal-overlay" onClick={closeCreateTopicModal}>
+          <div className="modal-overlay">
             <div
               className="modal"
-              onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
               aria-labelledby="topic-modal-title"

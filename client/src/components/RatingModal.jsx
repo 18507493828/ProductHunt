@@ -28,13 +28,12 @@ export default function RatingModal({
   const active = hover || rating;
 
   return createPortal(
-    <div className="modal-overlay" onClick={onCancel}>
+    <div className="modal-overlay">
       <div
         className="ph-rating-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="rating-modal-title"
-        onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"

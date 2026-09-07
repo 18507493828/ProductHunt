@@ -16,10 +16,9 @@ export default function TopicPostUploadModal({
   if (!open) return null;
 
   return createPortal(
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div
         className="modal"
-        onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="topic-post-modal-title"
