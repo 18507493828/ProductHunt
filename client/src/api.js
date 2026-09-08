@@ -171,10 +171,10 @@ export async function updateProduct(
   });
 }
 
-export async function voteProduct(id, rating) {
+export async function voteProduct(id, ratings) {
   return request(`/api/products/${id}/vote`, {
     method: "POST",
-    body: JSON.stringify({ rating }),
+    body: JSON.stringify({ ratings }),
   });
 }
 
@@ -238,8 +238,13 @@ export async function followTopic(id) {
   return request(`/api/topics/${id}/follow`, { method: "POST" });
 }
 
-export async function fetchAdminProducts(status = "pending") {
-  return request(`/api/admin/products?status=${encodeURIComponent(status)}`);
+export async function fetchAdminProducts(status = "pending", filters = {}) {
+  const params = new URLSearchParams();
+  params.set("status", status);
+  if (filters.q) params.set("q", filters.q);
+  if (filters.campaign) params.set("campaign", filters.campaign);
+  if (filters.category) params.set("category", filters.category);
+  return request(`/api/admin/products?${params.toString()}`);
 }
 
 export async function approveProduct(id) {
@@ -261,6 +266,78 @@ export async function setProductSpecial(id, { isSpecial, campaign } = {}) {
   return request(`/api/admin/products/${id}/special`, {
     method: "POST",
     body: JSON.stringify({ isSpecial, campaign }),
+  });
+}
+
+export async function updateProductRank(id, payload) {
+  return request(`/api/admin/products/${id}/rank`, {
+    method: "POST",
+    body: JSON.stringify(payload || {}),
+  });
+}
+
+export async function fetchAdminRankings(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.campaign) params.set("campaign", filters.campaign);
+  const qs = params.toString();
+  return request(`/api/admin/rankings${qs ? `?${qs}` : ""}`);
+}
+
+export async function fetchAdminVotes(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
+  if (filters.productId) params.set("productId", filters.productId);
+  const qs = params.toString();
+  return request(`/api/admin/votes${qs ? `?${qs}` : ""}`);
+}
+
+export async function deleteAdminVote(productId, userId) {
+  return request(
+    `/api/admin/votes/${encodeURIComponent(productId)}/${encodeURIComponent(userId)}`,
+    { method: "DELETE" },
+  );
+}
+
+export async function fetchShareConfig() {
+  return request("/api/share-config");
+}
+
+export async function fetchAdminShareConfig() {
+  return request("/api/admin/share-config");
+}
+
+export async function updateAdminShareConfig(payload) {
+  return request("/api/admin/share-config", {
+    method: "PUT",
+    body: JSON.stringify(payload || {}),
+  });
+}
+
+export async function fetchAdminShares(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
+  if (filters.platform) params.set("platform", filters.platform);
+  const qs = params.toString();
+  const data = await request(`/api/admin/shares${qs ? `?${qs}` : ""}`);
+  if (Array.isArray(data)) {
+    return { items: data, stats: { all: data.length } };
+  }
+  return {
+    items: Array.isArray(data?.items) ? data.items : [],
+    stats: data?.stats || { all: 0 },
+  };
+}
+
+export async function deleteAdminShare(id) {
+  return request(`/api/admin/shares/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function recordProductShare(id, { platform = "" } = {}) {
+  return request(`/api/products/${encodeURIComponent(id)}/share`, {
+    method: "POST",
+    body: JSON.stringify({ platform }),
   });
 }
 

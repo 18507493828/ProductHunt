@@ -166,44 +166,45 @@ export default function Campaigns() {
       {error && <div className="error">{error}</div>}
 
       {campaigns.length === 0 ? (
-        <EmptyState title="还没有活动配置" />
+        <EmptyState title="还没有活动" />
       ) : (
-        <div className="admin-list">
+        <div className="admin-masonry">
           {campaigns.map((campaign) => (
-            <article className="admin-item" key={campaign.id}>
-              <div className="admin-item-main">
-                <div className="admin-item-top">
-                  <h2>{campaign.title}</h2>
-                  <span
-                    className={
-                      "status-badge " +
-                      (campaign.enabled !== false
-                        ? "status-approved"
-                        : "status-rejected")
-                    }
-                  >
-                    {campaign.enabled !== false ? "展示中" : "已隐藏"}
-                  </span>
-                </div>
-                <div className="admin-meta">
-                  <span>ID：{campaign.id}</span>
-                  <span>榜单名：{campaign.rankLabel || campaign.title}</span>
-                  <span>排序：{campaign.sort ?? 0}</span>
-                  {campaign.timeText && <span>时间：{campaign.timeText}</span>}
-                  <span>作品：{campaign.productCount ?? 0}</span>
-                  <span>已上架：{campaign.approvedCount ?? 0}</span>
-                  <span>待审：{campaign.pendingCount ?? 0}</span>
-                  <span>参与人：{campaign.participantCount ?? 0}</span>
-                  <span>评分：{campaign.voteCount ?? 0}</span>
-                </div>
-                {campaign.description && (
-                  <p className="admin-item-desc">{campaign.description}</p>
-                )}
+            <article
+              className={
+                "admin-masonry-card" +
+                (campaign.enabled !== false ? "" : " is-off")
+              }
+              key={campaign.id}
+            >
+              <div className="admin-masonry-card-top">
+                <span
+                  className={
+                    "status-badge " +
+                    (campaign.enabled !== false
+                      ? "status-approved"
+                      : "status-rejected")
+                  }
+                >
+                  {campaign.enabled !== false ? "展示中" : "已隐藏"}
+                </span>
+                <span className="admin-masonry-sort">#{campaign.sort ?? 0}</span>
               </div>
-              <div className="admin-actions">
+              <h2 className="admin-masonry-title">{campaign.title}</h2>
+              {campaign.description && (
+                <p className="admin-masonry-desc">{campaign.description}</p>
+              )}
+              <div className="admin-masonry-meta">
+                <span>榜单：{campaign.rankLabel || campaign.title}</span>
+                {campaign.timeText && <span>{campaign.timeText}</span>}
+                <span>作品 {campaign.productCount ?? 0}</span>
+                <span>已上架 {campaign.approvedCount ?? 0}</span>
+                <span>待审 {campaign.pendingCount ?? 0}</span>
+              </div>
+              <div className="admin-masonry-actions">
                 <button
                   type="button"
-                  className="approve-btn"
+                  className="admin-btn admin-btn-primary"
                   disabled={actionId === campaign.id}
                   onClick={() => openModal(campaign)}
                 >
@@ -211,9 +212,7 @@ export default function Campaigns() {
                 </button>
                 <button
                   type="button"
-                  className={
-                    campaign.enabled !== false ? "special-btn off" : "special-btn"
-                  }
+                  className="admin-btn admin-btn-ghost"
                   disabled={actionId === campaign.id}
                   onClick={() => toggleEnabled(campaign)}
                 >
@@ -221,7 +220,7 @@ export default function Campaigns() {
                 </button>
                 <button
                   type="button"
-                  className="delete-btn"
+                  className="admin-btn admin-btn-danger"
                   disabled={actionId === campaign.id}
                   onClick={() => handleDelete(campaign.id, campaign.title)}
                 >

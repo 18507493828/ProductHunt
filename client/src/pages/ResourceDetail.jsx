@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowUpRight, Eye, MessageCircle, ThumbsUp } from "lucide-react";
+import { ArrowUpRight, Eye, MessageCircle, Share2, ThumbsUp } from "lucide-react";
 import { fetchProduct, fetchProducts, postComment, voteProduct } from "../api";
 import { useAuth } from "../AuthContext";
 import { redirectToLogin } from "../authRedirect";
@@ -12,6 +12,7 @@ import CachedImage from "../components/CachedImage";
 import TopicRichText from "../components/TopicRichText";
 import BrandLogo from "../components/BrandLogo";
 import { buildTopicHomePath, formatTopicName } from "../topicUtils";
+import { useShare } from "../ShareContext";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -35,6 +36,7 @@ export default function ResourceDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const toast = useToast();
+  const { openShare } = useShare();
 
   const [resource, setResource] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -111,11 +113,11 @@ export default function ResourceDetail() {
     }
   }
 
-  async function submitRating(rating) {
+  async function submitRating(ratings) {
     if (!resource) return;
     try {
       setRatingBusy(true);
-      const result = await voteProduct(resource.id, rating);
+      const result = await voteProduct(resource.id, ratings);
       setResource((prev) =>
         prev
           ? {
@@ -123,12 +125,17 @@ export default function ResourceDetail() {
               votedByMe: result.voted,
               voteCount: result.voteCount,
               avgRating: result.avgRating,
+              avgRatings: result.avgRatings,
               ratingCount: result.ratingCount,
-              myRating: rating,
+              myRating: result.myRating,
+              myRatings: result.myRatings,
             }
           : prev,
       );
-      toast.success("评分成功", `已为「${resource.name}」打 ${rating} 星`);
+      toast.success(
+        "评分成功",
+        `已为「${resource.name}」打 ${result.myRating} 星`,
+      );
       setRatingOpen(false);
     } catch (err) {
       toast.error("评分失败", err.message);
@@ -260,6 +267,16 @@ export default function ResourceDetail() {
                       }}
                     >
                       {resource.votedByMe ? `已评 ${resource.myRating} 星` : "参与评分"}
+                    </button>
+                    <button
+                      type="button"
+                      className="ph-btn-secondary"
+                      aria-label="分享作品"
+                      title="复制文案和链接"
+                      onClick={() => openShare(resource)}
+                    >
+                      <Share2 size={16} aria-hidden="true" />
+                      分享
                     </button>
                   </div>
                 </div>

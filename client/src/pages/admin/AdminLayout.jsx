@@ -4,19 +4,25 @@ import BrandLogo from "../../components/BrandLogo";
 
 const NAV_ITEMS = [
   { to: "/admin", end: true, label: "总览" },
-  { to: "/admin/products", end: false, label: "资源审核" },
-  { to: "/admin/categories", end: false, label: "分类配置" },
-  { to: "/admin/campaigns", end: false, label: "活动配置" },
-  { to: "/admin/banners", end: false, label: "轮播图管理" },
+  { to: "/admin/products", end: false, label: "应用管理" },
+  { to: "/admin/votes", end: false, label: "投票管理" },
+  { to: "/admin/rankings", end: false, label: "榜单管理" },
+  { to: "/admin/shares", end: false, label: "分享管理" },
+  { to: "/admin/categories", end: false, label: "分类管理" },
+  { to: "/admin/campaigns", end: false, label: "活动管理" },
+  { to: "/admin/banners", end: false, label: "轮播管理" },
   { to: "/admin/navs", end: false, label: "导航管理" },
 ];
 
 const TITLE_MAP = {
   "/admin": "后台总览",
-  "/admin/products": "资源审核",
-  "/admin/categories": "分类配置",
-  "/admin/campaigns": "活动配置",
-  "/admin/banners": "轮播图管理",
+  "/admin/products": "应用管理",
+  "/admin/votes": "投票管理",
+  "/admin/rankings": "榜单管理",
+  "/admin/shares": "分享管理",
+  "/admin/categories": "分类管理",
+  "/admin/campaigns": "活动管理",
+  "/admin/banners": "轮播管理",
   "/admin/navs": "导航管理",
 };
 

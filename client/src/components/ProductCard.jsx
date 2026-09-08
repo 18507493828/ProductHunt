@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
-import { ThumbsUp, Eye, MessageCircle, Star } from "lucide-react";
+import { ThumbsUp, Eye, MessageCircle, Share2, Star } from "lucide-react";
 import CachedImage from "./CachedImage";
+import { useShare } from "../ShareContext";
 import { buildTopicHomePath, formatTopicName } from "../topicUtils";
 
 function getProductInitial(name = "") {
@@ -41,11 +42,18 @@ export default function ProductCard({
   size = "md",
 }) {
   const navigate = useNavigate();
+  const { openShare } = useShare();
   const mediaStyle = product.imageUrl
     ? undefined
     : {
         background: `linear-gradient(135deg, ${product.color || "#fc5531"} 0%, rgba(10,14,26,0.2) 100%)`,
       };
+
+  function handleShare(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    openShare(product);
+  }
 
   return (
     <Link
@@ -152,13 +160,24 @@ export default function ProductCard({
             ) : (
               <span />
             )}
-            {onVote && (
-              <VoteControl
-                product={product}
-                onVote={onVote}
-                disabled={votingDisabled}
-              />
-            )}
+            <div className="ph-product-card-footer-actions">
+              <button
+                type="button"
+                className="ph-card-share"
+                aria-label="分享作品"
+                title="复制文案和链接"
+                onClick={handleShare}
+              >
+                <Share2 size={14} strokeWidth={2.2} aria-hidden="true" />
+              </button>
+              {onVote && (
+                <VoteControl
+                  product={product}
+                  onVote={onVote}
+                  disabled={votingDisabled}
+                />
+              )}
+            </div>
           </div>
         </div>
       </article>

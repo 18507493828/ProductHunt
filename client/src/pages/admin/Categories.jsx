@@ -137,34 +137,36 @@ export default function Categories() {
       {error && <div className="error">{error}</div>}
 
       {categories.length === 0 ? (
-        <EmptyState title="还没有分类配置" />
+        <EmptyState title="还没有分类" />
       ) : (
-        <div className="admin-list">
+        <div className="admin-masonry">
           {categories.map((category) => (
-            <article className="admin-item" key={category.id}>
-              <div className="admin-item-main">
-                <div className="admin-item-top">
-                  <h2>{category.name}</h2>
-                  <span
-                    className={
-                      "status-badge " +
-                      (category.enabled !== false
-                        ? "status-approved"
-                        : "status-rejected")
-                    }
-                  >
-                    {category.enabled !== false ? "展示中" : "已隐藏"}
-                  </span>
-                </div>
-                <div className="admin-meta">
-                  <span>ID：{category.id}</span>
-                  <span>排序：{category.sort ?? 0}</span>
-                </div>
+            <article
+              className={
+                "admin-masonry-card" +
+                (category.enabled !== false ? "" : " is-off")
+              }
+              key={category.id}
+            >
+              <div className="admin-masonry-card-top">
+                <span
+                  className={
+                    "status-badge " +
+                    (category.enabled !== false
+                      ? "status-approved"
+                      : "status-rejected")
+                  }
+                >
+                  {category.enabled !== false ? "展示中" : "已隐藏"}
+                </span>
+                <span className="admin-masonry-sort">#{category.sort ?? 0}</span>
               </div>
-              <div className="admin-actions">
+              <h2 className="admin-masonry-title">{category.name}</h2>
+              <p className="admin-masonry-id">{category.id}</p>
+              <div className="admin-masonry-actions">
                 <button
                   type="button"
-                  className="approve-btn"
+                  className="admin-btn admin-btn-primary"
                   disabled={actionId === category.id}
                   onClick={() => openModal(category)}
                 >
@@ -172,9 +174,7 @@ export default function Categories() {
                 </button>
                 <button
                   type="button"
-                  className={
-                    category.enabled !== false ? "special-btn off" : "special-btn"
-                  }
+                  className="admin-btn admin-btn-ghost"
                   disabled={actionId === category.id}
                   onClick={() => toggleEnabled(category)}
                 >
@@ -182,7 +182,7 @@ export default function Categories() {
                 </button>
                 <button
                   type="button"
-                  className="delete-btn"
+                  className="admin-btn admin-btn-danger"
                   disabled={actionId === category.id}
                   onClick={() => handleDelete(category.id, category.name)}
                 >
@@ -218,7 +218,7 @@ export default function Categories() {
                 <input
                   value={form.name}
                   onChange={(e) => updateForm("name", e.target.value)}
-                  placeholder="例如：AI 工具"
+                  placeholder="例如：AI 应用"
                   maxLength={20}
                   disabled={saving}
                   required

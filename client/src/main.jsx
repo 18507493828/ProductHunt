@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./AuthContext.jsx";
 import { ToastProvider } from "./Toast.jsx";
+import { ShareProvider } from "./ShareContext.jsx";
 import App from "./App.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
@@ -10,6 +11,9 @@ import ForgotPassword from "./pages/ForgotPassword.jsx";
 import AdminLayout from "./pages/admin/AdminLayout.jsx";
 import Dashboard from "./pages/admin/Dashboard.jsx";
 import Products from "./pages/admin/Products.jsx";
+import Votes from "./pages/admin/Votes.jsx";
+import Rankings from "./pages/admin/Rankings.jsx";
+import Shares from "./pages/admin/Shares.jsx";
 import Banners from "./pages/admin/Banners.jsx";
 import Campaigns from "./pages/admin/Campaigns.jsx";
 import Categories from "./pages/admin/Categories.jsx";
@@ -23,6 +27,7 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <AuthProvider>
       <ToastProvider>
+        <ShareProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<App />} />
@@ -35,6 +40,9 @@ createRoot(document.getElementById("root")).render(
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="products" element={<Products />} />
+              <Route path="votes" element={<Votes />} />
+              <Route path="rankings" element={<Rankings />} />
+              <Route path="shares" element={<Shares />} />
               <Route path="categories" element={<Categories />} />
               <Route path="campaigns" element={<Campaigns />} />
               <Route path="banners" element={<Banners />} />
@@ -42,6 +50,7 @@ createRoot(document.getElementById("root")).render(
             </Route>
           </Routes>
         </BrowserRouter>
+        </ShareProvider>
       </ToastProvider>
     </AuthProvider>
   </StrictMode>

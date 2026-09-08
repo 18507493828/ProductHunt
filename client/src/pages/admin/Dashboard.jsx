@@ -102,10 +102,31 @@ export default function Dashboard() {
               className="dash-action"
               onClick={() => navigate("/admin/products")}
             >
-              审核待处理资源
+              应用管理
               <span className="dash-action-badge">
                 {dashboard.products.pending}
               </span>
+            </button>
+            <button
+              type="button"
+              className="dash-action"
+              onClick={() => navigate("/admin/votes")}
+            >
+              投票管理
+            </button>
+            <button
+              type="button"
+              className="dash-action"
+              onClick={() => navigate("/admin/rankings")}
+            >
+              榜单管理
+            </button>
+            <button
+              type="button"
+              className="dash-action"
+              onClick={() => navigate("/admin/shares")}
+            >
+              分享管理
             </button>
             <button
               type="button"

@@ -12,6 +12,18 @@ import {
   DEFAULT_CAMPAIGNS,
   DEFAULT_CAMPAIGN_ZONE,
 } from "./categories.js";
+import {
+  RATING_DIMENSION_KEYS,
+  normalizeUserRatings,
+  overallFromRatings,
+  parseVotePayload,
+} from "./ratingDimensions.js";
+import {
+  DEFAULT_SHARE_CONFIG,
+  normalizeShareConfig,
+  SHARE_PLATFORM_IDS,
+  platformLabel,
+} from "./shareConfig.js";
 import { TOPIC_SEED } from "./topic-seed.js";
 import { TOPIC_POST_SEED } from "./topic-post-seed.js";
 import {
@@ -20,6 +32,7 @@ import {
   loginUser,
   resetPassword,
   getUsersNicknameMap,
+  getUsersIdMap,
   getUserById,
   requireAuth,
   requireAdmin,
@@ -42,6 +55,8 @@ const CAMPAIGN_ZONE_FILE = path.join(__dirname, "storage", "campaign-zone.json")
 const CATEGORIES_FILE = path.join(__dirname, "storage", "categories.json");
 const TOPICS_FILE = path.join(__dirname, "storage", "topics.json");
 const TOPIC_POSTS_DIR = path.join(__dirname, "storage", "topic-posts");
+const SHARES_FILE = path.join(__dirname, "storage", "shares.json");
+const SHARE_CONFIG_FILE = path.join(__dirname, "storage", "share-config.json");
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 let campaignCache = {
@@ -79,7 +94,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_BANNERS = [
   {
     id: "banner-ai",
-    title: "AI 工具专区",
+    title: "AI 应用专区",
     subtitle: "发现能真正提升生产力的 AI 产品",
     imageUrl: "/banners/banner-ai.png",
     linkUrl: "/",
@@ -229,6 +244,42 @@ async function readProductFile(filePath) {
 async function writeProductFile(product) {
   const filePath = path.join(STORAGE_DIR, `${product.id}.json`);
   await fs.writeFile(filePath, JSON.stringify(product, null, 2), "utf-8");
+}
+
+async function readShares() {
+  try {
+    const raw = await fs.readFile(SHARES_FILE, "utf-8");
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeShares(list) {
+  await fs.mkdir(path.dirname(SHARES_FILE), { recursive: true });
+  await fs.writeFile(SHARES_FILE, JSON.stringify(list, null, 2), "utf-8");
+}
+
+async function readShareConfig() {
+  try {
+    const raw = await fs.readFile(SHARE_CONFIG_FILE, "utf-8");
+    const data = JSON.parse(raw);
+    return normalizeShareConfig(data);
+  } catch {
+    return normalizeShareConfig(DEFAULT_SHARE_CONFIG);
+  }
+}
+
+async function writeShareConfig(config) {
+  await fs.mkdir(path.dirname(SHARE_CONFIG_FILE), { recursive: true });
+  const normalized = normalizeShareConfig(config);
+  await fs.writeFile(
+    SHARE_CONFIG_FILE,
+    JSON.stringify(normalized, null, 2),
+    "utf-8",
+  );
+  return normalized;
 }
 
 /* ---------------- 轮播图存储 ---------------- */
@@ -497,7 +548,7 @@ async function getCampaignStatsMap() {
     const status = product.status || "approved";
     if (status === "approved") bucket.approvedCount += 1;
     if (status === "pending") bucket.pendingCount += 1;
-    bucket.voteCount += Number(product.voteCount) || 0;
+    bucket.voteCount += Array.isArray(product.voters) ? product.voters.length : 0;
     if (product.submittedBy) bucket.submitters.add(product.submittedBy);
   }
 
@@ -952,16 +1003,17 @@ function toPublicComment(comment, nicknameMap = null) {
 
 function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = null, { includeComments = false } = {}) {
   const voteCount = Array.isArray(product.voters) ? product.voters.length : 0;
-  const [avgRating, ratingCount] = computeRating(product);
+  const { avgRating, ratingCount, avgRatings } = computeRating(product);
   const categories = getProductCategories(product);
   const topicIds = getProductTopicIds(product);
   const topicId = topicIds[0] || "";
   const topicName = topicMap && topicId ? topicMap[topicId] || "" : "";
   const comments = Array.isArray(product.comments) ? product.comments : [];
-  const myRating =
+  const myRatings =
     currentUser && product.ratings
-      ? Number(product.ratings[currentUser.id]) || 0
-      : 0;
+      ? normalizeUserRatings(product.ratings[currentUser.id])
+      : null;
+  const myRating = myRatings ? overallFromRatings(myRatings) : 0;
   const base = {
     id: product.id,
     name: product.name,
@@ -976,13 +1028,19 @@ function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = nu
     color: product.color || "",
     voteCount,
     avgRating,
+    avgRatings,
     ratingCount,
+    shareCount: Number(product.shareCount) || 0,
+    rankPinned: product.rankPinned === true,
+    rankWeight: Number(product.rankWeight) || 0,
+    rankHidden: product.rankHidden === true,
     viewCount: product.viewCount || 0,
     commentCount: comments.length,
     votedByMe: currentUser
       ? Array.isArray(product.voters) && product.voters.includes(currentUser.id)
       : false,
     myRating: myRating > 0 ? myRating : 0,
+    myRatings: myRatings || null,
     submittedBy: resolveSubmitterDisplayName(product, nicknameMap),
     submittedAt: product.submittedAt,
     status: product.status,
@@ -1003,17 +1061,59 @@ function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = nu
 
 function computeRating(product) {
   const ratings = product.ratings || {};
-  const values = Object.values(ratings)
-    .map((v) => Number(v))
-    .filter((v) => Number.isFinite(v) && v >= 1 && v <= 5);
-  if (!values.length) return [0, 0];
-  const avg = values.reduce((a, b) => a + b, 0) / values.length;
-  return [Math.round(avg * 10) / 10, values.length];
+  const entries = Object.values(ratings)
+    .map((raw) => normalizeUserRatings(raw))
+    .filter(Boolean);
+
+  const emptyDims = Object.fromEntries(RATING_DIMENSION_KEYS.map((key) => [key, 0]));
+  if (!entries.length) {
+    return { avgRating: 0, ratingCount: 0, avgRatings: emptyDims };
+  }
+
+  const dimSums = Object.fromEntries(RATING_DIMENSION_KEYS.map((key) => [key, 0]));
+  let overallSum = 0;
+  for (const entry of entries) {
+    let userSum = 0;
+    for (const key of RATING_DIMENSION_KEYS) {
+      dimSums[key] += entry[key];
+      userSum += entry[key];
+    }
+    overallSum += userSum / RATING_DIMENSION_KEYS.length;
+  }
+
+  const ratingCount = entries.length;
+  const avgRatings = Object.fromEntries(
+    RATING_DIMENSION_KEYS.map((key) => [
+      key,
+      Math.round((dimSums[key] / ratingCount) * 10) / 10,
+    ]),
+  );
+  const avgRating = Math.round((overallSum / ratingCount) * 10) / 10;
+  return { avgRating, ratingCount, avgRatings };
 }
 
 function sortProducts(products) {
   return products.sort((a, b) => {
-    const voteDiff = b.voters.length - a.voters.length;
+    const aHidden = a.rankHidden === true;
+    const bHidden = b.rankHidden === true;
+    if (aHidden !== bHidden) return aHidden ? 1 : -1;
+
+    const aPinned = a.rankPinned === true;
+    const bPinned = b.rankPinned === true;
+    if (aPinned !== bPinned) return aPinned ? -1 : 1;
+
+    const weightDiff = (Number(b.rankWeight) || 0) - (Number(a.rankWeight) || 0);
+    if (weightDiff !== 0) return weightDiff;
+
+    const aStats = computeRating(a);
+    const bStats = computeRating(b);
+    const ratingDiff = bStats.avgRating - aStats.avgRating;
+    if (ratingDiff !== 0) return ratingDiff;
+    const countDiff = bStats.ratingCount - aStats.ratingCount;
+    if (countDiff !== 0) return countDiff;
+    const voteDiff =
+      (Array.isArray(b.voters) ? b.voters.length : 0) -
+      (Array.isArray(a.voters) ? a.voters.length : 0);
     if (voteDiff !== 0) return voteDiff;
     return (b.submittedAt || "").localeCompare(a.submittedAt || "");
   });
@@ -1625,6 +1725,7 @@ app.get("/api/products", attachUserIfPresent, async (req, res) => {
     const nicknameMap = await getUsersNicknameMap();
     const approved = all.filter((product) => (product.status || "approved") === "approved");
     const filtered = approved.filter((product) => {
+      if (product.rankHidden === true) return false;
       if (category && !getProductCategories(product).includes(category)) return false;
       if (topicId && !getProductTopicIds(product).includes(topicId)) return false;
       if (campaign) {
@@ -1686,7 +1787,7 @@ app.get("/api/stats", async (_req, res) => {
       totalVotes += Array.isArray(product.voters) ? product.voters.length : 0;
       totalViews += product.viewCount || 0;
       totalComments += Array.isArray(product.comments) ? product.comments.length : 0;
-      const [avgRating, count] = computeRating(product);
+      const { avgRating, ratingCount: count } = computeRating(product);
       if (count > 0) {
         ratingSum += avgRating * count;
         ratingCount += count;
@@ -2114,10 +2215,11 @@ app.post("/api/products/:id/vote", requireAuth, async (req, res) => {
       return res.status(403).json({ error: "该资源尚未上架" });
     }
 
-    const { rating } = req.body || {};
-    const score = Number(rating);
-    if (!Number.isInteger(score) || score < 1 || score > 5) {
-      return res.status(400).json({ error: "评分需为 1-5 分" });
+    const scores = parseVotePayload(req.body || {});
+    if (!scores) {
+      return res.status(400).json({
+        error: "请为创意性、完成度、实用性、体验感各打 1-5 分",
+      });
     }
 
     const voters = Array.isArray(product.voters) ? product.voters : [];
@@ -2127,18 +2229,22 @@ app.post("/api/products/:id/vote", requireAuth, async (req, res) => {
     }
 
     product.voters = [...voters, req.user.id];
-    product.ratings = { ...(product.ratings || {}), [req.user.id]: score };
+    product.ratings = { ...(product.ratings || {}), [req.user.id]: scores };
 
     await writeProductFile(product);
 
-    const [avgRating, ratingCount] = computeRating(product);
+    const { avgRating, ratingCount, avgRatings } = computeRating(product);
+    const myRating = overallFromRatings(scores);
 
     res.json({
       message: "评价成功",
       voted: true,
       voteCount: product.voters.length,
       avgRating,
+      avgRatings,
       ratingCount,
+      myRating,
+      myRatings: scores,
     });
   } catch {
     res.status(404).json({ error: "资源不存在" });
@@ -2465,9 +2571,33 @@ app.post("/api/topic-posts/:id/comments", requireAuth, async (req, res) => {
 app.get("/api/admin/products", requireAdmin, async (req, res) => {
   try {
     const status = req.query.status || "pending";
+    const q = String(req.query.q || "").trim().toLowerCase();
+    const campaign = String(req.query.campaign || "").trim();
+    const category = String(req.query.category || "").trim();
     const all = await listProducts();
-    const filtered =
+    let filtered =
       status === "all" ? all : all.filter((p) => (p.status || "approved") === status);
+    if (campaign) {
+      filtered = filtered.filter((p) => String(p.campaign || "") === campaign);
+    }
+    if (category) {
+      filtered = filtered.filter((p) => getProductCategories(p).includes(category));
+    }
+    if (q) {
+      filtered = filtered.filter((p) => {
+        const hay = [
+          p.name,
+          p.tagline,
+          p.description,
+          p.submittedBy,
+          ...(getProductCategories(p) || []),
+        ]
+          .filter(Boolean)
+          .join("\n")
+          .toLowerCase();
+        return hay.includes(q);
+      });
+    }
     const sorted = filtered.sort((a, b) =>
       (b.submittedAt || "").localeCompare(a.submittedAt || "")
     );
@@ -2531,6 +2661,257 @@ app.post("/api/admin/products/:id/special", requireAdmin, async (req, res) => {
     res.json({
       message: product.campaign ? `已加入${label}` : "已取消活动",
       product: toPublicProduct(product, req.user),
+    });
+  } catch {
+    res.status(404).json({ error: "资源不存在" });
+  }
+});
+
+app.post("/api/admin/products/:id/rank", requireAdmin, async (req, res) => {
+  try {
+    const product = await getProduct(req.params.id);
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "rankPinned")) {
+      product.rankPinned = req.body.rankPinned === true;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "rankHidden")) {
+      product.rankHidden = req.body.rankHidden === true;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "rankWeight")) {
+      const weight = Number(req.body.rankWeight);
+      if (!Number.isFinite(weight)) {
+        return res.status(400).json({ error: "权重需为数字" });
+      }
+      product.rankWeight = Math.max(-9999, Math.min(9999, Math.round(weight)));
+    }
+    await writeProductFile(product);
+    res.json({
+      message: "榜单设置已更新",
+      product: toPublicProduct(product, req.user),
+    });
+  } catch {
+    res.status(404).json({ error: "资源不存在" });
+  }
+});
+
+app.get("/api/admin/rankings", requireAdmin, async (req, res) => {
+  try {
+    const campaign = String(req.query.campaign || "").trim();
+    const all = await listProducts();
+    let list = all.filter((p) => (p.status || "approved") === "approved");
+    if (campaign) {
+      list = list.filter((p) => String(p.campaign || "") === campaign);
+    }
+    const sorted = sortProducts(list.slice());
+    res.json(
+      sorted.map((product, index) => ({
+        ...toPublicProduct(product, req.user),
+        rank: index + 1,
+      })),
+    );
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/votes", requireAdmin, async (req, res) => {
+  try {
+    const q = String(req.query.q || "").trim().toLowerCase();
+    const productId = String(req.query.productId || "").trim();
+    const [products, usersById] = await Promise.all([
+      listProducts(),
+      getUsersIdMap(),
+    ]);
+    const rows = [];
+    for (const product of products) {
+      if (productId && product.id !== productId) continue;
+      const voters = Array.isArray(product.voters) ? product.voters : [];
+      const ratings = product.ratings || {};
+      for (const userId of voters) {
+        const scores = normalizeUserRatings(ratings[userId]);
+        if (!scores) continue;
+        const user = usersById[userId];
+        const row = {
+          id: `${product.id}:${userId}`,
+          productId: product.id,
+          productName: product.name || "",
+          userId,
+          username: user?.username || "",
+          nickname: user?.nickname || user?.username || "",
+          ratings: scores,
+          overall: overallFromRatings(scores),
+          votedAt: product.reviewedAt || product.submittedAt || "",
+        };
+        if (q) {
+          const hay = [row.productName, row.username, row.nickname, row.userId]
+            .join("\n")
+            .toLowerCase();
+          if (!hay.includes(q)) continue;
+        }
+        rows.push(row);
+      }
+    }
+    rows.sort((a, b) => (b.overall || 0) - (a.overall || 0));
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete(
+  "/api/admin/votes/:productId/:userId",
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const product = await getProduct(req.params.productId);
+      const userId = req.params.userId;
+      const voters = Array.isArray(product.voters) ? product.voters : [];
+      if (!voters.includes(userId)) {
+        return res.status(404).json({ error: "未找到该投票记录" });
+      }
+      product.voters = voters.filter((id) => id !== userId);
+      if (product.ratings && typeof product.ratings === "object") {
+        const next = { ...product.ratings };
+        delete next[userId];
+        product.ratings = next;
+      }
+      await writeProductFile(product);
+      const { avgRating, ratingCount, avgRatings } = computeRating(product);
+      res.json({
+        message: "已删除投票",
+        voteCount: product.voters.length,
+        avgRating,
+        avgRatings,
+        ratingCount,
+      });
+    } catch {
+      res.status(404).json({ error: "资源不存在" });
+    }
+  },
+);
+
+app.get("/api/share-config", async (_req, res) => {
+  try {
+    res.json(await readShareConfig());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/share-config", requireAdmin, async (_req, res) => {
+  try {
+    res.json(await readShareConfig());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/admin/share-config", requireAdmin, async (req, res) => {
+  try {
+    const next = await writeShareConfig(req.body || {});
+    res.json({ message: "分享配置已保存", config: next });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/shares", requireAdmin, async (req, res) => {
+  try {
+    const q = String(req.query.q || "").trim().toLowerCase();
+    const platform = String(req.query.platform || "").trim();
+    const shares = await readShares();
+    const stats = Object.fromEntries(
+      ["all", ...SHARE_PLATFORM_IDS].map((key) => [key, 0]),
+    );
+    stats.all = shares.length;
+    for (const item of shares) {
+      const key = SHARE_PLATFORM_IDS.includes(item.platform)
+        ? item.platform
+        : "";
+      if (key) stats[key] += 1;
+    }
+
+    let filtered = shares;
+    if (platform && SHARE_PLATFORM_IDS.includes(platform)) {
+      filtered = filtered.filter((item) => item.platform === platform);
+    }
+    if (q) {
+      filtered = filtered.filter((item) => {
+        const hay = [
+          item.productName,
+          item.username,
+          item.nickname,
+          item.productId,
+          platformLabel(item.platform),
+          item.platform,
+        ]
+          .filter(Boolean)
+          .join("\n")
+          .toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    filtered.sort((a, b) =>
+      String(b.createdAt || "").localeCompare(String(a.createdAt || "")),
+    );
+    res.json({ items: filtered, stats });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/admin/shares/:id", requireAdmin, async (req, res) => {
+  try {
+    const shares = await readShares();
+    const next = shares.filter((item) => item.id !== req.params.id);
+    if (next.length === shares.length) {
+      return res.status(404).json({ error: "分享记录不存在" });
+    }
+    const removed = shares.find((item) => item.id === req.params.id);
+    await writeShares(next);
+    if (removed?.productId) {
+      try {
+        const product = await getProduct(removed.productId);
+        product.shareCount = Math.max(0, (Number(product.shareCount) || 0) - 1);
+        await writeProductFile(product);
+      } catch {
+        /* product may be gone */
+      }
+    }
+    res.json({ message: "已删除分享记录" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/products/:id/share", attachUserIfPresent, async (req, res) => {
+  try {
+    const product = await getProduct(req.params.id);
+    if ((product.status || "approved") !== "approved") {
+      return res.status(403).json({ error: "该资源尚未上架" });
+    }
+    const usersById = req.user ? await getUsersIdMap() : {};
+    const user = req.user ? usersById[req.user.id] : null;
+    const platformRaw = String(req.body?.platform || "").trim().slice(0, 32);
+    const platform = SHARE_PLATFORM_IDS.includes(platformRaw) ? platformRaw : "";
+    const record = {
+      id: crypto.randomUUID(),
+      productId: product.id,
+      productName: product.name || "",
+      userId: req.user?.id || "",
+      username: user?.username || req.user?.username || "访客",
+      nickname: user?.nickname || req.user?.username || "访客",
+      platform,
+      createdAt: new Date().toISOString(),
+    };
+    const shares = await readShares();
+    shares.push(record);
+    await writeShares(shares);
+    product.shareCount = (Number(product.shareCount) || 0) + 1;
+    await writeProductFile(product);
+    res.json({
+      message: "分享已记录",
+      shareCount: product.shareCount,
+      share: record,
     });
   } catch {
     res.status(404).json({ error: "资源不存在" });

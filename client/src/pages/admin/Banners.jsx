@@ -166,45 +166,58 @@ export default function Banners() {
       {banners.length === 0 ? (
         <EmptyState title="还没有轮播图" description="点击「新增轮播图」创建第一张" />
       ) : (
-        <div className="ph-card-masonry">
+        <div className="admin-banner-grid">
           {banners.map((banner) => (
-            <article className="ph-card banner-card" key={banner.id}>
-              <div className="ph-card-thumb">
+            <article
+              className={
+                "admin-banner-card" + (banner.enabled ? "" : " is-off")
+              }
+              key={banner.id}
+            >
+              <div className="admin-banner-card-media">
                 {banner.imageUrl ? (
                   <img src={banner.imageUrl} alt={banner.title} />
                 ) : (
-                  <span className="ph-card-thumb-empty">无图</span>
+                  <span>无图</span>
                 )}
-                <span
-                  className={
-                    "ph-card-badge " +
-                    (banner.enabled ? "on" : "off")
-                  }
-                >
-                  {banner.enabled ? "启用中" : "已停用"}
-                </span>
               </div>
-              <div className="ph-card-body">
-                <h2 className="ph-card-title" title={banner.title}>
+              <div className="admin-banner-card-body">
+                <div className="admin-banner-card-top">
+                  <span
+                    className={
+                      "status-badge " +
+                      (banner.enabled ? "status-approved" : "status-rejected")
+                    }
+                  >
+                    {banner.enabled ? "启用中" : "已停用"}
+                  </span>
+                  <span className="admin-masonry-sort">#{banner.sort ?? 0}</span>
+                </div>
+                <h2 className="admin-banner-card-title" title={banner.title}>
                   {banner.title}
                 </h2>
-                {banner.subtitle && <p className="ph-card-desc">{banner.subtitle}</p>}
-                <div className="ph-card-meta">
-                  <span>排序：{banner.sort ?? 0}</span>
-                  {banner.linkUrl && (
-                    <a
-                      href={banner.linkUrl}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                    >
-                      跳转链接
-                    </a>
-                  )}
-                </div>
-                <div className="ph-card-actions">
+                <p
+                  className="admin-banner-card-desc"
+                  title={banner.subtitle || ""}
+                >
+                  {banner.subtitle || " "}
+                </p>
+                {banner.linkUrl ? (
+                  <a
+                    className="admin-banner-card-link"
+                    href={banner.linkUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                  >
+                    跳转链接
+                  </a>
+                ) : (
+                  <span className="admin-banner-card-link is-empty">无跳转链接</span>
+                )}
+                <div className="admin-banner-card-actions">
                   <button
                     type="button"
-                    className={banner.enabled ? "card-btn off" : "card-btn on"}
+                    className="admin-btn admin-btn-ghost"
                     disabled={actionId === banner.id}
                     onClick={() => handleToggle(banner)}
                   >
@@ -212,7 +225,7 @@ export default function Banners() {
                   </button>
                   <button
                     type="button"
-                    className="card-btn edit"
+                    className="admin-btn admin-btn-primary"
                     disabled={actionId === banner.id}
                     onClick={() => openModal(banner)}
                   >
@@ -220,7 +233,7 @@ export default function Banners() {
                   </button>
                   <button
                     type="button"
-                    className="card-btn del"
+                    className="admin-btn admin-btn-danger"
                     disabled={actionId === banner.id}
                     onClick={() => handleDelete(banner.id, banner.title)}
                   >
@@ -238,7 +251,7 @@ export default function Banners() {
           <form className="modal" onSubmit={handleSubmit}>
             <div className="modal-header">
               <div>
-                <p className="modal-eyebrow">轮播图管理</p>
+                <p className="modal-eyebrow">轮播管理</p>
                 <h2>{editingId ? "编辑轮播图" : "新增轮播图"}</h2>
               </div>
               <button
@@ -258,7 +271,7 @@ export default function Banners() {
                   type="text"
                   value={form.title}
                   onChange={(e) => updateForm("title", e.target.value)}
-                  placeholder="例如：AI 工具专区"
+                  placeholder="例如：AI 应用专区"
                   maxLength={40}
                 />
               </div>

@@ -152,80 +152,82 @@ export default function Navs() {
       {navs.length === 0 ? (
         <EmptyState title="还没有导航" description="点击「新增导航」创建第一个" />
       ) : (
-        <div className="nav-grid">
+        <div className="admin-masonry">
           {navs.map((nav, index) => (
-            <article className="ph-card nav-card" key={nav.id}>
-              <div className="ph-card-body">
-                <div className="ph-card-top">
-                  <span className="nav-card-index">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <h2 className="ph-card-title" title={nav.title}>
-                    {nav.title}
-                  </h2>
-                  <span
-                    className={
-                      "ph-card-badge " + (nav.enabled ? "on" : "off")
-                    }
-                  >
-                    {nav.enabled ? "展示中" : "已停用"}
-                  </span>
-                </div>
-                <div className="ph-card-meta">
-                  <span>顺序：第 {index + 1} 位</span>
-                  <a
-                    href={nav.url}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    title={nav.url}
-                  >
-                    {nav.url}
-                  </a>
-                </div>
-                <div className="ph-card-actions">
-                  <button
-                    type="button"
-                    className="card-btn move"
-                    disabled={index === 0 || actionId === nav.id}
-                    onClick={() => handleMove(index, -1)}
-                    title="上移"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="card-btn move"
-                    disabled={index === navs.length - 1 || actionId === nav.id}
-                    onClick={() => handleMove(index, 1)}
-                    title="下移"
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    className={nav.enabled ? "card-btn off" : "card-btn on"}
-                    disabled={actionId === nav.id}
-                    onClick={() => handleToggle(nav)}
-                  >
-                    {nav.enabled ? "停用" : "启用"}
-                  </button>
-                  <button
-                    type="button"
-                    className="card-btn edit"
-                    disabled={actionId === nav.id}
-                    onClick={() => openModal(nav)}
-                  >
-                    编辑
-                  </button>
-                  <button
-                    type="button"
-                    className="card-btn del"
-                    disabled={actionId === nav.id}
-                    onClick={() => handleDelete(nav.id, nav.title)}
-                  >
-                    删除
-                  </button>
-                </div>
+            <article
+              className={
+                "admin-masonry-card" + (nav.enabled ? "" : " is-off")
+              }
+              key={nav.id}
+            >
+              <div className="admin-masonry-card-top">
+                <span
+                  className={
+                    "status-badge " +
+                    (nav.enabled ? "status-approved" : "status-rejected")
+                  }
+                >
+                  {nav.enabled ? "展示中" : "已停用"}
+                </span>
+                <span className="admin-masonry-sort">
+                  #{String(index + 1).padStart(2, "0")}
+                </span>
+              </div>
+              <h2 className="admin-masonry-title">{nav.title}</h2>
+              <div className="admin-masonry-meta">
+                <span>顺序：第 {index + 1} 位</span>
+                <a
+                  href={nav.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  title={nav.url}
+                >
+                  {nav.url}
+                </a>
+              </div>
+              <div className="admin-masonry-actions">
+                <button
+                  type="button"
+                  className="admin-btn admin-btn-ghost"
+                  disabled={index === 0 || actionId === nav.id}
+                  onClick={() => handleMove(index, -1)}
+                  title="上移"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn admin-btn-ghost"
+                  disabled={index === navs.length - 1 || actionId === nav.id}
+                  onClick={() => handleMove(index, 1)}
+                  title="下移"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn admin-btn-ghost"
+                  disabled={actionId === nav.id}
+                  onClick={() => handleToggle(nav)}
+                >
+                  {nav.enabled ? "停用" : "启用"}
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn admin-btn-primary"
+                  disabled={actionId === nav.id}
+                  onClick={() => openModal(nav)}
+                >
+                  编辑
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn admin-btn-danger"
+                  disabled={actionId === nav.id}
+                  onClick={() => handleDelete(nav.id, nav.title)}
+                >
+                  删除
+                </button>
               </div>
             </article>
           ))}

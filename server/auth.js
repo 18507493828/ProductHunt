@@ -176,6 +176,15 @@ export async function getUsersNicknameMap() {
   return map;
 }
 
+export async function getUsersIdMap() {
+  const users = await readUsersFile();
+  const map = {};
+  for (const user of users) {
+    map[user.id] = sanitizeUser(user);
+  }
+  return map;
+}
+
 export function verifyToken(token) {
   try {
     return jwt.verify(token, JWT_SECRET);

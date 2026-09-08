@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-
-const RATING_TIPS = ["很差", "较差", "一般", "满意", "非常满意"];
+import {
+  RATING_DIMENSIONS,
+  RATING_TIPS,
+  emptyRatings,
+  isCompleteRatings,
+  overallFromRatings,
+} from "../ratingDimensions";
 
 function Star({ filled }) {
   return (
@@ -17,15 +22,50 @@ function Star({ filled }) {
   );
 }
 
+function DimensionRow({ dim, value, hover, submitting, onChange, onHover }) {
+  const active = hover || value;
+  return (
+    <div className="ph-rating-dim">
+      <div className="ph-rating-dim-label">{dim.label}</div>
+      <div
+        className="ph-rating-stars"
+        role="radiogroup"
+        aria-label={dim.label}
+        onMouseLeave={() => onHover(0)}
+      >
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            role="radio"
+            aria-checked={value === star}
+            aria-label={`${dim.label} ${star} 星`}
+            className={"ph-rating-star" + (star <= active ? " active" : "")}
+            onClick={() => onChange(star)}
+            onMouseEnter={() => onHover(star)}
+            disabled={submitting}
+          >
+            <Star filled={star <= active} />
+          </button>
+        ))}
+      </div>
+      <div className="ph-rating-dim-tip">
+        {active > 0 ? RATING_TIPS[active - 1] : "请评分"}
+      </div>
+    </div>
+  );
+}
+
 export default function RatingModal({
   product,
   submitting,
   onCancel,
   onSubmit,
 }) {
-  const [rating, setRating] = useState(0);
-  const [hover, setHover] = useState(0);
-  const active = hover || rating;
+  const [ratings, setRatings] = useState(() => emptyRatings());
+  const [hovers, setHovers] = useState(() => emptyRatings());
+  const overall = overallFromRatings(ratings);
+  const ready = isCompleteRatings(ratings);
 
   return createPortal(
     <div className="modal-overlay">
@@ -53,31 +93,26 @@ export default function RatingModal({
           <p className="ph-rating-tagline">{product.tagline}</p>
         )}
 
-        <div
-          className="ph-rating-stars"
-          role="radiogroup"
-          aria-label="评分"
-          onMouseLeave={() => setHover(0)}
-        >
-          {[1, 2, 3, 4, 5].map((value) => (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={rating === value}
-              aria-label={`${value} 星`}
-              className={"ph-rating-star" + (value <= active ? " active" : "")}
-              onClick={() => setRating(value)}
-              onMouseEnter={() => setHover(value)}
-              disabled={submitting}
-            >
-              <Star filled={value <= active} />
-            </button>
+        <div className="ph-rating-dims">
+          {RATING_DIMENSIONS.map((dim) => (
+            <DimensionRow
+              key={dim.key}
+              dim={dim}
+              value={ratings[dim.key]}
+              hover={hovers[dim.key]}
+              submitting={submitting}
+              onChange={(star) =>
+                setRatings((prev) => ({ ...prev, [dim.key]: star }))
+              }
+              onHover={(star) =>
+                setHovers((prev) => ({ ...prev, [dim.key]: star }))
+              }
+            />
           ))}
         </div>
 
         <p className="ph-rating-label">
-          {active > 0 ? `${RATING_TIPS[active - 1]}（${active} 星）` : "请选择星级"}
+          {ready ? `综合 ${overall} 星` : "请完成以上评分"}
         </p>
 
         <div className="ph-rating-actions">
@@ -92,14 +127,14 @@ export default function RatingModal({
           <button
             type="button"
             className="ph-rating-btn primary"
-            onClick={() => onSubmit(rating)}
-            disabled={submitting || rating === 0}
+            onClick={() => onSubmit(ratings)}
+            disabled={submitting || !ready}
           >
             {submitting ? "提交中..." : "提交评分"}
           </button>
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

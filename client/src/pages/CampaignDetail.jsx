@@ -170,12 +170,12 @@ export default function CampaignDetail() {
     setRatingProduct(product);
   }
 
-  async function submitRating(rating) {
+  async function submitRating(ratings) {
     if (!ratingProduct) return;
     try {
       setRatingSubmitting(true);
       setVotingId(ratingProduct.id);
-      const result = await voteProduct(ratingProduct.id, rating);
+      const result = await voteProduct(ratingProduct.id, ratings);
       setProducts((prev) =>
         prev.map((item) =>
           item.id === ratingProduct.id
@@ -184,13 +184,18 @@ export default function CampaignDetail() {
                 votedByMe: result.voted,
                 voteCount: result.voteCount,
                 avgRating: result.avgRating,
+                avgRatings: result.avgRatings,
                 ratingCount: result.ratingCount,
-                myRating: rating,
+                myRating: result.myRating,
+                myRatings: result.myRatings,
               }
             : item,
         ),
       );
-      toast.success("评分成功", `已为「${ratingProduct.name}」打 ${rating} 星`);
+      toast.success(
+        "评分成功",
+        `已为「${ratingProduct.name}」打 ${result.myRating} 星`,
+      );
       setRatingProduct(null);
     } catch (err) {
       toast.error("评分失败", err.message);
@@ -412,9 +417,9 @@ export default function CampaignDetail() {
       {ratingProduct && (
         <RatingModal
           product={ratingProduct}
-          busy={ratingSubmitting}
+          submitting={ratingSubmitting}
           onSubmit={submitRating}
-          onCancel={() => setRatingProduct(null)}
+          onCancel={() => !ratingSubmitting && setRatingProduct(null)}
         />
       )}
 

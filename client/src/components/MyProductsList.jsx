@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { ThumbsUp, ArrowUpRight, Eye, MessageCircle } from "lucide-react";
+import { ThumbsUp, ArrowUpRight, Eye, MessageCircle, Share2 } from "lucide-react";
 import EmptyState from "./EmptyState";
+import { useShare } from "../ShareContext";
 
 const STATUS_LABEL = {
   pending: "待审核",
@@ -26,6 +27,8 @@ function getProductInitial(name = "") {
 }
 
 export default function MyProductsList({ products, loading, onSubmit, onEdit }) {
+  const { openShare } = useShare();
+
   if (loading) {
     return (
       <div className="ph-list">
@@ -132,6 +135,18 @@ export default function MyProductsList({ products, loading, onSubmit, onEdit }) 
             <Link className="ph-item-link" to={`/resource/${product.id}`}>
               详情
             </Link>
+            {product.status === "approved" && (
+              <button
+                type="button"
+                className="ph-item-link"
+                aria-label="分享作品"
+                title="复制文案和链接"
+                onClick={() => openShare(product)}
+              >
+                <Share2 size={12} aria-hidden="true" />
+                分享
+              </button>
+            )}
             {product.url && (
               <a
                 className="ph-item-link"

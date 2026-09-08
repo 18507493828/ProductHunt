@@ -119,9 +119,11 @@ export default function RankList() {
                   {product.name}
                 </span>
                 <span className="rank-votes">
-                  <span className="rank-votes-icon">🔥</span>
-                  <span className="rank-votes-label">热度值</span>
-                  <span>{product.voteCount ?? 0}</span>
+                  <span className="rank-votes-icon">★</span>
+                  <span className="rank-votes-label">评分</span>
+                  <span>
+                    {product.avgRating > 0 ? product.avgRating : "—"}
+                  </span>
                 </span>
               </Link>
             </li>

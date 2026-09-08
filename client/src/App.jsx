@@ -1087,7 +1087,10 @@ export default function App() {
 
   function handleVote(product) {
     if (!requireLogin()) return;
-    // 点赞改为评分：先弹出评分弹窗
+    if (product.votedByMe) {
+      toast.success("已评分", `你的评分：${product.myRating || "—"} 星`);
+      return;
+    }
     setRatingProduct(product);
   }
 
@@ -1096,12 +1099,12 @@ export default function App() {
     setRatingProduct(null);
   }
 
-  async function submitRating(rating) {
+  async function submitRating(ratings) {
     if (!ratingProduct) return;
     try {
       setVotingId(ratingProduct.id);
       setRatingSubmitting(true);
-      const result = await voteProduct(ratingProduct.id, rating);
+      const result = await voteProduct(ratingProduct.id, ratings);
       setProducts((prev) =>
         prev.map((item) =>
           item.id === ratingProduct.id
@@ -1110,12 +1113,18 @@ export default function App() {
                 votedByMe: result.voted,
                 voteCount: result.voteCount,
                 avgRating: result.avgRating,
+                avgRatings: result.avgRatings,
                 ratingCount: result.ratingCount,
+                myRating: result.myRating,
+                myRatings: result.myRatings,
               }
             : item,
         ),
       );
-      toast.success("评分成功", `已为「${ratingProduct.name}」打 ${rating} 星`);
+      toast.success(
+        "评分成功",
+        `已为「${ratingProduct.name}」打 ${result.myRating} 星`,
+      );
       setRatingProduct(null);
     } catch (err) {
       toast.error("评分失败", err.message);
