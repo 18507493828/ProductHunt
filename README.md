@@ -62,26 +62,64 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
+若使用宝塔且只反代了 `/api`：新上传图片地址为 `/api/uploads/...`，可直接显示；历史 `/uploads/...` 需在 Nginx 增加对 `/uploads/` 的反代（见示例配置）。
 ## 数据存储
 
-运行时数据均在 `server/storage/`，**整目录不提交 git**（仅保留各子目录 `.gitkeep`）。
+- **MySQL**：业务数据（用户、资源、话题、轮播、导航、活动、分享等）与**上传图片二进制**（表 `uploads`）均存入 MySQL。启动时 `initDb()` 会建库建表。
+- 业务表里的 `imageUrl` 仍是路径字符串（如 `/api/uploads/xxx.png`）；真正的图片内容在 `uploads.data`（LONGBLOB）。
+- 历史曾落在 `server/storage/uploads/` 的文件仍可被读取（兼容），新上传不再写磁盘。
 
-- 资源：`server/storage/products/<id>.json`
-- 用户：`server/storage/users.json`
-- 话题：`server/storage/topics.json`（为空时由 `server/topic-seed.js` 自动写入）
-- 话题内容：`server/storage/topic-posts/*.json`（为空时由 `server/topic-post-seed.js` 自动写入）
-- 轮播 / 导航：`server/storage/banners.json`、`server/storage/navs.json`（为空时由服务端内置种子写入）
-- 上传图片：`server/storage/uploads/`
+Navicat / 客户端中的库名需与 `MYSQL_DATABASE` 一致。默认 `vibebuilding`（MySQL on Linux 常把库名存成小写；若你本地建的是 `vibeBuilding`，请把 `MYSQL_DATABASE` 设为实际库名）。
+
+话题种子：表为空时由 `server/topic-seed.js` / `server/topic-post-seed.js` 自动写入。
+
+### 历史 JSON 数据迁移
+
+若升级前数据在 `server/storage/`（`users.json`、`products/*.json`、`uploads/` 等），启动时会**自动导入到空表**。也可手动执行：
+
+```bash
+cd /www/wwwroot/ProductHunt/server
+# 使用与 ecosystem 相同的 MYSQL_* 环境变量
+MYSQL_USER=vibeBuilding MYSQL_PASSWORD=你的密码 MYSQL_DATABASE=vibebuilding npm run migrate:json
+
+# 强制用 JSON 覆盖已有表数据：
+MYSQL_USER=vibeBuilding MYSQL_PASSWORD=你的密码 MYSQL_DATABASE=vibebuilding npm run migrate:json:force
+```
+
+或重启时强制：`MIGRATE_JSON_FORCE=1 pm2 restart vibe-building --update-env`
 
 ## 环境变量
 
-| 变量           | 说明             | 默认值                 |
-| -------------- | ---------------- | ---------------------- |
-| PORT           | 服务端口         | 3001                   |
-| HOST           | 监听地址         | 0.0.0.0                |
-| JWT_SECRET     | JWT 签名密钥     | 开发默认值（生产必改） |
-| ADMIN_USERNAME | 初始管理员用户名 | admin                  |
-| ADMIN_PASSWORD | 初始管理员密码   | admin123456            |
+| 变量            | 说明             | 默认值                 |
+| --------------- | ---------------- | ---------------------- |
+| PORT            | 服务端口         | 3001                   |
+| HOST            | 监听地址         | 0.0.0.0                |
+| JWT_SECRET      | JWT 签名密钥     | 开发默认值（生产必改） |
+| ADMIN_USERNAME  | 初始管理员用户名 | admin                  |
+| ADMIN_PASSWORD  | 初始管理员密码   | admin123456            |
+| MYSQL_HOST      | MySQL 主机       | 127.0.0.1              |
+| MYSQL_PORT      | MySQL 端口       | 3306                   |
+| MYSQL_USER      | MySQL 用户       | vibeBuilding           |
+| MYSQL_PASSWORD  | MySQL 密码       | （必填）               |
+| MYSQL_DATABASE  | 数据库名         | vibebuilding           |
+
+### 服务器首次接入 MySQL
+
+1. 确认库已存在（Navicat 里是 `vibebuilding` 即可）
+2. 改 `ecosystem.config.cjs` 里的 `MYSQL_USER` / `MYSQL_PASSWORD` / `MYSQL_DATABASE`
+3. 部署并重启：
+
+```bash
+cd /www/wwwroot/ProductHunt
+git pull
+npm run install:all
+npm run build
+pm2 restart vibe-building --update-env
+```
+
+4. 看日志应出现 `[db] connected vibeBuilding@127.0.0.1:3306/vibebuilding`，并自动建表、写入种子数据
+5. 浏览器打开 `/api/health`，应返回 `"db":"mysql"`
+6. 在 Navicat 刷新后应能看到 `users`、`products`、`topics` 等表
 
 ## 远程部署
 

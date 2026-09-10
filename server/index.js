@@ -19,8 +19,6 @@ import {
   parseVotePayload,
 } from "./ratingDimensions.js";
 import {
-  DEFAULT_SHARE_CONFIG,
-  normalizeShareConfig,
   SHARE_PLATFORM_IDS,
   platformLabel,
 } from "./shareConfig.js";
@@ -38,6 +36,37 @@ import {
   requireAdmin,
   attachUserIfPresent,
 } from "./auth.js";
+import { initDb, query as dbQuery } from "./db.js";
+import { migrateJsonToMysql } from "./migrate-json-to-mysql.js";
+import {
+  writeProduct,
+  listProducts,
+  getProduct,
+  deleteProduct,
+  readBanners,
+  writeBanners,
+  readNavs,
+  writeNavs,
+  readCampaigns,
+  writeCampaigns as storeWriteCampaigns,
+  readCategories,
+  writeCategories as storeWriteCategories,
+  readCampaignZone,
+  writeCampaignZone,
+  readShareConfig,
+  writeShareConfig,
+  readShares,
+  writeShares,
+  readTopics,
+  writeTopics,
+  upsertTopic,
+  writeTopicPost,
+  listTopicPosts,
+  getTopicPost,
+  saveUpload,
+  getUpload,
+  deleteUpload,
+} from "./store.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,17 +75,7 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST || "0.0.0.0";
 const CLIENT_DIST = path.join(__dirname, "..", "client", "dist");
-const STORAGE_DIR = path.join(__dirname, "storage", "products");
 const UPLOADS_DIR = path.join(__dirname, "storage", "uploads");
-const BANNERS_FILE = path.join(__dirname, "storage", "banners.json");
-const NAVS_FILE = path.join(__dirname, "storage", "navs.json");
-const CAMPAIGNS_FILE = path.join(__dirname, "storage", "campaigns.json");
-const CAMPAIGN_ZONE_FILE = path.join(__dirname, "storage", "campaign-zone.json");
-const CATEGORIES_FILE = path.join(__dirname, "storage", "categories.json");
-const TOPICS_FILE = path.join(__dirname, "storage", "topics.json");
-const TOPIC_POSTS_DIR = path.join(__dirname, "storage", "topic-posts");
-const SHARES_FILE = path.join(__dirname, "storage", "shares.json");
-const SHARE_CONFIG_FILE = path.join(__dirname, "storage", "share-config.json");
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 let campaignCache = {
@@ -75,7 +94,16 @@ let categoryCache = {
 
 const RANGES = ["today", "week", "month", "all"];
 const URL_PATTERN = /^https?:\/\/.+/i;
-const IMAGE_URL_PATTERN = /^(https?:\/\/.+|\/uploads\/[\w.-]+)$/i;
+// 兼容旧路径 /uploads/x 与反代仅转发 /api 时的 /api/uploads/x
+const IMAGE_URL_PATTERN =
+  /^(https?:\/\/.+|\/(?:api\/)?uploads\/[\w.-]+)$/i;
+const LOCAL_UPLOAD_URL_PATTERN = /^\/(?:api\/)?uploads\/([\w.-]+)$/i;
+
+function localUploadFilename(url) {
+  const match = String(url || "").match(LOCAL_UPLOAD_URL_PATTERN);
+  return match ? match[1] : "";
+}
+
 const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
 const AVATAR_COLORS = [
@@ -166,9 +194,15 @@ const DEFAULT_NAVS = [
   },
 ];
 
-await fs.mkdir(STORAGE_DIR, { recursive: true });
-await fs.mkdir(UPLOADS_DIR, { recursive: true });
-await fs.mkdir(TOPIC_POSTS_DIR, { recursive: true });
+await initDb();
+// 把历史 server/storage JSON / 磁盘图片导入 MySQL（库中已有的默认保留；缺的补齐）
+try {
+  await migrateJsonToMysql({
+    force: process.env.MIGRATE_JSON_FORCE === "1",
+  });
+} catch (err) {
+  console.warn("[migrate] skipped:", err.message || err);
+}
 await initAuth();
 await initBanners();
 await initNavs();
@@ -176,6 +210,8 @@ await initCampaigns();
 await initCategories();
 await initTopics();
 await initTopicPosts();
+// 兼容历史磁盘图片；新上传一律进 MySQL uploads 表
+await fs.mkdir(UPLOADS_DIR, { recursive: true }).catch(() => {});
 
 if (IS_PRODUCTION) {
   app.use(
@@ -196,31 +232,41 @@ if (IS_PRODUCTION) {
 
 app.use(cors());
 app.use(express.json());
-// 上传文件名含时间戳+随机串，内容不变，二次加载走浏览器缓存
-app.use(
-  "/uploads",
-  express.static(UPLOADS_DIR, {
-    etag: true,
-    lastModified: true,
-    maxAge: "30d",
-    immutable: true,
-    setHeaders(res) {
-      res.setHeader(
-        "Cache-Control",
-        "public, max-age=2592000, immutable",
-      );
-    },
-  }),
-);
+
+async function serveUpload(req, res) {
+  const filename = path.basename(req.params.filename || "");
+  if (!filename || filename !== req.params.filename) {
+    return res.status(400).json({ error: "无效的图片地址" });
+  }
+
+  try {
+    const file = await getUpload(filename);
+    if (file?.data) {
+      res.setHeader("Content-Type", file.mimeType || "application/octet-stream");
+      res.setHeader("Cache-Control", "public, max-age=2592000, immutable");
+      res.setHeader("Content-Length", Buffer.byteLength(file.data));
+      return res.end(file.data);
+    }
+
+    // 兼容旧版落盘文件
+    const diskPath = path.join(UPLOADS_DIR, filename);
+    try {
+      await fs.access(diskPath);
+      res.setHeader("Cache-Control", "public, max-age=2592000, immutable");
+      return res.sendFile(diskPath);
+    } catch {
+      return res.status(404).json({ error: "图片不存在" });
+    }
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "读取图片失败" });
+  }
+}
+
+app.get("/api/uploads/:filename", serveUpload);
+app.get("/uploads/:filename", serveUpload);
 
 const imageUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname || "").toLowerCase() || ".png";
-      cb(null, `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`);
-    },
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: MAX_IMAGE_SIZE },
   fileFilter: (_req, file, cb) => {
     if (IMAGE_MIME_TYPES.includes(file.mimetype)) {
@@ -231,84 +277,44 @@ const imageUpload = multer({
   },
 });
 
+function makeUploadFilename(originalname = "") {
+  const ext = path.extname(originalname || "").toLowerCase() || ".png";
+  return `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`;
+}
 function pickAvatarColor(name = "") {
   const hash = [...name].reduce((acc, ch) => acc + ch.codePointAt(0), 0);
   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
 }
 
-async function readProductFile(filePath) {
-  const raw = await fs.readFile(filePath, "utf-8");
-  return JSON.parse(raw);
-}
-
-async function writeProductFile(product) {
-  const filePath = path.join(STORAGE_DIR, `${product.id}.json`);
-  await fs.writeFile(filePath, JSON.stringify(product, null, 2), "utf-8");
-}
-
-async function readShares() {
-  try {
-    const raw = await fs.readFile(SHARES_FILE, "utf-8");
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
-
-async function writeShares(list) {
-  await fs.mkdir(path.dirname(SHARES_FILE), { recursive: true });
-  await fs.writeFile(SHARES_FILE, JSON.stringify(list, null, 2), "utf-8");
-}
-
-async function readShareConfig() {
-  try {
-    const raw = await fs.readFile(SHARE_CONFIG_FILE, "utf-8");
-    const data = JSON.parse(raw);
-    return normalizeShareConfig(data);
-  } catch {
-    return normalizeShareConfig(DEFAULT_SHARE_CONFIG);
-  }
-}
-
-async function writeShareConfig(config) {
-  await fs.mkdir(path.dirname(SHARE_CONFIG_FILE), { recursive: true });
-  const normalized = normalizeShareConfig(config);
-  await fs.writeFile(
-    SHARE_CONFIG_FILE,
-    JSON.stringify(normalized, null, 2),
-    "utf-8",
-  );
-  return normalized;
-}
-
 /* ---------------- 轮播图存储 ---------------- */
 
-async function readBanners() {
-  try {
-    const raw = await fs.readFile(BANNERS_FILE, "utf-8");
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
-
-async function writeBanners(banners) {
-  await fs.writeFile(BANNERS_FILE, JSON.stringify(banners, null, 2), "utf-8");
+function bannersNeedReseed(list) {
+  if (!Array.isArray(list) || list.length === 0) return true;
+  // 开发/联调残留的占位数据（如 title=T, imageUrl=/x.png）
+  return list.every((banner) => {
+    const title = String(banner.title || "").trim();
+    const imageUrl = String(banner.imageUrl || "").trim();
+    return (
+      banner.id === "banner-smoke" ||
+      title.length <= 2 ||
+      !imageUrl ||
+      imageUrl === "/x.png"
+    );
+  });
 }
 
 async function initBanners() {
   const existing = await readBanners();
-  if (existing.length > 0) return;
+  if (!bannersNeedReseed(existing)) return;
 
   const now = new Date().toISOString();
   const seed = DEFAULT_BANNERS.map((banner) => ({
     ...banner,
-    createdAt: now,
+    createdAt: banner.createdAt || now,
     updatedAt: now,
   }));
   await writeBanners(seed);
+  console.log(`[storage] banners reseeded (${seed.length} items)`);
 }
 
 function toPublicBanner(banner) {
@@ -331,20 +337,6 @@ async function getBannerById(id) {
 }
 
 /* ---------------- 导航存储 ---------------- */
-
-async function readNavs() {
-  try {
-    const raw = await fs.readFile(NAVS_FILE, "utf-8");
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
-
-async function writeNavs(navs) {
-  await fs.writeFile(NAVS_FILE, JSON.stringify(navs, null, 2), "utf-8");
-}
 
 async function initNavs() {
   const existing = await readNavs();
@@ -382,18 +374,8 @@ async function sortNavs(navs) {
 
 /* ---------------- 活动配置存储 ---------------- */
 
-async function readCampaigns() {
-  try {
-    const raw = await fs.readFile(CAMPAIGNS_FILE, "utf-8");
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
-
 async function writeCampaigns(campaigns) {
-  await fs.writeFile(CAMPAIGNS_FILE, JSON.stringify(campaigns, null, 2), "utf-8");
+  await storeWriteCampaigns(campaigns);
   await refreshCampaignCache(campaigns);
 }
 
@@ -595,32 +577,10 @@ function isKnownCampaign(id) {
 
 /* ---------------- 活动专区容器配置 ---------------- */
 
-async function readCampaignZone() {
-  try {
-    const raw = await fs.readFile(CAMPAIGN_ZONE_FILE, "utf-8");
-    const data = JSON.parse(raw);
-    if (!data || typeof data !== "object") {
-      return { ...DEFAULT_CAMPAIGN_ZONE };
-    }
-    return {
-      title: String(data.title || DEFAULT_CAMPAIGN_ZONE.title).trim() || DEFAULT_CAMPAIGN_ZONE.title,
-      enabled: data.enabled !== false,
-    };
-  } catch {
-    return { ...DEFAULT_CAMPAIGN_ZONE };
-  }
-}
-
-async function writeCampaignZone(zone) {
-  await fs.writeFile(CAMPAIGN_ZONE_FILE, JSON.stringify(zone, null, 2), "utf-8");
-}
-
 async function initCampaignZone() {
-  try {
-    await fs.access(CAMPAIGN_ZONE_FILE);
-  } catch {
-    await writeCampaignZone({ ...DEFAULT_CAMPAIGN_ZONE });
-  }
+  const existing = await readCampaignZone();
+  if (existing?.title) return;
+  await writeCampaignZone({ ...DEFAULT_CAMPAIGN_ZONE });
 }
 
 function toPublicCampaignZone(zone) {
@@ -632,22 +592,8 @@ function toPublicCampaignZone(zone) {
 
 /* ---------------- 分类配置存储 ---------------- */
 
-async function readCategories() {
-  try {
-    const raw = await fs.readFile(CATEGORIES_FILE, "utf-8");
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
-
 async function writeCategories(categories) {
-  await fs.writeFile(
-    CATEGORIES_FILE,
-    JSON.stringify(categories, null, 2),
-    "utf-8",
-  );
+  await storeWriteCategories(categories);
   await refreshCategoryCache(categories);
 }
 
@@ -710,31 +656,17 @@ function getDefaultCategoryName() {
 
 /* ---------------- 话题存储 ---------------- */
 
-async function readTopics() {
-  try {
-    const raw = await fs.readFile(TOPICS_FILE, "utf-8");
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
-
-async function writeTopics(topics) {
-  await fs.writeFile(TOPICS_FILE, JSON.stringify(topics, null, 2), "utf-8");
-}
-
 async function initTopics() {
   const existing = await readTopics();
   if (existing.length > 0) {
-    console.log(`[storage] topics.json loaded (${existing.length} items)`);
+    console.log(`[storage] topics loaded (${existing.length} items)`);
     return;
   }
 
   const now = new Date().toISOString();
   const seed = TOPIC_SEED.map((t) => ({ ...t, createdAt: t.createdAt || now }));
   await writeTopics(seed);
-  console.log(`[storage] topics.json seeded (${seed.length} items)`);
+  console.log(`[storage] topics seeded (${seed.length} items)`);
 }
 
 async function initTopicPosts() {
@@ -746,7 +678,7 @@ async function initTopicPosts() {
 
   const now = new Date().toISOString();
   for (const post of TOPIC_POST_SEED) {
-    await writeTopicPostFile({
+    await writeTopicPost({
       ...post,
       submittedAt: post.submittedAt || now,
       reviewedAt: post.reviewedAt || now,
@@ -780,56 +712,6 @@ async function getTopicById(id) {
   return topics.find((topic) => topic.id === id) || null;
 }
 
-/* ---------------- 话题内容存储 ---------------- */
-
-async function readTopicPostFile(filePath) {
-  const raw = await fs.readFile(filePath, "utf-8");
-  return JSON.parse(raw);
-}
-
-async function writeTopicPostFile(post) {
-  const filePath = path.join(TOPIC_POSTS_DIR, `${post.id}.json`);
-  await fs.writeFile(filePath, JSON.stringify(post, null, 2), "utf-8");
-}
-
-async function listTopicPosts() {
-  const entries = await fs.readdir(TOPIC_POSTS_DIR, { withFileTypes: true });
-  const posts = [];
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
-    try {
-      const post = await readTopicPostFile(path.join(TOPIC_POSTS_DIR, entry.name));
-      if (post?.id) posts.push(post);
-    } catch {
-      // skip invalid
-    }
-  }
-  return posts;
-}
-
-async function getTopicPost(id) {
-  const filePath = path.join(TOPIC_POSTS_DIR, `${id}.json`);
-  try {
-    await fs.access(filePath);
-    return readTopicPostFile(filePath);
-  } catch {
-    const all = await listTopicPosts();
-    const post = all.find((item) => item.id === id);
-    if (!post) throw new Error("NOT_FOUND");
-    return post;
-  }
-}
-
-function buildPostCountMap(posts, approvedOnly = true) {
-  const map = {};
-  for (const post of posts) {
-    if (approvedOnly && (post.status || "approved") !== "approved") continue;
-    if (!post.topicId) continue;
-    map[post.topicId] = (map[post.topicId] || 0) + 1;
-  }
-  return map;
-}
-
 function toPublicTopicPost(post, currentUser, nicknameMap = null, { includeComments = false } = {}) {
   const likeIds = Array.isArray(post.likeIds) ? post.likeIds : [];
   const comments = Array.isArray(post.comments) ? post.comments : [];
@@ -860,38 +742,14 @@ function toPublicTopicPost(post, currentUser, nicknameMap = null, { includeComme
   return base;
 }
 
-async function listProducts() {
-  const entries = await fs.readdir(STORAGE_DIR, { withFileTypes: true });
-  const products = [];
-
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
-
-    try {
-      const product = await readProductFile(path.join(STORAGE_DIR, entry.name));
-      if (!product || !product.id) continue;
-      products.push(product);
-    } catch {
-      // skip invalid files
-    }
+function buildPostCountMap(posts, approvedOnly = true) {
+  const map = {};
+  for (const post of posts) {
+    if (approvedOnly && (post.status || "approved") !== "approved") continue;
+    if (!post.topicId) continue;
+    map[post.topicId] = (map[post.topicId] || 0) + 1;
   }
-
-  return products;
-}
-
-async function getProduct(id) {
-  const filePath = path.join(STORAGE_DIR, `${id}.json`);
-  try {
-    await fs.access(filePath);
-    return readProductFile(filePath);
-  } catch {
-    const all = await listProducts();
-    const product = all.find((item) => item.id === id);
-    if (!product) {
-      throw new Error("NOT_FOUND");
-    }
-    return product;
-  }
+  return map;
 }
 
 function getRangeStart(range) {
@@ -983,7 +841,7 @@ async function resolveOrCreateTopic({ topicId, topicName }, user) {
     followerIds: [user.id],
   };
   topics.push(topic);
-  await writeTopics(topics);
+  await upsertTopic(topic);
   return { topicId: topic.id, topics };
 }
 
@@ -1119,8 +977,17 @@ function sortProducts(products) {
   });
 }
 
-app.get("/api/health", (_req, res) => {
-  res.json({ ok: true });
+app.get("/api/health", async (_req, res) => {
+  try {
+    await dbQuery("SELECT 1 AS ok");
+    res.json({
+      ok: true,
+      db: "mysql",
+      database: process.env.MYSQL_DATABASE || "vibebuilding",
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 app.post("/api/auth/register", async (req, res) => {
@@ -1692,7 +1559,7 @@ app.put("/api/admin/navs/reorder", requireAdmin, async (req, res) => {
 });
 
 app.post("/api/upload", requireAuth, (req, res) => {
-  imageUpload.single("image")(req, res, (err) => {
+  imageUpload.single("image")(req, res, async (err) => {
     if (err) {
       const message =
         err.code === "LIMIT_FILE_SIZE"
@@ -1700,10 +1567,21 @@ app.post("/api/upload", requireAuth, (req, res) => {
           : err.message || "图片上传失败";
       return res.status(400).json({ error: message });
     }
-    if (!req.file) {
+    if (!req.file?.buffer) {
       return res.status(400).json({ error: "请选择要上传的图片" });
     }
-    res.json({ url: `/uploads/${req.file.filename}` });
+    try {
+      const filename = makeUploadFilename(req.file.originalname);
+      await saveUpload({
+        id: filename,
+        mimeType: req.file.mimetype,
+        data: req.file.buffer,
+      });
+      // 走 /api/uploads，确保仅反代 /api 的远程 Nginx 也能实时预览
+      res.json({ url: `/api/uploads/${filename}` });
+    } catch (saveErr) {
+      res.status(500).json({ error: saveErr.message || "图片保存失败" });
+    }
   });
 });
 
@@ -1874,7 +1752,7 @@ app.get("/api/products/:id", attachUserIfPresent, async (req, res) => {
     }
 
     product.viewCount = (product.viewCount || 0) + 1;
-    await writeProductFile(product);
+    await writeProduct(product);
 
     const topics = await readTopics();
     const topicMap = Object.fromEntries(topics.map((t) => [t.id, t.name || ""]));
@@ -1914,7 +1792,7 @@ app.post("/api/products/:id/comments", requireAuth, async (req, res) => {
 
     product.comments = Array.isArray(product.comments) ? product.comments : [];
     product.comments.push(comment);
-    await writeProductFile(product);
+    await writeProduct(product);
 
     res.json({
       message: "评论成功",
@@ -2047,7 +1925,7 @@ app.post("/api/products", requireAuth, async (req, res) => {
       reviewedBy: isAdmin ? req.user.username : "",
     };
 
-    await writeProductFile(product);
+    await writeProduct(product);
 
     if (!topicsForMap) topicsForMap = await readTopics();
     const topicMap = Object.fromEntries(
@@ -2186,7 +2064,7 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     product.reviewedBy = reviewedBy;
     product.updatedAt = now;
 
-    await writeProductFile(product);
+    await writeProduct(product);
 
     if (!topicsForMap) topicsForMap = await readTopics();
     const topicMap = Object.fromEntries(
@@ -2231,7 +2109,7 @@ app.post("/api/products/:id/vote", requireAuth, async (req, res) => {
     product.voters = [...voters, req.user.id];
     product.ratings = { ...(product.ratings || {}), [req.user.id]: scores };
 
-    await writeProductFile(product);
+    await writeProduct(product);
 
     const { avgRating, ratingCount, avgRatings } = computeRating(product);
     const myRating = overallFromRatings(scores);
@@ -2378,7 +2256,7 @@ app.post("/api/topics/:id/posts", requireAuth, async (req, res) => {
       comments: [],
     };
 
-    await writeTopicPostFile(post);
+    await writeTopicPost(post);
     const nicknameMap = await getUsersNicknameMap();
     res.json({
       message: isAdmin ? "发布成功" : "提交成功，等待审核",
@@ -2441,8 +2319,7 @@ app.post("/api/topics", requireAuth, async (req, res) => {
       followerIds: [req.user.id],
     };
 
-    topics.push(topic);
-    await writeTopics(topics);
+    await upsertTopic(topic);
 
     res.json({
       message: "话题发布成功",
@@ -2472,7 +2349,7 @@ app.post("/api/topics/:id/follow", requireAuth, async (req, res) => {
       following = true;
     }
     topic.followerIds = followers;
-    await writeTopics(topics);
+    await upsertTopic(topic);
 
     res.json({ following, followerCount: followers.length });
   } catch (err) {
@@ -2491,7 +2368,7 @@ app.get("/api/topic-posts/:id", attachUserIfPresent, async (req, res) => {
     }
 
     post.viewCount = (post.viewCount || 0) + 1;
-    await writeTopicPostFile(post);
+    await writeTopicPost(post);
 
     const nicknameMap = await getUsersNicknameMap();
     const topic = await getTopicById(post.topicId);
@@ -2522,7 +2399,7 @@ app.post("/api/topic-posts/:id/like", requireAuth, async (req, res) => {
       liked = true;
     }
     post.likeIds = likeIds;
-    await writeTopicPostFile(post);
+    await writeTopicPost(post);
     res.json({ liked, likeCount: likeIds.length });
   } catch {
     res.status(404).json({ error: "内容不存在" });
@@ -2556,7 +2433,7 @@ app.post("/api/topic-posts/:id/comments", requireAuth, async (req, res) => {
 
     post.comments = Array.isArray(post.comments) ? post.comments : [];
     post.comments.push(comment);
-    await writeTopicPostFile(post);
+    await writeTopicPost(post);
 
     res.json({
       message: "评论成功",
@@ -2614,7 +2491,7 @@ app.post("/api/admin/products/:id/approve", requireAdmin, async (req, res) => {
     product.reviewedAt = new Date().toISOString();
     product.reviewedBy = req.user.username;
     product.rejectReason = "";
-    await writeProductFile(product);
+    await writeProduct(product);
     res.json({ message: "已通过审核", product: toPublicProduct(product, req.user) });
   } catch {
     res.status(404).json({ error: "资源不存在" });
@@ -2628,7 +2505,7 @@ app.post("/api/admin/products/:id/reject", requireAdmin, async (req, res) => {
     product.reviewedAt = new Date().toISOString();
     product.reviewedBy = req.user.username;
     product.rejectReason = (req.body?.reason || "").trim();
-    await writeProductFile(product);
+    await writeProduct(product);
     res.json({ message: "已拒绝", product: toPublicProduct(product, req.user) });
   } catch {
     res.status(404).json({ error: "资源不存在" });
@@ -2656,7 +2533,7 @@ app.post("/api/admin/products/:id/special", requireAdmin, async (req, res) => {
       product.campaign = "";
       product.isSpecial = false;
     }
-    await writeProductFile(product);
+    await writeProduct(product);
     const label = campaignCache.labels[product.campaign] || "";
     res.json({
       message: product.campaign ? `已加入${label}` : "已取消活动",
@@ -2683,7 +2560,7 @@ app.post("/api/admin/products/:id/rank", requireAdmin, async (req, res) => {
       }
       product.rankWeight = Math.max(-9999, Math.min(9999, Math.round(weight)));
     }
-    await writeProductFile(product);
+    await writeProduct(product);
     res.json({
       message: "榜单设置已更新",
       product: toPublicProduct(product, req.user),
@@ -2774,7 +2651,7 @@ app.delete(
         delete next[userId];
         product.ratings = next;
       }
-      await writeProductFile(product);
+      await writeProduct(product);
       const { avgRating, ratingCount, avgRatings } = computeRating(product);
       res.json({
         message: "已删除投票",
@@ -2872,7 +2749,7 @@ app.delete("/api/admin/shares/:id", requireAdmin, async (req, res) => {
       try {
         const product = await getProduct(removed.productId);
         product.shareCount = Math.max(0, (Number(product.shareCount) || 0) - 1);
-        await writeProductFile(product);
+        await writeProduct(product);
       } catch {
         /* product may be gone */
       }
@@ -2907,7 +2784,7 @@ app.post("/api/products/:id/share", attachUserIfPresent, async (req, res) => {
     shares.push(record);
     await writeShares(shares);
     product.shareCount = (Number(product.shareCount) || 0) + 1;
-    await writeProductFile(product);
+    await writeProduct(product);
     res.json({
       message: "分享已记录",
       shareCount: product.shareCount,
@@ -2921,12 +2798,12 @@ app.post("/api/products/:id/share", attachUserIfPresent, async (req, res) => {
 app.delete("/api/products/:id", requireAdmin, async (req, res) => {
   try {
     const product = await getProduct(req.params.id);
-    if (product.imageUrl && product.imageUrl.startsWith("/uploads/")) {
-      await fs.rm(path.join(UPLOADS_DIR, path.basename(product.imageUrl)), {
-        force: true,
-      });
+    const uploadName = localUploadFilename(product.imageUrl);
+    if (uploadName) {
+      await deleteUpload(uploadName);
+      await fs.rm(path.join(UPLOADS_DIR, uploadName), { force: true });
     }
-    await fs.rm(path.join(STORAGE_DIR, `${req.params.id}.json`), { force: true });
+    await deleteProduct(req.params.id);
     res.json({ message: "删除成功" });
   } catch {
     res.status(404).json({ error: "资源不存在" });

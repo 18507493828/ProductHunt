@@ -1,38 +1,20 @@
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import {
+  listUsers,
+  saveUser,
+  updateUser,
+  findUserByUsername,
+  findUserById,
+  countAdmins,
+} from "./store.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const USERS_FILE = path.join(__dirname, "storage", "users.json");
 const JWT_SECRET =
   process.env.JWT_SECRET || "skill-store-dev-secret-change-me";
 const JWT_EXPIRES_IN = "7d";
 
 const USERNAME_MIN_LENGTH = 3;
-
-async function readUsersFile() {
-  try {
-    const raw = await fs.readFile(USERS_FILE, "utf-8");
-    const data = JSON.parse(raw);
-    return Array.isArray(data.users) ? data.users : [];
-  } catch {
-    return [];
-  }
-}
-
-async function writeUsersFile(users) {
-  await fs.mkdir(path.dirname(USERS_FILE), { recursive: true });
-  await fs.writeFile(
-    USERS_FILE,
-    JSON.stringify({ users }, null, 2),
-    "utf-8"
-  );
-}
 
 function sanitizeUser(user) {
   return {
@@ -53,14 +35,13 @@ function createToken(user) {
 }
 
 export async function initAuth() {
-  const users = await readUsersFile();
   const adminUsername = process.env.ADMIN_USERNAME || "admin";
   const adminPassword = process.env.ADMIN_PASSWORD || "admin123456";
 
-  const hasAdmin = users.some((user) => user.role === "admin");
-  if (!hasAdmin) {
+  const adminCount = await countAdmins();
+  if (adminCount === 0) {
     const passwordHash = await bcrypt.hash(adminPassword, 10);
-    users.push({
+    await saveUser({
       id: crypto.randomUUID(),
       username: adminUsername,
       nickname: "管理员",
@@ -68,7 +49,6 @@ export async function initAuth() {
       role: "admin",
       createdAt: new Date().toISOString(),
     });
-    await writeUsersFile(users);
     console.log(`Default admin created: ${adminUsername}`);
   }
 }
@@ -89,8 +69,8 @@ export async function registerUser(username, nickname, password) {
     throw new Error("密码至少 6 位");
   }
 
-  const users = await readUsersFile();
-  if (users.some((user) => user.username === normalizedUsername)) {
+  const existing = await findUserByUsername(normalizedUsername);
+  if (existing) {
     throw new Error("该登录账号已被注册");
   }
 
@@ -103,8 +83,7 @@ export async function registerUser(username, nickname, password) {
     createdAt: new Date().toISOString(),
   };
 
-  users.push(user);
-  await writeUsersFile(users);
+  await saveUser(user);
 
   return {
     token: createToken(user),
@@ -114,8 +93,7 @@ export async function registerUser(username, nickname, password) {
 
 export async function loginUser(username, password) {
   const normalizedUsername = username.trim();
-  const users = await readUsersFile();
-  const user = users.find((item) => item.username === normalizedUsername);
+  const user = await findUserByUsername(normalizedUsername);
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     throw new Error("登录账号或密码错误");
@@ -140,35 +118,31 @@ export async function resetPassword(username, nickname, password) {
     throw new Error("新密码至少 6 位");
   }
 
-  const users = await readUsersFile();
-  const index = users.findIndex((item) => item.username === normalizedUsername);
-  if (index === -1) {
+  const user = await findUserByUsername(normalizedUsername);
+  if (!user) {
     throw new Error("登录账号不存在");
   }
 
-  const user = users[index];
   const storedNickname = (user.nickname || user.username).trim();
   if (storedNickname !== normalizedNickname) {
     throw new Error("昵称与账号不匹配");
   }
 
-  users[index] = {
+  await updateUser({
     ...user,
     passwordHash: await bcrypt.hash(password, 10),
-  };
-  await writeUsersFile(users);
+  });
 
   return { message: "密码已重置，请使用新密码登录" };
 }
 
 export async function getUserById(id) {
-  const users = await readUsersFile();
-  const user = users.find((item) => item.id === id);
+  const user = await findUserById(id);
   return user ? sanitizeUser(user) : null;
 }
 
 export async function getUsersNicknameMap() {
-  const users = await readUsersFile();
+  const users = await listUsers();
   const map = {};
   for (const user of users) {
     map[user.username] = user.nickname || user.username;
@@ -177,7 +151,7 @@ export async function getUsersNicknameMap() {
 }
 
 export async function getUsersIdMap() {
-  const users = await readUsersFile();
+  const users = await listUsers();
   const map = {};
   for (const user of users) {
     map[user.id] = sanitizeUser(user);
