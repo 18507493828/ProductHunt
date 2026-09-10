@@ -5714,6 +5714,20 @@ main { flex: 1; }
   color: var(--ph-light-text-secondary);
 }
 
+.ph-share-cover {
+  padding: 12px 12px 0;
+}
+
+.ph-share-cover-img,
+.ph-share-cover .ph-cached-image {
+  display: block;
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 10px;
+  background: #e8eaef;
+}
+
 .ph-share-preview {
   margin: 0;
   padding: 14px 12px;
@@ -5723,8 +5737,8 @@ main { flex: 1; }
   font-size: 13px;
   line-height: 1.7;
   color: var(--ph-light-text);
-  min-height: 140px;
-  max-height: 220px;
+  min-height: 100px;
+  max-height: 180px;
   overflow: auto;
 }
 

@@ -141,3 +141,79 @@ export async function copyShareText(text) {
   document.body.removeChild(textarea);
   if (!ok) throw new Error("复制失败");
 }
+
+/** 相对路径封面转成可 fetch 的绝对地址 */
+export function resolveShareImageUrl(imageUrl) {
+  const value = String(imageUrl || "").trim();
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value) || value.startsWith("data:")) return value;
+  const path = value.startsWith("/") ? value : `/${value}`;
+  return `${window.location.origin}${path}`;
+}
+
+async function blobToPngBlob(blob) {
+  if (!blob) throw new Error("封面为空");
+  if (blob.type === "image/png") return blob;
+
+  const bitmap = await createImageBitmap(blob);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("无法处理封面图");
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close?.();
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (png) => {
+        if (!png) reject(new Error("封面转换失败"));
+        else resolve(png);
+      },
+      "image/png",
+    );
+  });
+}
+
+export async function fetchShareImageBlob(imageUrl) {
+  const absolute = resolveShareImageUrl(imageUrl);
+  if (!absolute) throw new Error("没有封面图");
+  const res = await fetch(absolute, {
+    mode: "cors",
+    credentials: "same-origin",
+    cache: "force-cache",
+  });
+  if (!res.ok) throw new Error("封面加载失败");
+  return blobToPngBlob(await res.blob());
+}
+
+/**
+ * 复制分享文案；若有封面则尽量连同图片写入剪贴板。
+ * @returns {{ copiedImage: boolean }}
+ */
+export async function copySharePayload(text, imageUrl = "") {
+  const value = String(text || "");
+  if (!value) throw new Error("没有可复制的内容");
+
+  const cover = String(imageUrl || "").trim();
+  if (!cover || !navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
+    await copyShareText(value);
+    return { copiedImage: false };
+  }
+
+  try {
+    const pngBlob = await fetchShareImageBlob(cover);
+    const textBlob = new Blob([value], { type: "text/plain" });
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        "text/plain": textBlob,
+        "image/png": pngBlob,
+      }),
+    ]);
+    return { copiedImage: true };
+  } catch {
+    // 部分浏览器/跨域图无法写入图片，至少保证文案可复制
+    await copyShareText(value);
+    return { copiedImage: false };
+  }
+}

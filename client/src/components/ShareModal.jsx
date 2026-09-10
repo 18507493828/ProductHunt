@@ -7,9 +7,10 @@ import { fetchShareConfig, recordProductShare } from "../api";
 import {
   buildPlatformShareText,
   buildProductShareUrl,
-  copyShareText,
+  copySharePayload,
 } from "../shareUtils";
 import { SHARE_PLATFORMS } from "../sharePlatforms";
+import CachedImage from "./CachedImage";
 
 function DouyinIcon() {
   return (
@@ -128,18 +129,27 @@ export default function ShareModal({ product, open, onClose }) {
     return buildPlatformShareText(current.id, product, url, config);
   }, [product, current, url, config]);
 
+  const coverUrl = String(product?.imageUrl || "").trim();
+
   async function handleCopy() {
     if (!product || !preview) return;
     try {
       setBusy(true);
-      await copyShareText(preview);
+      const { copiedImage } = await copySharePayload(preview, coverUrl);
       setCopied(true);
       try {
         await recordProductShare(product.id, { platform });
       } catch {
         /* ignore */
       }
-      toast.success(`已复制${current.name}文案`, "可直接粘贴到对应平台发布");
+      toast.success(
+        copiedImage ? `已复制${current.name}文案和封面` : `已复制${current.name}文案`,
+        copiedImage
+          ? "可直接粘贴到对应平台；部分 App 需再单独贴图"
+          : coverUrl
+            ? "文案已复制；封面请在下方预览中另存或长按保存后一起发布"
+            : "可直接粘贴到对应平台发布",
+      );
       window.setTimeout(() => setCopied(false), 1800);
     } catch (err) {
       toast.error("复制失败", err.message || "请手动复制");
@@ -199,13 +209,27 @@ export default function ShareModal({ product, open, onClose }) {
           ))}
         </div>
 
-        <p className="ph-share-tip">{current.tip}</p>
+        <p className="ph-share-tip">
+          {coverUrl
+            ? `${current.tip}；有封面时会尽量连同图片一起复制`
+            : current.tip}
+        </p>
 
         <div className="ph-share-preview-wrap">
           <div className="ph-share-preview-head">
-            <span>预览文案</span>
+            <span>预览{coverUrl ? "内容" : "文案"}</span>
             <span>{current.name}</span>
           </div>
+          {coverUrl ? (
+            <div className="ph-share-cover">
+              <CachedImage
+                src={coverUrl}
+                alt={`${product.name || "作品"}封面`}
+                className="ph-share-cover-img"
+                loading="eager"
+              />
+            </div>
+          ) : null}
           <pre className="ph-share-preview">{preview}</pre>
         </div>
 
@@ -232,7 +256,11 @@ export default function ShareModal({ product, open, onClose }) {
             ) : (
               <>
                 <Copy size={16} aria-hidden="true" />
-                {busy ? "复制中..." : `复制${current.name}文案`}
+                {busy
+                  ? "复制中..."
+                  : coverUrl
+                    ? `复制${current.name}文案和封面`
+                    : `复制${current.name}文案`}
               </>
             )}
           </button>
