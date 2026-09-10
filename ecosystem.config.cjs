@@ -1,9 +1,11 @@
+const path = require("path");
+
 module.exports = {
   apps: [
     {
       name: "vibe-building",
-      script: "server/index.js",
-      cwd: __dirname,
+      script: "index.js",
+      cwd: path.join(__dirname, "server"),
       env: {
         NODE_ENV: "production",
         PORT: 3001,
