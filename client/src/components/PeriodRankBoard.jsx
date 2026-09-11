@@ -109,12 +109,14 @@ export default function PeriodRankBoard({
                 </div>
                 <div className="ph-period-rank-stats">
                   {compact ? (
-                    <span>{item._heat}</span>
+                    <span className="ph-period-rank-heat" title="热度">
+                      🔥 热度 {item._heat}
+                    </span>
                   ) : (
                     <>
-                      <span>览 {item.viewCount || 0}</span>
-                      <span>赞 {item.voteCount || 0}</span>
-                      <span>热度 {item._heat}</span>
+                      <span>浏览 {item.viewCount || 0}</span>
+                      <span>点赞 {item.voteCount || 0}</span>
+                      <span title="热度">🔥 热度 {item._heat}</span>
                     </>
                   )}
                 </div>

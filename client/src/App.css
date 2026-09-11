@@ -7607,6 +7607,10 @@ a.ph-logo {
   gap: 8px;
   color: var(--ph-muted, #9aa3b5);
   font-size: 12px;
+  white-space: nowrap;
+}
+.ph-period-rank-heat {
+  font-variant-numeric: tabular-nums;
 }
 
 .ph-my-workspace { display: grid; gap: 22px; }
