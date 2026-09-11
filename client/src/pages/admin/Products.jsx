@@ -14,6 +14,7 @@ const STATUS_TABS = [
   { key: "pending", label: "待审核" },
   { key: "approved", label: "已上架" },
   { key: "rejected", label: "已拒绝" },
+  { key: "offline", label: "已下架" },
   { key: "all", label: "全部" },
 ];
 
@@ -21,6 +22,7 @@ const STATUS_LABEL = {
   pending: "待审核",
   approved: "已上架",
   rejected: "已拒绝",
+  offline: "已下架",
 };
 
 export default function Products() {

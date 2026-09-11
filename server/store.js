@@ -10,6 +10,10 @@ import {
   DEFAULT_SHARE_CONFIG,
   normalizeShareConfig,
 } from "./shareConfig.js";
+import {
+  DEFAULT_INCENTIVE_CONFIG,
+  normalizeIncentiveConfig,
+} from "./incentiveConfig.js";
 
 const BATCH_SIZE = 500;
 
@@ -351,6 +355,43 @@ export async function writeShareConfig(config) {
       fromBool(normalized.includeUrl !== false),
       JSON.stringify(normalized.platforms || {}),
     ],
+  );
+  return normalized;
+}
+
+export async function readIncentiveConfig() {
+  try {
+    const rows = await query(
+      "SELECT payload FROM incentive_config WHERE id = 1 LIMIT 1",
+    );
+    if (!rows[0]) {
+      return normalizeIncentiveConfig(DEFAULT_INCENTIVE_CONFIG);
+    }
+    let payload = rows[0].payload;
+    if (typeof payload === "string") {
+      try {
+        payload = JSON.parse(payload);
+      } catch {
+        payload = {};
+      }
+    }
+    return normalizeIncentiveConfig(payload || {});
+  } catch (err) {
+    // 表尚未创建时回退默认，避免阻断启动后的读请求
+    if (err && (err.code === "ER_NO_SUCH_TABLE" || err.errno === 1146)) {
+      return normalizeIncentiveConfig(DEFAULT_INCENTIVE_CONFIG);
+    }
+    throw err;
+  }
+}
+
+export async function writeIncentiveConfig(config) {
+  const normalized = normalizeIncentiveConfig(config);
+  await query(
+    `INSERT INTO incentive_config (id, payload)
+     VALUES (1, ?)
+     ON DUPLICATE KEY UPDATE payload = VALUES(payload)`,
+    [JSON.stringify(normalized)],
   );
   return normalized;
 }

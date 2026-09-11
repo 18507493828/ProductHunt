@@ -200,6 +200,11 @@ CREATE TABLE IF NOT EXISTS share_config (
   platforms JSON NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS incentive_config (
+  id INT PRIMARY KEY,
+  payload JSON NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 上传图片二进制（与业务表一并存库，不再依赖磁盘）
 CREATE TABLE IF NOT EXISTS uploads (
   id VARCHAR(191) PRIMARY KEY,

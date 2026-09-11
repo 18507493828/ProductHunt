@@ -4,8 +4,10 @@ import { useAuth } from "../AuthContext";
 
 function resolvePostLoginTarget(searchParams, user) {
   const from = (searchParams.get("from") || "").trim();
+  if (from.startsWith("/") && !from.startsWith("/login") && !from.startsWith("/register")) {
+    return from;
+  }
   if (user?.role === "admin") return "/admin";
-  if (from.startsWith("/")) return from;
   return "/";
 }
 
@@ -54,8 +56,8 @@ export default function Login() {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>登录</h1>
-        <p className="auth-tip">登录后可上传资源，并为喜欢的作品评分</p>
+        <h1>登录码上创</h1>
+        <p className="auth-tip">构建 · 发布 · 霸榜 · 登录后可构建应用并参与冲榜</p>
 
         <label>
           登录账号

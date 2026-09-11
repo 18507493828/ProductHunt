@@ -3,11 +3,12 @@ import { useAuth } from "../../AuthContext";
 import BrandLogo from "../../components/BrandLogo";
 
 const NAV_ITEMS = [
-  { to: "/admin", end: true, label: "总览" },
-  { to: "/admin/products", end: false, label: "应用管理" },
+  { to: "/admin", end: true, label: "关键看板" },
+  { to: "/admin/products", end: false, label: "应用审核" },
   { to: "/admin/votes", end: false, label: "投票管理" },
   { to: "/admin/rankings", end: false, label: "榜单管理" },
-  { to: "/admin/shares", end: false, label: "分享管理" },
+  { to: "/admin/incentives", end: false, label: "榜单激励" },
+  { to: "/admin/shares", end: false, label: "渠道许可" },
   { to: "/admin/categories", end: false, label: "分类管理" },
   { to: "/admin/campaigns", end: false, label: "活动管理" },
   { to: "/admin/banners", end: false, label: "轮播管理" },
@@ -15,11 +16,12 @@ const NAV_ITEMS = [
 ];
 
 const TITLE_MAP = {
-  "/admin": "后台总览",
-  "/admin/products": "应用管理",
+  "/admin": "关键指标看板",
+  "/admin/products": "应用审核与下架",
   "/admin/votes": "投票管理",
   "/admin/rankings": "榜单管理",
-  "/admin/shares": "分享管理",
+  "/admin/incentives": "榜单与激励系统",
+  "/admin/shares": "渠道推广许可",
   "/admin/categories": "分类管理",
   "/admin/campaigns": "活动管理",
   "/admin/banners": "轮播管理",
@@ -82,11 +84,11 @@ export default function AdminLayout() {
           <main className="admin-main">
             <header className="admin-main-header">
               <div className="admin-main-title">
-                <span className="admin-brand-name">Vibe Building</span>
+                <span className="admin-brand-name">码上创 CodeCraft</span>
                 <span className="admin-brand-divider">·</span>
                 <h1>{title}</h1>
               </div>
-              <span className="admin-header-user">管理员：{user.username}</span>
+              <span className="admin-header-user">运营：{user.username}</span>
             </header>
             <div className="admin-main-content">
               <Outlet />

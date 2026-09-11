@@ -5,14 +5,17 @@ const ShareContext = createContext(null);
 
 export function ShareProvider({ children }) {
   const [product, setProduct] = useState(null);
+  const [initialPlatform, setInitialPlatform] = useState("");
 
-  const openShare = useCallback((nextProduct) => {
+  const openShare = useCallback((nextProduct, options = {}) => {
     if (!nextProduct?.id) return;
+    setInitialPlatform(options.platform || "");
     setProduct(nextProduct);
   }, []);
 
   const closeShare = useCallback(() => {
     setProduct(null);
+    setInitialPlatform("");
   }, []);
 
   const value = useMemo(
@@ -27,7 +30,12 @@ export function ShareProvider({ children }) {
   return (
     <ShareContext.Provider value={value}>
       {children}
-      <ShareModal product={product} open={!!product} onClose={closeShare} />
+      <ShareModal
+        product={product}
+        open={!!product}
+        initialPlatform={initialPlatform}
+        onClose={closeShare}
+      />
     </ShareContext.Provider>
   );
 }

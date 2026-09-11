@@ -55,6 +55,8 @@ import {
   writeCampaignZone,
   readShareConfig,
   writeShareConfig,
+  readIncentiveConfig,
+  writeIncentiveConfig,
   readShares,
   writeShares,
   readTopics,
@@ -92,7 +94,7 @@ let categoryCache = {
   defaultName: DEFAULT_CATEGORY,
 };
 
-const RANGES = ["today", "week", "month", "all"];
+const RANGES = ["today", "week", "month", "quarter", "all"];
 const URL_PATTERN = /^https?:\/\/.+/i;
 // 兼容旧路径 /uploads/x 与反代仅转发 /api 时的 /api/uploads/x
 const IMAGE_URL_PATTERN =
@@ -762,6 +764,7 @@ function getRangeStart(range) {
   }
   if (range === "week") return now - 7 * DAY_MS;
   if (range === "month") return now - 30 * DAY_MS;
+  if (range === "quarter") return now - 90 * DAY_MS;
   return 0;
 }
 
@@ -1720,6 +1723,15 @@ app.get("/api/stats", async (_req, res) => {
       .sort((a, b) => b.hotScore - a.hotScore)
       .slice(0, 5);
 
+    const incentive = await readIncentiveConfig();
+    let userCount = 0;
+    try {
+      const { listUsers } = await import("./store.js");
+      const users = await listUsers();
+      userCount = Array.isArray(users) ? users.length : 0;
+    } catch {
+      userCount = 0;
+    }
     res.json({
       totalResources,
       totalTopics: topics.length,
@@ -1729,12 +1741,15 @@ app.get("/api/stats", async (_req, res) => {
       totalComments: totalComments + totalTopicComments,
       totalTopicLikes,
       totalFollowers,
+      userCount,
       avgRating: ratingCount ? Math.round((ratingSum / ratingCount) * 10) / 10 : 0,
       ratingCount,
       recentResources7d,
       recentTopicPosts7d,
       categoryCounts: categoryList,
       topTopics,
+      incentivePaid: incentive.paid,
+      incentivePool: incentive.pool,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -2041,7 +2056,7 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     let reviewedAt = product.reviewedAt || "";
     let reviewedBy = product.reviewedBy || "";
 
-    if (!isAdmin && prevStatus === "rejected") {
+    if (!isAdmin && (prevStatus === "rejected" || prevStatus === "offline")) {
       nextStatus = "pending";
       rejectReason = "";
       reviewedAt = "";
@@ -2072,7 +2087,9 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     );
     res.json({
       message:
-        !isAdmin && nextStatus === "pending" && prevStatus === "rejected"
+        !isAdmin &&
+        nextStatus === "pending" &&
+        (prevStatus === "rejected" || prevStatus === "offline")
           ? "已保存并重新提交审核"
           : "保存成功",
       product: toPublicProduct(product, req.user, topicMap),
@@ -2080,6 +2097,36 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
   } catch (err) {
     if (err.message === "NOT_FOUND") {
       return res.status(404).json({ error: "资源不存在" });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/** 作者自行下架已上架应用 */
+app.post("/api/products/:id/offline", requireAuth, async (req, res) => {
+  try {
+    const product = await getProduct(req.params.id);
+    const isOwner = product.submittedBy === req.user.username;
+    const isAdmin = req.user.role === "admin";
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "只能下架自己的应用" });
+    }
+    if ((product.status || "approved") !== "approved") {
+      return res.status(400).json({ error: "仅已上架应用可下架" });
+    }
+    product.status = "offline";
+    product.rejectReason = "";
+    product.updatedAt = new Date().toISOString();
+    await writeProduct(product);
+    const topics = await readTopics();
+    const topicMap = Object.fromEntries(topics.map((t) => [t.id, t.name || ""]));
+    res.json({
+      message: "应用已下架",
+      product: toPublicProduct(product, req.user, topicMap),
+    });
+  } catch (err) {
+    if (err.message === "NOT_FOUND") {
+      return res.status(404).json({ error: "应用不存在" });
     }
     res.status(500).json({ error: err.message });
   }
@@ -2686,6 +2733,129 @@ app.put("/api/admin/share-config", requireAdmin, async (req, res) => {
   try {
     const next = await writeShareConfig(req.body || {});
     res.json({ message: "分享配置已保存", config: next });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/incentive-config", requireAdmin, async (_req, res) => {
+  try {
+    res.json(await readIncentiveConfig());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/admin/incentive-config", requireAdmin, async (req, res) => {
+  try {
+    const next = await writeIncentiveConfig(req.body || {});
+    res.json({ message: "激励配置已保存并生效", config: next });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/ops-overview", requireAdmin, async (_req, res) => {
+  try {
+    const { BUILD_SCENES, inferSceneName } = await import("./buildScenes.js");
+    const [products, topics, shares, incentive] = await Promise.all([
+      listProducts(),
+      readTopics(),
+      readShares(),
+      readIncentiveConfig(),
+    ]);
+    const topicMap = Object.fromEntries(
+      topics.map((t) => [t.id, t.name || ""]),
+    );
+    const weekAgo = new Date(Date.now() - 7 * DAY_MS).toISOString();
+    const dayAgo = new Date(Date.now() - DAY_MS).toISOString();
+
+    let pending = 0;
+    let approved = 0;
+    let rejected = 0;
+    let weekSubmitted = 0;
+    let weekApproved = 0;
+    let weekViews = 0;
+    let todaySubmitters = new Set();
+    let maodaoHits = 0;
+    const sceneCounts = Object.fromEntries(
+      [...BUILD_SCENES.map((s) => [s.name, 0]), ["其他", 0]],
+    );
+
+    for (const product of products) {
+      const status = product.status || "approved";
+      if (status === "pending") pending += 1;
+      else if (status === "rejected") rejected += 1;
+      else if (status === "approved") approved += 1;
+
+      const submittedAt = product.submittedAt || "";
+      if (submittedAt >= weekAgo) {
+        weekSubmitted += 1;
+        if (status === "approved") weekApproved += 1;
+      }
+      if (submittedAt >= dayAgo && product.submittedBy) {
+        todaySubmitters.add(product.submittedBy);
+      }
+      if (status === "approved") {
+        weekViews += product.viewCount || 0;
+        const scene = inferSceneName(product, topicMap[product.topicId] || "");
+        sceneCounts[scene] = (sceneCounts[scene] || 0) + 1;
+        const blob = `${product.description || ""}\n${product.tagline || ""}\n${product.name || ""}`;
+        if (blob.includes("华为码道") || blob.includes("CSDN-MD-004") || blob.includes("码道")) {
+          maodaoHits += 1;
+        }
+      }
+    }
+
+    const weekShares = shares.filter((s) => (s.createdAt || "") >= weekAgo).length;
+    const funnel = {
+      build: weekSubmitted,
+      publish: weekApproved,
+      experience: weekViews,
+      share: weekShares,
+    };
+
+    const sceneDistribution = Object.entries(sceneCounts)
+      .map(([scene, count]) => ({
+        scene,
+        count,
+        percent: approved ? Math.round((count / approved) * 100) : 0,
+      }))
+      .filter((item) => item.count > 0 || item.scene !== "其他")
+      .sort((a, b) => b.count - a.count);
+
+    const pendingPreview = products
+      .filter((p) => (p.status || "approved") === "pending")
+      .sort((a, b) =>
+        String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")),
+      )
+      .slice(0, 8)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        submittedBy: p.submittedBy,
+        submittedAt: p.submittedAt,
+        tagline: p.tagline,
+      }));
+
+    res.json({
+      kpis: {
+        activeBuildersToday: todaySubmitters.size,
+        weekNewApps: weekSubmitted,
+        pending,
+        approved,
+        rejected,
+        avgDailyViews: Math.round(weekViews / 7),
+        maodaoConversions: maodaoHits,
+        incentivePaid: incentive.paid,
+        incentivePool: incentive.pool,
+        maodaoReward: incentive.maodao,
+      },
+      funnel,
+      sceneDistribution,
+      pendingPreview,
+      incentive,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

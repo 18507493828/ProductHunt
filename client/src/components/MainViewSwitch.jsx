@@ -2,10 +2,11 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const MAIN_VIEWS = [
   { id: "home", label: "首页" },
-  { id: "topics", label: "话题" },
+  { id: "square", label: "应用广场" },
+  { id: "my", label: "我的", needAuth: true },
 ];
 
-const VIEW_ORDER = { home: 0, topics: 1 };
+const VIEW_ORDER = { home: 0, square: 1, my: 2, topics: 3 };
 
 function useMainViewDirection(view) {
   const prev = useRef(view);
@@ -26,13 +27,12 @@ function useMainViewDirection(view) {
   return direction;
 }
 
-/** 首页 / 话题 顶部 Tab，带滑动下划线 */
-export function MainViewTabNav({ activeView, onChange }) {
+/** 首页 / 应用广场 / 我的 */
+export function MainViewTabNav({ activeView, onChange, loggedIn = false }) {
   const navRef = useRef(null);
   const [indicator, setIndicator] = useState({ left: 0, width: 0, visible: false });
-
-  const tabActive =
-    activeView === "home" || activeView === "topics" ? activeView : null;
+  const tabs = MAIN_VIEWS.filter((t) => !t.needAuth || loggedIn);
+  const tabActive = tabs.some((t) => t.id === activeView) ? activeView : null;
 
   useLayoutEffect(() => {
     const nav = navRef.current;
@@ -54,7 +54,7 @@ export function MainViewTabNav({ activeView, onChange }) {
     updateIndicator();
     window.addEventListener("resize", updateIndicator);
     return () => window.removeEventListener("resize", updateIndicator);
-  }, [tabActive]);
+  }, [tabActive, loggedIn]);
 
   return (
     <nav className="ph-main-view-tabs" ref={navRef} aria-label="顶部导航">
@@ -69,7 +69,7 @@ export function MainViewTabNav({ activeView, onChange }) {
         }}
         aria-hidden="true"
       />
-      {MAIN_VIEWS.map((tab) => (
+      {tabs.map((tab) => (
         <button
           key={tab.id}
           type="button"
@@ -87,11 +87,11 @@ export function MainViewTabNav({ activeView, onChange }) {
   );
 }
 
-/** 首页 / 话题 内容区切换动画 */
-export default function MainViewSwitch({ activeView, home, topics }) {
+/** 首页 / 应用广场 内容区切换动画（我的由 App 单独渲染） */
+export default function MainViewSwitch({ activeView, home, square }) {
   const direction = useMainViewDirection(activeView);
 
-  if (activeView !== "home" && activeView !== "topics") return null;
+  if (activeView !== "home" && activeView !== "square") return null;
 
   const isHome = activeView === "home";
 
@@ -106,7 +106,7 @@ export default function MainViewSwitch({ activeView, home, topics }) {
         .filter(Boolean)
         .join(" ")}
     >
-      {isHome ? home : topics}
+      {isHome ? home : square}
     </main>
   );
 }

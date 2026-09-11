@@ -4,8 +4,10 @@ import { useAuth } from "../AuthContext";
 
 function resolvePostAuthTarget(searchParams, user) {
   const from = (searchParams.get("from") || "").trim();
+  if (from.startsWith("/") && !from.startsWith("/login") && !from.startsWith("/register")) {
+    return from;
+  }
   if (user?.role === "admin") return "/admin";
-  if (from.startsWith("/")) return from;
   return "/";
 }
 
@@ -64,8 +66,8 @@ export default function Register() {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>注册</h1>
-        <p className="auth-tip">加入社区，上传 Agent 资源、参与互动评分</p>
+        <h1>注册码上创</h1>
+        <p className="auth-tip">构建 · 发布 · 霸榜 · 加入开发者应用共创平台</p>
 
         <label>
           登录账号

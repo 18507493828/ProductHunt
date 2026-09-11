@@ -13,6 +13,7 @@ import Dashboard from "./pages/admin/Dashboard.jsx";
 import Products from "./pages/admin/Products.jsx";
 import Votes from "./pages/admin/Votes.jsx";
 import Rankings from "./pages/admin/Rankings.jsx";
+import Incentives from "./pages/admin/Incentives.jsx";
 import Shares from "./pages/admin/Shares.jsx";
 import Banners from "./pages/admin/Banners.jsx";
 import Campaigns from "./pages/admin/Campaigns.jsx";
@@ -42,6 +43,7 @@ createRoot(document.getElementById("root")).render(
               <Route path="products" element={<Products />} />
               <Route path="votes" element={<Votes />} />
               <Route path="rankings" element={<Rankings />} />
+              <Route path="incentives" element={<Incentives />} />
               <Route path="shares" element={<Shares />} />
               <Route path="categories" element={<Categories />} />
               <Route path="campaigns" element={<Campaigns />} />

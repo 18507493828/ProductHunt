@@ -12,6 +12,7 @@ const PLATFORM_THEME = {
   douyin: { color: "#25F4EE" },
   wechat: { color: "#07C160" },
   xiaohongshu: { color: "#FF2442" },
+  csdn: { color: "#FC5531" },
   link: { color: "#6B8CFF" },
 };
 
@@ -107,20 +108,26 @@ export default function Shares() {
     }
   }
 
-  function updateActivePlatform(patch) {
+  function updatePlatform(platformId, patch) {
+    const meta =
+      SHARE_PLATFORMS.find((p) => p.id === platformId) || SHARE_PLATFORMS[0];
     setConfig((prev) => ({
       ...prev,
       platforms: {
         ...(prev.platforms || {}),
-        [activePlatform]: {
-          ...(prev.platforms?.[activePlatform] || {
+        [platformId]: {
+          ...(prev.platforms?.[platformId] || {
             enabled: true,
-            template: activeMeta.defaultTemplate,
+            template: meta.defaultTemplate,
           }),
           ...patch,
         },
       },
     }));
+  }
+
+  function updateActivePlatform(patch) {
+    updatePlatform(activePlatform, patch);
   }
 
   function switchFilter(next) {
@@ -151,7 +158,7 @@ export default function Shares() {
     <div className="admin-share-page">
       <div className="admin-toolbar">
         <p className="admin-toolbar-hint">
-          配置各平台文案模板，并查看用户复制分享记录。
+          控制霸榜中心可用分享渠道：渠道需完成商务授权后开启。可配置小红书 / 抖音 / 微信 / CSDN 博客文案模板。
         </p>
       </div>
 
@@ -168,7 +175,7 @@ export default function Shares() {
                   titlePrefix: e.target.value,
                 }))
               }
-              placeholder="例如：【Vibe Building】"
+              placeholder="例如：【码上创】"
             />
           </label>
           <label className="admin-filter-field">
@@ -184,27 +191,56 @@ export default function Shares() {
           </label>
         </div>
 
-        <div className="admin-share-platform-tabs">
-          {SHARE_PLATFORMS.map((tab) => {
-            const theme = PLATFORM_THEME[tab.id];
-            const enabled = config.platforms?.[tab.id]?.enabled !== false;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                className={
-                  "admin-share-platform-tab" +
-                  (activePlatform === tab.id ? " is-active" : "") +
-                  (enabled ? "" : " is-off")
-                }
-                style={{ "--share-accent": theme.color }}
-                onClick={() => setActivePlatform(tab.id)}
-              >
-                {tab.name}
-                <em>{enabled ? "开" : "关"}</em>
-              </button>
-            );
-          })}
+        <div className="admin-share-perm-card">
+          <div className="admin-share-perm-head">
+            <strong>渠道推广许可</strong>
+            <p>控制霸榜中心可用分享渠道；需完成商务授权后再开启</p>
+          </div>
+          <div className="admin-share-perm-list" role="list">
+            {SHARE_PLATFORMS.map((tab) => {
+              const theme = PLATFORM_THEME[tab.id];
+              const enabled = config.platforms?.[tab.id]?.enabled !== false;
+              const active = activePlatform === tab.id;
+              return (
+                <div
+                  key={tab.id}
+                  className={
+                    "admin-share-perm-row" +
+                    (active ? " is-active" : "") +
+                    (enabled ? "" : " is-off")
+                  }
+                  style={{ "--share-accent": theme.color }}
+                  role="listitem"
+                >
+                  <button
+                    type="button"
+                    className="admin-share-perm-main"
+                    onClick={() => setActivePlatform(tab.id)}
+                  >
+                    <span
+                      className="admin-share-platform-dot"
+                      aria-hidden="true"
+                    />
+                    <span className="admin-share-perm-text">
+                      <strong>{tab.name}</strong>
+                      <em>{tab.tip}</em>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={"ph-switch" + (enabled ? " is-on" : "")}
+                    role="switch"
+                    aria-checked={enabled}
+                    aria-label={`${tab.name}${enabled ? "已开启" : "已关闭"}`}
+                    onClick={() => {
+                      updatePlatform(tab.id, { enabled: !enabled });
+                      setActivePlatform(tab.id);
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div
@@ -216,16 +252,21 @@ export default function Shares() {
               <h3>{activeMeta.name}</h3>
               <p className="admin-hint">{activeMeta.tip}</p>
             </div>
-            <label className="admin-share-switch">
-              <input
-                type="checkbox"
-                checked={activePlatformConfig.enabled !== false}
-                onChange={(e) =>
-                  updateActivePlatform({ enabled: e.target.checked })
-                }
-              />
-              <span>启用平台</span>
-            </label>
+            <button
+              type="button"
+              className={
+                "ph-switch" +
+                (activePlatformConfig.enabled !== false ? " is-on" : "")
+              }
+              role="switch"
+              aria-checked={activePlatformConfig.enabled !== false}
+              aria-label={`切换${activeMeta.name}渠道`}
+              onClick={() =>
+                updateActivePlatform({
+                  enabled: !(activePlatformConfig.enabled !== false),
+                })
+              }
+            />
           </div>
 
           <label className="admin-filter-field admin-share-editor-field">

@@ -62,6 +62,25 @@ function XiaohongshuIcon() {
   );
 }
 
+function CsdnIcon() {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <rect width="48" height="48" rx="14" fill="#FC5531" />
+      <text
+        x="24"
+        y="30"
+        textAnchor="middle"
+        fill="#fff"
+        fontSize="14"
+        fontWeight="700"
+        fontFamily="system-ui,sans-serif"
+      >
+        C
+      </text>
+    </svg>
+  );
+}
+
 function LinkIcon() {
   return (
     <span className="ph-share-link-icon" aria-hidden="true">
@@ -74,14 +93,15 @@ function PlatformIcon({ id }) {
   if (id === "douyin") return <DouyinIcon />;
   if (id === "wechat") return <WechatIcon />;
   if (id === "xiaohongshu") return <XiaohongshuIcon />;
+  if (id === "csdn") return <CsdnIcon />;
   return <LinkIcon />;
 }
 
-export default function ShareModal({ product, open, onClose }) {
+export default function ShareModal({ product, open, onClose, initialPlatform = "" }) {
   const toast = useToast();
   const { mounted, overlayClassName, panelClassName } = useModalMotion(open);
   const [config, setConfig] = useState(null);
-  const [platform, setPlatform] = useState("douyin");
+  const [platform, setPlatform] = useState(initialPlatform || "douyin");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -98,6 +118,7 @@ export default function ShareModal({ product, open, onClose }) {
   useEffect(() => {
     if (!open) return undefined;
     setCopied(false);
+    if (initialPlatform) setPlatform(initialPlatform);
     let cancelled = false;
     fetchShareConfig()
       .then((data) => {
@@ -110,7 +131,7 @@ export default function ShareModal({ product, open, onClose }) {
     return () => {
       cancelled = true;
     };
-  }, [open, product?.id]);
+  }, [open, product?.id, initialPlatform]);
 
   useEffect(() => {
     if (!platforms.length) return;
@@ -178,7 +199,7 @@ export default function ShareModal({ product, open, onClose }) {
           ×
         </button>
 
-        <p className="ph-share-eyebrow">分享作品</p>
+        <p className="ph-share-eyebrow">📢 推广我的应用</p>
         <h2 id="share-modal-title" className="ph-share-title">
           {product.name || "作品"}
         </h2>
@@ -186,7 +207,7 @@ export default function ShareModal({ product, open, onClose }) {
           <p className="ph-share-tagline">{product.tagline}</p>
         )}
 
-        <div className="ph-share-platforms" role="listbox" aria-label="选择平台">
+        <div className="ph-share-platforms" role="listbox" aria-label="推广渠道">
           {platforms.map((item) => (
             <button
               key={item.id}
@@ -251,16 +272,12 @@ export default function ShareModal({ product, open, onClose }) {
             {copied ? (
               <>
                 <Check size={16} aria-hidden="true" />
-                已复制
+                已复制，可去平台粘贴
               </>
             ) : (
               <>
                 <Copy size={16} aria-hidden="true" />
-                {busy
-                  ? "复制中..."
-                  : coverUrl
-                    ? `复制${current.name}文案和封面`
-                    : `复制${current.name}文案`}
+                {busy ? "分享中..." : "🚀 立即分享"}
               </>
             )}
           </button>

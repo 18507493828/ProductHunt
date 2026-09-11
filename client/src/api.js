@@ -171,6 +171,12 @@ export async function updateProduct(
   });
 }
 
+export async function unpublishProduct(id) {
+  return request(`/api/products/${encodeURIComponent(id)}/offline`, {
+    method: "POST",
+  });
+}
+
 export async function voteProduct(id, ratings) {
   return request(`/api/products/${id}/vote`, {
     method: "POST",
@@ -311,6 +317,21 @@ export async function updateAdminShareConfig(payload) {
     method: "PUT",
     body: JSON.stringify(payload || {}),
   });
+}
+
+export async function fetchAdminIncentiveConfig() {
+  return request("/api/admin/incentive-config");
+}
+
+export async function updateAdminIncentiveConfig(payload) {
+  return request("/api/admin/incentive-config", {
+    method: "PUT",
+    body: JSON.stringify(payload || {}),
+  });
+}
+
+export async function fetchAdminOpsOverview() {
+  return request("/api/admin/ops-overview");
 }
 
 export async function fetchAdminShares(filters = {}) {

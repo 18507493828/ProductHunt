@@ -33,7 +33,8 @@ function buildHashtags(categories, extras = []) {
   const tags = [
     ...extras,
     ...categories.map(hashtagFromLabel),
-    "VibeBuilding",
+    "码上创",
+    "CodeCraft",
     "独立开发",
   ]
     .map((t) => String(t || "").trim())
