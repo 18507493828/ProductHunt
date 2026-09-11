@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>流浪助养台</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+:root{
+  --orange:#e85d04;--warm:#f48c06;--cream:#fff7ed;--ink:#3d2914;--muted:#8a6a4a;
+  --card:#fffaf3;--line:rgba(232,93,4,.12);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:"Noto Sans SC",system-ui,sans-serif;color:var(--ink);
+  background:
+    radial-gradient(800px 400px at 0% 0%,#ffd8a8 0%,transparent 60%),
+    radial-gradient(700px 380px at 100% 10%,#ffc078 0%,transparent 55%),
+    #fff4e6;
+}
+.app{max-width:1220px;margin:0 auto;padding:20px 22px 40px;min-height:100%}
+.hero-bar{
+  display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:22px;flex-wrap:wrap;
+}
+.hero-bar h1{font-family:"ZCOOL XiaoWei",serif;font-size:40px;font-weight:400;color:#9a3412;line-height:1.1}
+.hero-bar p{color:var(--muted);font-size:14px;margin-top:6px;max-width:420px}
+.pipeline{
+  display:flex;gap:0;background:#fff;border-radius:999px;padding:6px;border:1px solid var(--line);
+  box-shadow:0 8px 24px rgba(154,52,18,.06);flex-wrap:wrap;
+}
+.pipeline button{
+  border:none;background:transparent;padding:10px 18px;border-radius:999px;font:inherit;font-weight:700;
+  font-size:13px;color:var(--muted);cursor:pointer;
+}
+.pipeline button.on{background:linear-gradient(135deg,var(--warm),var(--orange));color:#fff}
+.masonry{
+  columns:3;column-gap:16px;
+}
+@media(max-width:980px){.masonry{columns:2}}
+@media(max-width:640px){.masonry{columns:1}}
+.pet{
+  break-inside:avoid;margin-bottom:16px;background:var(--card);border:1px solid var(--line);
+  border-radius:22px;overflow:hidden;box-shadow:0 10px 28px rgba(154,52,18,.07);
+  transition:transform .2s,box-shadow .2s,outline .2s;
+  outline:2px solid transparent;outline-offset:2px;
+}
+.pet:hover{transform:translateY(-3px);box-shadow:0 16px 36px rgba(154,52,18,.12)}
+.pet.flash{outline-color:var(--orange);animation:petFlash .9s ease}
+@keyframes petFlash{
+  0%,100%{outline-color:var(--orange)}
+  40%{outline-color:transparent}
+}
+.pet-photo{
+  height:var(--h,180px);display:grid;place-items:center;position:relative;
+  background:linear-gradient(145deg,var(--c1,#fdba74),var(--c2,#fb923c));
+  color:#fff;font-size:64px;font-weight:900;letter-spacing:-2px;
+}
+.pet-photo .badge{
+  position:absolute;left:12px;top:12px;background:rgba(255,255,255,.92);color:var(--orange);
+  font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;
+}
+.pet-photo .status{
+  position:absolute;right:12px;top:12px;font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;
+  background:rgba(61,41,20,.75);color:#fff;
+}
+.pet-photo .star-mark{
+  position:absolute;right:12px;bottom:12px;font-size:18px;line-height:1;
+  text-shadow:0 2px 8px rgba(0,0,0,.25);
+}
+.pet-body{padding:14px 16px 16px}
+.pet-body h3{font-size:18px;font-weight:900;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.pet-body h3 .star{color:var(--orange);font-size:16px}
+.meta{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.story{font-size:13px;line-height:1.65;color:#5c4030;margin-bottom:12px}
+.actions{display:flex;gap:8px}
+.btn{
+  border:none;border-radius:12px;padding:10px 14px;font:inherit;font-weight:800;font-size:13px;cursor:pointer;
+  background:linear-gradient(135deg,var(--warm),var(--orange));color:#fff;
+}
+.btn.ghost{background:#fff;color:var(--orange);border:1px solid rgba(232,93,4,.25)}
+.btn.ghost.on{background:rgba(232,93,4,.1);border-color:var(--orange)}
+.modal{
+  position:fixed;inset:0;background:rgba(61,41,20,.45);display:none;align-items:center;justify-content:center;
+  z-index:50;padding:16px;
+}
+.modal.open{display:flex}
+.modal-card{
+  width:min(440px,100%);background:#fffaf3;border-radius:20px;padding:22px;border:1px solid var(--line);
+  box-shadow:0 24px 60px rgba(0,0,0,.2);
+}
+.modal-card h3{font-family:"ZCOOL XiaoWei",serif;font-size:26px;margin-bottom:6px}
+.modal-card .sub{font-size:13px;color:var(--muted);margin-bottom:14px}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.field input,.field select,.field textarea{
+  width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;background:#fff;outline:none;
+}
+.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.toast{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
+  background:rgba(61,41,20,.92);color:#fff;padding:10px 16px;border-radius:12px;font-size:13px;
+  opacity:0;pointer-events:none;transition:.25s;z-index:60;
+}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.mine-strip{
+  margin-bottom:18px;background:#fff;border:1px dashed rgba(232,93,4,.3);border-radius:16px;padding:14px 16px;
+  font-size:13px;color:var(--muted);display:none;
+}
+.mine-strip.show{display:block}
+.mine-strip .row{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 10px;margin-bottom:8px}
+.mine-strip .row:last-child{margin-bottom:0}
+.mine-strip .label{font-weight:800;color:var(--orange);flex:none}
+.mine-strip .chips{display:flex;flex-wrap:wrap;gap:6px}
+.mine-chip{
+  border:1px solid rgba(232,93,4,.28);background:#fff7ed;color:var(--ink);
+  border-radius:999px;padding:5px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+}
+.mine-chip:hover{background:rgba(232,93,4,.12);border-color:var(--orange)}
+.mine-chip.fav{border-color:rgba(232,93,4,.45)}
+.mine-empty{color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hero-bar">
+    <div>
+      <h1>流浪助养台</h1>
+      <p>为大猫小狗找到临时家与长期助养。卡片墙按状态分流，申请一键对接站长。</p>
+    </div>
+    <div class="pipeline">
+      <button class="on" data-f="all">全部</button>
+      <button data-f="待助养">待助养</button>
+      <button data-f="寄养中">寄养中</button>
+      <button data-f="wishlist">心愿单</button>
+    </div>
+  </header>
+  <div class="mine-strip" id="mine"></div>
+  <div class="masonry" id="board"></div>
+</div>
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <h3 id="m-title">申请助养</h3>
+    <p class="sub" id="m-sub"></p>
+    <div class="field"><label>你的称呼</label><input id="m-name" placeholder="例：阿晴"></div>
+    <div class="field"><label>联系方式</label><input id="m-contact" placeholder="手机或微信"></div>
+    <div class="field"><label>可提供</label>
+      <select id="m-offer"><option>周末寄养</option><option>长期助养</option><option>医疗费用资助</option><option>物资捐赠</option></select>
+    </div>
+    <div class="field"><label>留言</label><textarea id="m-msg" rows="3" placeholder="居住环境、养宠经验等"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="m-cancel">取消</button>
+      <button class="btn" id="m-ok">提交申请</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const PETS=[
+  {id:1,name:"橘子",kind:"中华田园猫",age:"约 1 岁",sex:"公",status:"待助养",story:"被发现时躲在地下车库，绝育已完成，性格黏人，适合有阳台防护的家庭。",emoji:"橘",c1:"#fdba74",c2:"#f97316",h:210},
+  {id:2,name:"豆豆",kind:"串串狗",age:"8 个月",sex:"母",status:"寄养中",story:"目前在志愿者家暂住，需找能每天遛两次的长期助养人。已打疫苗。",emoji:"豆",c1:"#fcd34d",c2:"#f59e0b",h:160},
+  {id:3,name:"芝麻",kind:"狸花猫",age:"3 岁",sex:"母",status:"待助养",story:"带三只刚满月小猫，希望能整窝助养或分开找奶妈家庭。温顺可摸。",emoji:"芝",c1:"#a8a29e",c2:"#78716c",h:240},
+  {id:4,name:"黑炭",kind:"中华田园犬",age:"2 岁",sex:"公",status:"待助养",story:"被遗弃在高速口附近，胆大爱玩，需有院子或常遛狗的家庭。",emoji:"炭",c1:"#44403c",c2:"#1c1917",h:190},
+  {id:5,name:"奶茶",kind:"英短混血",age:"4 个月",sex:"母",status:"寄养中",story:"幼猫寄养中，寻找有成猫经验的家庭过渡到长期助养。",emoji:"茶",c1:"#fecaca",c2:"#fb7185",h:170},
+  {id:6,name:"皮皮",kind:"柯基串",age:"1 岁半",sex:"公",status:"待助养",story:"后腿略跛但不影响活动，已做过手术，医疗费用可协助。",emoji:"皮",c1:"#fde68a",c2:"#ea580c",h:220},
+  {id:7,name:"雪球",kind:"白猫",age:"2 岁",sex:"母",status:"寄养中",story:"怕生但适应后会跟床睡，适合安静的一人居或二人居。",emoji:"雪",c1:"#e7e5e4",c2:"#a8a29e",h:150},
+  {id:8,name:"阿福",kind:"拉布混血",age:"5 岁",sex:"公",status:"待助养",story:"老人搬家无法继续养，温顺会握手，适合有老人的家庭陪伴。",emoji:"福",c1:"#fdba74",c2:"#c2410c",h:200}
+];
+const KEY="ll-foster-apps-v1";
+const FAV_KEY="ll-favs-v1";
+let apps=JSON.parse(localStorage.getItem(KEY)||"[]");
+let favs=JSON.parse(localStorage.getItem(FAV_KEY)||"[]");
+let filter="all";
+let current=null;
+function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1700)}
+function saveFavs(){localStorage.setItem(FAV_KEY,JSON.stringify(favs))}
+function focusPet(id){
+  const card=document.querySelector(`.pet[data-id="${id}"]`);
+  if(!card){
+    filter="all";
+    document.querySelectorAll(".pipeline button").forEach(x=>x.classList.toggle("on",x.dataset.f==="all"));
+    render();
+  }
+  requestAnimationFrame(()=>{
+    const el=document.querySelector(`.pet[data-id="${id}"]`);
+    if(!el)return;
+    el.scrollIntoView({behavior:"smooth",block:"center"});
+    el.classList.remove("flash");
+    void el.offsetWidth;
+    el.classList.add("flash");
+  });
+}
+function renderMine(){
+  const el=document.getElementById("mine");
+  if(!apps.length&&!favs.length){el.classList.remove("show");return}
+  el.classList.add("show");
+  const appChips=apps.length
+    ?apps.map(a=>`<button type="button" class="mine-chip" data-goto="${a.id}">${a.pet}<span style="opacity:.65;font-weight:500"> · ${a.offer}</span></button>`).join("")
+    :`<span class="mine-empty">暂无申请</span>`;
+  const favChips=favs.length
+    ?favs.map(id=>{
+      const p=PETS.find(x=>x.id===id);
+      return p?`<button type="button" class="mine-chip fav" data-goto="${p.id}">★ ${p.name}</button>`:"";
+    }).join("")
+    :`<span class="mine-empty">心愿单为空</span>`;
+  el.innerHTML=`
+    <div class="row"><span class="label">我的申请</span><div class="chips">${appChips}</div></div>
+    <div class="row"><span class="label">心愿单</span><div class="chips">${favChips}</div></div>`;
+}
+function render(){
+  const list=PETS.filter(p=>{
+    if(filter==="wishlist") return favs.includes(p.id);
+    if(filter==="all") return true;
+    return p.status===filter;
+  });
+  const board=document.getElementById("board");
+  if(!list.length){
+    board.innerHTML=`<article class="pet" style="padding:28px 20px;text-align:center;color:var(--muted)">
+      <p style="font-weight:800;color:var(--ink);margin-bottom:6px">${filter==="wishlist"?"心愿单还是空的":"暂无匹配"}</p>
+      <p style="font-size:13px">${filter==="wishlist"?"点卡片上的「收藏」把想助养的小家伙加进来":"换个筛选试试"}</p>
+    </article>`;
+  }else{
+    board.innerHTML=list.map(p=>{
+      const applied=apps.some(a=>a.id===p.id);
+      const isFav=favs.includes(p.id);
+      return `<article class="pet" data-id="${p.id}">
+        <div class="pet-photo" style="--h:${p.h}px;--c1:${p.c1};--c2:${p.c2}">
+          <span class="badge">${p.kind}</span>
+          <span class="status">${p.status}</span>
+          ${isFav?`<span class="star-mark">★</span>`:""}
+          ${p.emoji}
+        </div>
+        <div class="pet-body">
+          <h3>${p.name}${isFav?`<span class="star">★</span>`:""}</h3>
+          <div class="meta"><span>${p.age}</span><span>${p.sex}</span><span>${p.status}</span></div>
+          <p class="story">${p.story}</p>
+          <div class="actions">
+            <button class="btn" data-apply="${p.id}" ${applied?"disabled":""}>${applied?"已申请":"我要助养"}</button>
+            <button class="btn ghost${isFav?" on":""}" data-fav="${p.id}">${isFav?"已收藏 ★":"收藏"}</button>
+          </div>
+        </div>
+      </article>`;
+    }).join("");
+  }
+  renderMine();
+}
+document.querySelector(".pipeline").onclick=e=>{
+  const b=e.target.closest("[data-f]");if(!b)return;
+  filter=b.dataset.f;
+  document.querySelectorAll(".pipeline button").forEach(x=>x.classList.toggle("on",x===b));
+  render();
+};
+document.getElementById("mine").onclick=e=>{
+  const chip=e.target.closest("[data-goto]");if(!chip)return;
+  focusPet(+chip.dataset.goto);
+};
+document.getElementById("board").onclick=e=>{
+  const apply=e.target.closest("[data-apply]");
+  const fav=e.target.closest("[data-fav]");
+  if(fav){
+    const id=+fav.dataset.fav;
+    if(favs.includes(id)){
+      favs=favs.filter(x=>x!==id);
+      toast("已移出心愿单");
+    }else{
+      favs.unshift(id);
+      toast("已加入心愿单");
+    }
+    saveFavs();
+    render();
+    return;
+  }
+  if(!apply||apply.disabled)return;
+  current=PETS.find(p=>p.id===+apply.dataset.apply);
+  document.getElementById("m-title").textContent="申请助养 · "+current.name;
+  document.getElementById("m-sub").textContent=current.kind+" · "+current.status+" · "+current.age;
+  document.getElementById("modal").classList.add("open");
+};
+document.getElementById("m-cancel").onclick=()=>document.getElementById("modal").classList.remove("open");
+document.getElementById("modal").onclick=e=>{if(e.target.id==="modal")e.target.classList.remove("open")};
+document.getElementById("m-ok").onclick=()=>{
+  const name=document.getElementById("m-name").value.trim();
+  const contact=document.getElementById("m-contact").value.trim();
+  if(!name||!contact)return toast("请填写称呼与联系方式");
+  apps.unshift({id:current.id,pet:current.name,offer:document.getElementById("m-offer").value,name,contact,msg:document.getElementById("m-msg").value,at:Date.now()});
+  localStorage.setItem(KEY,JSON.stringify(apps));
+  document.getElementById("modal").classList.remove("open");
+  toast("申请已提交，站长将联系你");
+  render();
+};
+render();
+</script>
+</body>
+</html>

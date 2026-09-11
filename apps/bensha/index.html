@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<title>本杀开黑台 · 组局</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+  :root {
+    --purple: #9b5cff; --violet: #6b2fd6; --bg: #0c0614; --ink: #f0e6ff;
+    --muted: #8a7a9e; --seat: #1a1028; --gold: #e8c56b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: "Noto Sans SC", system-ui, sans-serif;
+    background: #050308; color: var(--ink); min-height: 100vh;
+    display: flex; justify-content: center;
+  }
+  #phone {
+    width: 100%; max-width: 430px; min-height: 100vh;
+    background:
+      radial-gradient(ellipse at 50% -10%, #3a1a6a 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, #1a0830 0%, transparent 40%),
+      var(--bg);
+    display: flex; flex-direction: column; position: relative; overflow: hidden;
+  }
+  .curtain {
+    padding: 22px 18px 10px; text-align: center; position: relative;
+  }
+  .curtain::before, .curtain::after {
+    content: ""; position: absolute; top: 0; width: 40%; height: 8px;
+    background: linear-gradient(90deg, transparent, #5a2080, transparent);
+  }
+  .curtain::before { left: 0; }
+  .curtain::after { right: 0; }
+  .curtain h1 {
+    font-family: Cinzel, "Noto Sans SC", serif; font-size: 22px; font-weight: 700;
+    letter-spacing: .18em; color: var(--gold); text-shadow: 0 0 24px rgba(155,92,255,.45);
+  }
+  .curtain p { font-size: 12px; color: var(--muted); margin-top: 6px; letter-spacing: .08em; }
+  .mine-pill {
+    position: absolute; top: 18px; right: 14px; z-index: 12;
+    border: 1px solid rgba(232,197,107,.45); background: rgba(26,16,40,.9);
+    color: var(--gold); padding: 7px 12px; border-radius: 999px; font: inherit;
+    font-size: 12px; font-weight: 700; cursor: pointer; letter-spacing: .04em;
+    box-shadow: 0 0 16px rgba(155,92,255,.2);
+  }
+  .mine-pill .badge {
+    display: none; margin-left: 4px; min-width: 16px; height: 16px; padding: 0 4px;
+    border-radius: 999px; background: var(--purple); color: #fff; font-size: 10px;
+    vertical-align: middle; line-height: 16px;
+  }
+  .mine-pill .badge.show { display: inline-block; }
+
+  .room-tabs {
+    display: flex; gap: 8px; padding: 8px 14px; overflow-x: auto; scrollbar-width: none;
+  }
+  .room-tabs::-webkit-scrollbar { display: none; }
+  .room-tabs button {
+    flex: 0 0 auto; border: 1px solid rgba(155,92,255,.3); background: rgba(26,16,40,.8);
+    color: var(--muted); padding: 8px 14px; border-radius: 999px; font: inherit; font-size: 12px;
+    font-weight: 600; cursor: pointer;
+  }
+  .room-tabs button.on {
+    color: var(--gold); border-color: var(--gold); background: rgba(232,197,107,.1);
+    box-shadow: 0 0 16px rgba(155,92,255,.25);
+  }
+
+  .stage {
+    flex: 1; padding: 10px 16px 100px; overflow: auto;
+  }
+  .script-banner {
+    border: 1px solid rgba(155,92,255,.35); border-radius: 14px; padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(107,47,214,.35), rgba(12,6,20,.6));
+    margin-bottom: 16px; position: relative; overflow: hidden;
+  }
+  .script-banner::after {
+    content: "🎭"; position: absolute; right: 12px; top: 8px; font-size: 40px; opacity: .2;
+  }
+  .script-banner .type {
+    font-size: 10px; letter-spacing: .2em; color: var(--purple); font-weight: 700; margin-bottom: 4px;
+  }
+  .script-banner h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .script-banner .info { font-size: 12px; color: var(--muted); }
+
+  .table {
+    position: relative; background: radial-gradient(circle at 50% 40%, #241438, #120a1c);
+    border: 2px solid rgba(155,92,255,.25); border-radius: 50% / 42%;
+    aspect-ratio: 1.15; max-width: 360px; margin: 0 auto 18px;
+    box-shadow: inset 0 0 40px rgba(0,0,0,.5), 0 0 30px rgba(107,47,214,.15);
+  }
+  .table-label {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    text-align: center; pointer-events: none;
+  }
+  .table-label b { display: block; font-family: Cinzel, serif; font-size: 14px; color: var(--gold); letter-spacing: .1em; }
+  .table-label span { font-size: 11px; color: var(--muted); }
+
+  .seat {
+    position: absolute; width: 52px; height: 52px; margin: -26px; border-radius: 50%;
+    border: 2px dashed rgba(155,92,255,.4); background: var(--seat);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 10px; color: var(--muted); cursor: default; transition: .3s;
+  }
+  .seat.filled {
+    border-style: solid; border-color: var(--purple);
+    background: linear-gradient(145deg, #4a2880, #2a1450);
+    color: #fff; box-shadow: 0 0 16px rgba(155,92,255,.5);
+    animation: seatIn .4s ease;
+  }
+  .seat.me {
+    border-color: var(--gold); box-shadow: 0 0 18px rgba(232,197,107,.45);
+  }
+  .seat .av { font-size: 16px; line-height: 1; }
+  .seat .nm { font-size: 9px; margin-top: 2px; max-width: 46px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @keyframes seatIn {
+    from { transform: scale(.3); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .join-bar {
+    position: absolute; left: 14px; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom));
+    display: flex; gap: 10px; z-index: 10;
+  }
+  .join-bar button {
+    flex: 1; border: none; border-radius: 14px; padding: 14px; font: inherit; font-weight: 800;
+    font-size: 14px; cursor: pointer; letter-spacing: .06em;
+  }
+  .btn-join {
+    background: linear-gradient(135deg, var(--purple), var(--violet)); color: #fff;
+    box-shadow: 0 8px 28px rgba(107,47,214,.45);
+  }
+  .btn-join:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+  .btn-join.joined { background: linear-gradient(135deg, #3d2a18, #5a4020); color: var(--gold); }
+  .btn-create {
+    flex: 0 0 auto; width: 52px; background: rgba(26,16,40,.95); color: var(--purple);
+    border: 1px solid rgba(155,92,255,.4) !important; font-size: 22px !important;
+  }
+  .btn-mine-bar {
+    flex: 0 0 auto; padding: 14px 12px !important; background: rgba(26,16,40,.95);
+    color: var(--gold); border: 1px solid rgba(232,197,107,.4) !important;
+    font-size: 12px !important; letter-spacing: .04em; font-weight: 700 !important;
+  }
+
+  .sheet {
+    position: absolute; inset: 0; background: rgba(0,0,0,.65); display: none; align-items: flex-end; z-index: 30;
+  }
+  .sheet.show { display: flex; }
+  .sheet-card {
+    width: 100%; background: #160e24; border-radius: 18px 18px 0 0; padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(155,92,255,.3);
+    max-height: 78%; overflow: auto;
+  }
+  .sheet-card h3 { font-family: Cinzel, serif; color: var(--gold); letter-spacing: .1em; margin-bottom: 12px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; letter-spacing: .06em; }
+  .field input, .field select {
+    width: 100%; border: 1px solid rgba(155,92,255,.3); background: #0c0614; color: var(--ink);
+    border-radius: 10px; padding: 11px; font: inherit; font-size: 13px;
+  }
+  .actions { display: flex; gap: 8px; margin-top: 8px; }
+  .actions button {
+    flex: 1; border: none; border-radius: 12px; padding: 12px; font: inherit; font-weight: 700; cursor: pointer;
+  }
+  .actions .ok { background: var(--purple); color: #fff; }
+  .actions .cancel { background: #241838; color: var(--muted); }
+
+  .mine-row {
+    border: 1px solid rgba(155,92,255,.28); border-radius: 14px; padding: 14px;
+    background: linear-gradient(145deg, rgba(74,40,128,.25), rgba(12,6,20,.8));
+    margin-bottom: 10px; cursor: pointer; transition: border-color .2s, box-shadow .2s;
+  }
+  .mine-row:active { border-color: var(--gold); box-shadow: 0 0 18px rgba(232,197,107,.2); }
+  .mine-row .rtop { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+  .mine-row .rtitle { font-size: 15px; font-weight: 700; color: var(--ink); }
+  .mine-row .rtype { font-size: 11px; color: var(--purple); font-weight: 700; letter-spacing: .08em; flex: none; }
+  .mine-row .rwhen { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .mine-row .rmeta {
+    display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px;
+  }
+  .mine-row .rmeta span {
+    background: rgba(155,92,255,.15); color: #c9b0ff; padding: 4px 8px; border-radius: 999px;
+  }
+  .mine-row .rmeta span.seat-no { color: var(--gold); background: rgba(232,197,107,.12); }
+  .mine-empty {
+    text-align: center; padding: 36px 16px; color: var(--muted);
+  }
+  .mine-empty h4 { font-family: Cinzel, serif; color: var(--gold); letter-spacing: .08em; margin-bottom: 8px; font-size: 15px; }
+  .mine-empty p { font-size: 13px; line-height: 1.55; margin-bottom: 14px; }
+  .mine-empty button {
+    border: none; border-radius: 12px; padding: 11px 18px; font: inherit; font-weight: 700;
+    background: var(--purple); color: #fff; cursor: pointer;
+  }
+  .sheet-sub { font-size: 12px; color: var(--muted); margin: -4px 0 14px; letter-spacing: .04em; }
+
+  .toast {
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
+    background: rgba(232,197,107,.95); color: #1a1020; padding: 10px 16px; border-radius: 999px;
+    font-size: 13px; font-weight: 700; opacity: 0; transition: .25s; z-index: 40; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+</style>
+</head>
+<body>
+<div id="phone">
+  <header class="curtain">
+    <h1>本杀开黑台</h1>
+    <p>剧本杀 · 狼人杀 · 入座即开</p>
+    <button type="button" class="mine-pill" id="minePill">我的本局<span class="badge" id="mineBadge">0</span></button>
+  </header>
+  <div class="toast" id="toast"></div>
+  <div class="room-tabs" id="tabs"></div>
+  <div class="stage">
+    <div class="script-banner" id="banner"></div>
+    <div class="table" id="table">
+      <div class="table-label"><b>TABLE</b><span id="seatCount">0/0</span></div>
+      <div id="seats"></div>
+    </div>
+  </div>
+  <div class="join-bar">
+    <button class="btn-join" id="joinBtn">入座</button>
+    <button class="btn-mine-bar" id="mineBarBtn" type="button">本局</button>
+    <button class="btn-create" id="createBtn" title="新开房">＋</button>
+  </div>
+
+  <div class="sheet" id="sheet">
+    <div class="sheet-card">
+      <h3>新开一桌</h3>
+      <div class="field"><label>剧本 / 模式</label><input id="fTitle" placeholder="如：漓江谜案 / 标准狼杀"></div>
+      <div class="field"><label>类型</label>
+        <select id="fType"><option>剧本杀</option><option>狼人杀</option><option>桌游混搭</option></select>
+      </div>
+      <div class="field"><label>人数</label>
+        <select id="fSeats"><option value="6">6 人</option><option value="8" selected>8 人</option><option value="10">10 人</option><option value="12">12 人</option></select>
+      </div>
+      <div class="field"><label>时间 / 地点</label><input id="fWhen" placeholder="今晚 19:00 · 星空剧本馆"></div>
+      <div class="actions">
+        <button class="cancel" id="cancelCreate">取消</button>
+        <button class="ok" id="okCreate">开桌</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet" id="mineSheet">
+    <div class="sheet-card">
+      <h3>我的本局</h3>
+      <p class="sheet-sub" id="mineSheetSub">已入座的房间</p>
+      <div id="mineList"></div>
+    </div>
+  </div>
+</div>
+<script>
+const LS = "bensha-rooms-v2";
+const NAMES = ["月影","乌鸦","阿谜","小凶","暗夜","白纸","狐狸","骰子","面具","烛光","黑猫","镜中"];
+let rooms = JSON.parse(localStorage.getItem(LS) || "null") || [
+  { id:"r1", title:"漓江谜案 · 情感本", type:"剧本杀", when:"今晚 19:30 · 星空馆 203", seats:8, filled:["月影","乌鸦","阿谜","小凶","暗夜"], joined:false },
+  { id:"r2", title:"标准 12 人狼杀", type:"狼人杀", when:"今晚 21:00 · 线上语音", seats:12, filled:["白纸","狐狸","骰子","面具","烛光","黑猫","镜中"], joined:false },
+  { id:"r3", title:"城中惊魂 · 硬核推理", type:"剧本杀", when:"周六 14:00 · 迷雾空间", seats:6, filled:["阿谜","月影"], joined:false },
+];
+let active = rooms[0].id;
+
+const $=id=>document.getElementById(id);
+const save=()=>localStorage.setItem(LS, JSON.stringify(rooms));
+const toast=m=>{ const t=$("toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2000); };
+const room=()=>rooms.find(r=>r.id===active);
+
+function seatPos(i, n){
+  const a = (i / n) * Math.PI * 2 - Math.PI/2;
+  const rx = 42, ry = 38;
+  return { left: 50 + rx * Math.cos(a) + "%", top: 50 + ry * Math.sin(a) + "%" };
+}
+
+function mySeatNo(r){
+  const i = r.filled.indexOf("我");
+  return i >= 0 ? i + 1 : null;
+}
+
+function updateMineBadge(){
+  const n = rooms.filter(r=>r.joined).length;
+  const badge = $("mineBadge");
+  badge.textContent = String(n);
+  badge.classList.toggle("show", n > 0);
+}
+
+function openMineSheet(){
+  renderMineSheet();
+  $("mineSheet").classList.add("show");
+}
+
+function closeMineSheet(){
+  $("mineSheet").classList.remove("show");
+}
+
+function renderMineSheet(){
+  const mine = rooms.filter(r=>r.joined);
+  $("mineSheetSub").textContent = mine.length
+    ? `共 ${mine.length} 桌 · 点按切换到该房间`
+    : "已入座的房间会出现在这里";
+  if(!mine.length){
+    $("mineList").innerHTML = `<div class="mine-empty">
+      <h4>尚无本局</h4>
+      <p>入座或开桌后，你的房间会出现在这里，方便随时切回</p>
+      <button type="button" id="closeMineEmpty">知道了</button>
+    </div>`;
+    $("closeMineEmpty").onclick = closeMineSheet;
+    return;
+  }
+  $("mineList").innerHTML = mine.map(r=>{
+    const seat = mySeatNo(r);
+    return `<div class="mine-row" data-goto="${r.id}">
+      <div class="rtop">
+        <div class="rtitle">${r.title}</div>
+        <div class="rtype">${r.type}</div>
+      </div>
+      <div class="rwhen">${r.when}</div>
+      <div class="rmeta">
+        ${seat ? `<span class="seat-no">我的座位 · 第 ${seat} 号</span>` : ""}
+        <span>${r.filled.length}/${r.seats} 人</span>
+      </div>
+    </div>`;
+  }).join("");
+  $("mineList").onclick = e => {
+    const row = e.target.closest("[data-goto]");
+    if(!row) return;
+    active = row.dataset.goto;
+    closeMineSheet();
+    render();
+    toast("已切换到该桌");
+  };
+}
+
+function renderTabs(){
+  $("tabs").innerHTML = rooms.map(r=>`
+    <button class="${r.id===active?'on':''}" data-id="${r.id}">
+      ${r.type} · ${r.filled.length}/${r.seats}${r.joined?' · 我':''}
+    </button>`).join("");
+  $("tabs").onclick = e => {
+    const b = e.target.closest("[data-id]"); if(!b) return;
+    active = b.dataset.id; render();
+  };
+}
+
+function renderRoom(){
+  const r = room(); if(!r) return;
+  $("banner").innerHTML = `
+    <div class="type">${r.type.toUpperCase()}</div>
+    <h2>${r.title}</h2>
+    <div class="info">${r.when}</div>`;
+  $("seatCount").textContent = `${r.filled.length}/${r.seats}`;
+  let html = "";
+  for(let i=0;i<r.seats;i++){
+    const name = r.filled[i];
+    const pos = seatPos(i, r.seats);
+    if(name){
+      const me = name==="我";
+      html += `<div class="seat filled ${me?'me':''}" style="left:${pos.left};top:${pos.top}">
+        <span class="av">${me?"★":"◆"}</span><span class="nm">${name}</span>
+      </div>`;
+    } else {
+      html += `<div class="seat" style="left:${pos.left};top:${pos.top}"><span class="av">○</span><span class="nm">空位</span></div>`;
+    }
+  }
+  $("seats").innerHTML = html;
+  const full = r.filled.length >= r.seats;
+  const btn = $("joinBtn");
+  if(r.joined){
+    btn.textContent = "离席";
+    btn.classList.add("joined");
+    btn.disabled = false;
+  } else {
+    btn.textContent = full ? "本桌已满" : "入座 · 补人";
+    btn.classList.remove("joined");
+    btn.disabled = full;
+  }
+}
+
+function render(){ renderTabs(); renderRoom(); updateMineBadge(); }
+
+$("joinBtn").onclick = () => {
+  const r = room(); if(!r) return;
+  if(r.joined){
+    r.filled = r.filled.filter(n=>n!=="我");
+    r.joined = false;
+    toast("已离席");
+    save(); render();
+  } else if(r.filled.length < r.seats){
+    r.filled.push("我");
+    r.joined = true;
+    toast("入座成功，等待开本");
+    save(); render();
+    openMineSheet();
+  }
+};
+
+$("minePill").onclick = openMineSheet;
+$("mineBarBtn").onclick = openMineSheet;
+$("createBtn").onclick = () => $("sheet").classList.add("show");
+$("cancelCreate").onclick = () => $("sheet").classList.remove("show");
+$("okCreate").onclick = () => {
+  const title = $("fTitle").value.trim() || "未命名本";
+  const seats = +$("fSeats").value;
+  const nr = {
+    id: "r"+Date.now(), title, type: $("fType").value,
+    when: $("fWhen").value || "待定", seats, filled:["我"], joined:true
+  };
+  rooms.unshift(nr); active = nr.id; save();
+  $("sheet").classList.remove("show");
+  toast("新桌已开，你是房主");
+  render();
+  openMineSheet();
+};
+$("sheet").onclick = e => { if(e.target===$("sheet")) e.target.classList.remove("show"); };
+$("mineSheet").onclick = e => { if(e.target===$("mineSheet")) closeMineSheet(); };
+
+render();
+</script>
+</body>
+</html>

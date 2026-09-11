@@ -6,7 +6,8 @@
     "start": "node index.js",
     "migrate:json": "node migrate-json-to-mysql.js",
     "migrate:json:force": "node migrate-json-to-mysql.js --force",
-    "seed:scenes": "node seed-scene-products.js"
+    "seed:scenes": "node seed-scene-products.js",
+    "generate:apps": "node ../scripts/generate-real-apps.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

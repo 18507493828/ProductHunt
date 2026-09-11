@@ -22,6 +22,16 @@ import {
   SHARE_PLATFORM_IDS,
   platformLabel,
 } from "./shareConfig.js";
+import {
+  DEFAULT_APP_PLATFORM,
+  normalizeAppPlatform,
+  APP_PLATFORMS,
+} from "./appPlatforms.js";
+
+function appPlatformLabel(id) {
+  const normalized = normalizeAppPlatform(id) || DEFAULT_APP_PLATFORM;
+  return APP_PLATFORMS.find((p) => p.id === normalized)?.label || normalized;
+}
 import { TOPIC_SEED } from "./topic-seed.js";
 import { TOPIC_POST_SEED } from "./topic-post-seed.js";
 import {
@@ -78,6 +88,7 @@ const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST || "0.0.0.0";
 const CLIENT_DIST = path.join(__dirname, "..", "client", "dist");
 const UPLOADS_DIR = path.join(__dirname, "storage", "uploads");
+const APPS_DIR = path.join(__dirname, "..", "apps");
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 let campaignCache = {
@@ -95,7 +106,7 @@ let categoryCache = {
 };
 
 const RANGES = ["today", "week", "month", "quarter", "all"];
-const URL_PATTERN = /^https?:\/\/.+/i;
+const URL_PATTERN = /^(https?:\/\/.+|\/apps\/[\w.-]+(?:\/[\w.-]*)*\/?)$/i;
 // 兼容旧路径 /uploads/x 与反代仅转发 /api 时的 /api/uploads/x
 const IMAGE_URL_PATTERN =
   /^(https?:\/\/.+|\/(?:api\/)?uploads\/[\w.-]+)$/i;
@@ -239,6 +250,21 @@ try {
 }
 // 兼容历史磁盘图片；新上传一律进 MySQL uploads 表
 await fs.mkdir(UPLOADS_DIR, { recursive: true }).catch(() => {});
+
+// 本地小应用静态目录：/apps/<name>/
+app.use(
+  "/apps",
+  express.static(APPS_DIR, {
+    etag: true,
+    lastModified: true,
+    index: ["index.html"],
+    setHeaders(res, filePath) {
+      if (filePath.endsWith("index.html")) {
+        res.setHeader("Cache-Control", "no-cache");
+      }
+    },
+  }),
+);
 
 if (IS_PRODUCTION) {
   app.use(
@@ -917,6 +943,8 @@ function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = nu
     avgRatings,
     ratingCount,
     shareCount: Number(product.shareCount) || 0,
+    appPlatform: normalizeAppPlatform(product.appPlatform) || DEFAULT_APP_PLATFORM,
+    appPlatformLabel: appPlatformLabel(product.appPlatform),
     rankPinned: product.rankPinned === true,
     rankWeight: Number(product.rankWeight) || 0,
     rankHidden: product.rankHidden === true,
@@ -1889,6 +1917,7 @@ app.post("/api/products", requireAuth, async (req, res) => {
       topicId,
       topicName,
       campaign,
+      appPlatform,
     } = req.body || {};
 
     const trimmedName = (name || "").trim();
@@ -1896,6 +1925,8 @@ app.post("/api/products", requireAuth, async (req, res) => {
     const trimmedUrl = (url || "").trim();
     const trimmedDescription = (description || "").trim();
     const trimmedImageUrl = (imageUrl || "").trim();
+    const resolvedPlatform =
+      normalizeAppPlatform(appPlatform) || DEFAULT_APP_PLATFORM;
 
     if (!trimmedName) {
       return res.status(400).json({ error: "请填写资源名称" });
@@ -1913,7 +1944,9 @@ app.post("/api/products", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "请填写演示链接" });
     }
     if (!URL_PATTERN.test(trimmedUrl)) {
-      return res.status(400).json({ error: "演示链接需以 http:// 或 https:// 开头" });
+      return res
+        .status(400)
+        .json({ error: "演示链接需为 http(s) 地址或本地 /apps/ 路径" });
     }
     if (trimmedImageUrl && trimmedImageUrl.length > 500) {
       return res.status(400).json({ error: "图片链接过长" });
@@ -1973,6 +2006,7 @@ app.post("/api/products", requireAuth, async (req, res) => {
       topicId: resolvedTopicId,
       color: pickAvatarColor(trimmedName),
       imageUrl: trimmedImageUrl,
+      appPlatform: resolvedPlatform,
       voters: [],
       submittedBy: req.user.username,
       submittedAt: now,
@@ -2019,6 +2053,7 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
       topicId,
       topicName,
       campaign,
+      appPlatform,
     } = req.body || {};
 
     const trimmedName = (name || "").trim();
@@ -2026,6 +2061,10 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     const trimmedUrl = (url || "").trim();
     const trimmedDescription = (description || "").trim();
     const trimmedImageUrl = (imageUrl || "").trim();
+    const resolvedPlatform =
+      normalizeAppPlatform(appPlatform) ||
+      normalizeAppPlatform(product.appPlatform) ||
+      DEFAULT_APP_PLATFORM;
 
     if (!trimmedName) {
       return res.status(400).json({ error: "请填写资源名称" });
@@ -2043,7 +2082,9 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "请填写演示链接" });
     }
     if (!URL_PATTERN.test(trimmedUrl)) {
-      return res.status(400).json({ error: "演示链接需以 http:// 或 https:// 开头" });
+      return res
+        .status(400)
+        .json({ error: "演示链接需为 http(s) 地址或本地 /apps/ 路径" });
     }
     if (trimmedImageUrl && trimmedImageUrl.length > 500) {
       return res.status(400).json({ error: "图片链接过长" });
@@ -2114,6 +2155,7 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     product.campaign = requestedCampaign;
     product.topicId = resolvedTopicId;
     product.imageUrl = trimmedImageUrl;
+    product.appPlatform = resolvedPlatform;
     product.color = product.color || pickAvatarColor(trimmedName);
     product.status = nextStatus;
     product.rejectReason = rejectReason;

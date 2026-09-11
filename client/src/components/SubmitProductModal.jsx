@@ -12,6 +12,7 @@ import {
 import { useAuth } from "../AuthContext";
 import { useToast } from "../Toast";
 import { useModalMotion } from "../useModalMotion";
+import { isValidDemoUrl } from "../appPlatforms";
 
 const EMPTY_FORM = {
   name: "",
@@ -191,8 +192,8 @@ export default function SubmitProductModal({
       setError("请填写演示链接");
       return;
     }
-    if (!/^https?:\/\/.+/i.test(trimmedUrl)) {
-      setError("演示链接需以 http:// 或 https:// 开头");
+    if (!isValidDemoUrl(trimmedUrl)) {
+      setError("演示链接需为 http(s) 地址或部署路径 /apps/应用目录/");
       return;
     }
     if (!(form.categories || []).length) {
@@ -354,7 +355,7 @@ export default function SubmitProductModal({
             <input
               value={form.url}
               onChange={(e) => updateForm("url", e.target.value)}
-              placeholder="https://github.com/... 或在线演示地址"
+              placeholder="https://... 或部署路径 /apps/应用目录/"
               disabled={submitting}
               required
             />

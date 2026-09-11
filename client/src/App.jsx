@@ -42,6 +42,11 @@ import BuildWizardModal from "./components/BuildWizardModal";
 import PromoteWizardModal from "./components/PromoteWizardModal";
 import PeriodRankBoard from "./components/PeriodRankBoard";
 import { BUILD_SCENES, BUILD_TOOLS, getSceneById, getToolById, heatScore, inferSceneIdFromText } from "./buildConfig";
+import {
+  APP_PLATFORMS,
+  DEFAULT_APP_PLATFORM,
+  isValidDemoUrl,
+} from "./appPlatforms";
 import { bareTopicName, formatTopicName } from "./topicUtils";
 import "./App.css";
 
@@ -224,6 +229,7 @@ export default function App() {
     sceneId: "",
     sceneTopic: "",
     buildToolId: "",
+    appPlatform: DEFAULT_APP_PLATFORM,
   });
 
   const submitScene = useMemo(() => getSceneById(form.sceneId), [form.sceneId]);
@@ -531,6 +537,7 @@ export default function App() {
       sceneId,
       sceneTopic,
       buildToolId,
+      appPlatform: seed?.appPlatform || DEFAULT_APP_PLATFORM,
     });
     setShowSubmitModal(true);
     fetchTopics({ all: true })
@@ -590,6 +597,7 @@ export default function App() {
         BUILD_TOOLS.find((t) =>
           String(product.description || "").includes(t.name),
         )?.id || "",
+      appPlatform: product.appPlatform || DEFAULT_APP_PLATFORM,
     });
     setShowSubmitModal(true);
     fetchTopics({ all: true })
@@ -706,12 +714,16 @@ export default function App() {
       setSubmitError("请填写应用访问链接");
       return;
     }
-    if (!/^https?:\/\/.+/i.test(trimmedUrl)) {
-      setSubmitError("应用访问链接需以 http:// 或 https:// 开头");
+    if (!isValidDemoUrl(trimmedUrl)) {
+      setSubmitError("应用访问链接需为 http(s) 地址或部署路径 /apps/应用目录/");
       return;
     }
     if (!form.buildToolId || !tool) {
       setSubmitError("请选择构建工具");
+      return;
+    }
+    if (!form.appPlatform) {
+      setSubmitError("请选择应用形态");
       return;
     }
     if (!(form.categories || []).length) {
@@ -747,6 +759,7 @@ export default function App() {
         imageUrl: form.imageUrl,
         topicId: submitSelectedTopicId || "",
         topicName: sceneTopic,
+        appPlatform: form.appPlatform || DEFAULT_APP_PLATFORM,
       };
       const result = isEditing
         ? await updateProduct(editingProductId, payload)
@@ -771,6 +784,7 @@ export default function App() {
         sceneId: "",
         sceneTopic: "",
         buildToolId: "",
+        appPlatform: DEFAULT_APP_PLATFORM,
       });
       toast.success(
         isEditing ? "保存成功" : "提交成功",
@@ -1801,11 +1815,39 @@ export default function App() {
                   <input
                     value={form.url}
                     onChange={(e) => updateForm("url", e.target.value)}
-                    placeholder="https:// 应用体验地址"
+                    placeholder="部署后填 /apps/应用目录/ ，也可填 https:// 外链"
                     disabled={submitting}
                     required
                   />
                 </label>
+
+                <div className="modal-field">
+                  <span>
+                    应用形态 <span className="field-required">*</span>
+                  </span>
+                  <div className="modal-category-options">
+                    {APP_PLATFORMS.map((p) => {
+                      const selected = form.appPlatform === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          className={
+                            selected
+                              ? "modal-category active"
+                              : "modal-category"
+                          }
+                          onClick={() => updateForm("appPlatform", p.id)}
+                          disabled={submitting}
+                          aria-pressed={selected}
+                          title={p.tip}
+                        >
+                          {p.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
                 <div className="modal-field">
                   <span>

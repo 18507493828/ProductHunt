@@ -119,6 +119,11 @@ export default function MyProductsList({
               </p>
 
               <div className="ph-my-masonry-meta">
+                {(product.appPlatformLabel || product.appPlatform) && (
+                  <span className="ph-category-badge ph-platform-badge">
+                    {product.appPlatformLabel || product.appPlatform}
+                  </span>
+                )}
                 {categories.slice(0, 2).map((cat) => (
                   <span key={cat} className="ph-category-badge">
                     {cat}

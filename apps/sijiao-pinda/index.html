@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>私教拼搭</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+:root{
+  --red:#ef233c;--red2:#d90429;--black:#0b0b0c;--panel:#151518;--ink:#f5f5f5;--muted:#9a9aa3;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:"Noto Sans SC",system-ui,sans-serif;color:var(--ink);background:var(--black);
+  display:flex;justify-content:center;
+}
+#app{
+  width:100%;max-width:430px;min-height:100vh;
+  background:
+    radial-gradient(600px 320px at 80% -10%,rgba(239,35,60,.35),transparent 60%),
+    radial-gradient(500px 280px at 0% 40%,rgba(217,4,41,.18),transparent 55%),
+    linear-gradient(180deg,#121214,#0b0b0c 40%);
+  padding:18px 16px 28px;
+}
+.top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+.top h1{font-family:Oswald,sans-serif;font-size:34px;letter-spacing:.04em;line-height:1;text-transform:uppercase}
+.top p{font-size:12px;color:var(--muted);margin-top:6px}
+.live{font-size:11px;font-weight:800;color:var(--red);border:1px solid rgba(239,35,60,.5);padding:6px 10px;border-radius:999px;letter-spacing:.06em}
+.deal{
+  background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:22px;padding:20px 18px 18px;
+  margin-bottom:14px;position:relative;overflow:hidden;
+}
+.deal::before{
+  content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 40%,rgba(239,35,60,.08));
+  pointer-events:none;
+}
+.coach{display:flex;gap:12px;align-items:center;margin-bottom:16px}
+.avatar{
+  width:56px;height:56px;border-radius:16px;background:linear-gradient(145deg,#ef233c,#7f1d1d);
+  display:grid;place-items:center;font-family:Oswald,sans-serif;font-size:22px;font-weight:700;
+}
+.coach h2{font-size:18px;font-weight:900}
+.coach .tags{font-size:12px;color:var(--muted);margin-top:4px}
+.ring-wrap{display:flex;align-items:center;gap:18px;margin-bottom:16px}
+.ring{width:120px;height:120px;position:relative;flex:none}
+.ring svg{transform:rotate(-90deg)}
+.ring .center{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.ring .center b{font-family:Oswald,sans-serif;font-size:28px;line-height:1}
+.ring .center span{font-size:11px;color:var(--muted)}
+.price-block{flex:1}
+.price-block .was{font-size:13px;color:var(--muted);text-decoration:line-through}
+.price-block .now{
+  font-family:Oswald,sans-serif;font-size:42px;font-weight:700;color:#fff;line-height:1;margin:4px 0;
+}
+.price-block .now em{font-style:normal;font-size:18px;color:var(--red);margin-right:2px}
+.price-block .save{font-size:12px;color:#fca5a5;font-weight:700}
+.slots{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.slot{
+  border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:var(--ink);
+  border-radius:12px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;
+}
+.slot.on{border-color:var(--red);background:rgba(239,35,60,.15);color:#fecaca}
+.cta{
+  width:100%;border:none;border-radius:14px;padding:14px;font:inherit;font-weight:900;font-size:15px;
+  cursor:pointer;background:linear-gradient(135deg,var(--red),var(--red2));color:#fff;
+  box-shadow:0 10px 28px rgba(217,4,41,.35);letter-spacing:.04em;
+}
+.cta:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.list-title{font-size:13px;color:var(--muted);font-weight:700;margin:18px 0 10px;letter-spacing:.08em}
+.pack{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+}
+.pack .item{
+  background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:14px;cursor:pointer;
+  text-align:left;color:inherit;font:inherit;position:relative;
+}
+.pack .item.on{border-color:rgba(239,35,60,.55);box-shadow:inset 0 0 0 1px rgba(239,35,60,.35)}
+.pack .item h3{font-size:14px;font-weight:800;margin-bottom:6px}
+.pack .item .p{font-family:Oswald,sans-serif;font-size:22px;color:#fff}
+.pack .item .p small{font-size:12px;color:var(--muted);font-family:"Noto Sans SC",sans-serif;margin-left:2px}
+.pack .item .g{font-size:11px;color:var(--muted);margin-top:6px}
+.badge{
+  position:absolute;top:10px;right:10px;font-size:10px;font-weight:800;letter-spacing:.04em;
+  color:#fecaca;background:rgba(239,35,60,.28);border:1px solid rgba(239,35,60,.45);
+  border-radius:999px;padding:3px 8px;
+}
+.joined{
+  margin-top:14px;background:rgba(239,35,60,.1);border:1px solid rgba(239,35,60,.25);
+  border-radius:14px;padding:12px 14px;font-size:13px;display:none;
+}
+.joined.show{display:block}
+.mine-panel{display:none;margin-top:4px}
+.mine-panel.show{display:block}
+.mine-card{
+  background:var(--panel);border:1px solid rgba(255,255,255,.08);border-radius:16px;
+  padding:14px;margin-bottom:10px;cursor:pointer;text-align:left;color:inherit;font:inherit;width:100%;
+}
+.mine-card.active{border-color:rgba(239,35,60,.55);box-shadow:inset 0 0 0 1px rgba(239,35,60,.3)}
+.mine-card .row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.mine-card h3{font-size:15px;font-weight:800}
+.mine-card .price{font-family:Oswald,sans-serif;font-size:20px;color:#fff}
+.mine-card .meta{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.55}
+.mine-card .status{font-size:12px;color:#fca5a5;font-weight:700;margin-top:6px}
+.mine-card .cancel{
+  margin-top:12px;width:100%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);
+  color:var(--ink);border-radius:12px;padding:10px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;
+}
+.mine-card .cancel:hover{border-color:rgba(239,35,60,.45);color:#fecaca}
+.toast{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
+  background:rgba(245,245,245,.95);color:#111;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:700;
+  opacity:0;pointer-events:none;transition:.25s;z-index:40;
+}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div>
+      <h1>私教拼搭</h1>
+      <p>健身房私教课拼人 · 成团更划算</p>
+    </div>
+    <div class="live">LIVE DEAL</div>
+  </header>
+
+  <section class="deal" id="deal">
+    <div class="coach">
+      <div class="avatar" id="av">K</div>
+      <div>
+        <h2 id="coach-name">教练 · 凯哥</h2>
+        <div class="tags" id="coach-tags">力量增肌 · 体态矫正 · 星光健身馆</div>
+      </div>
+    </div>
+    <div class="ring-wrap">
+      <div class="ring">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="10"/>
+          <circle id="arc" cx="60" cy="60" r="52" fill="none" stroke="#ef233c" stroke-width="10"
+            stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7"/>
+        </svg>
+        <div class="center"><b id="cnt">0/4</b><span>成团进度</span></div>
+      </div>
+      <div class="price-block">
+        <div class="was" id="was">原价 ¥398 / 人</div>
+        <div class="now"><em>¥</em><span id="now">199</span></div>
+        <div class="save" id="save">成团立省 ¥199</div>
+      </div>
+    </div>
+    <div class="slots" id="slots"></div>
+    <button class="cta" id="join">立即参团</button>
+    <div class="joined" id="joined"></div>
+  </section>
+
+  <div class="list-title">MORE PACKS</div>
+  <div class="pack" id="packs"></div>
+
+  <div class="mine-panel" id="minePanel">
+    <div class="list-title">我的拼团</div>
+    <div id="mineList"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const PACKS=[
+  {id:1,coach:"凯哥",av:"K",tags:"力量增肌 · 体态矫正 · 星光健身馆",need:4,joined:2,price:199,origin:398,slots:["今晚 19:00","周六 10:00","周日 15:00"]},
+  {id:2,coach:"Mia",av:"M",tags:"普拉提 · 核心稳定 · 力场工作室",need:3,joined:1,price:169,origin:320,slots:["周五 18:30","周六 09:00"]},
+  {id:3,coach:"阿泽",av:"Z",tags:"HIIT 燃脂 · 搏击操 · 红馆",need:4,joined:3,price:149,origin:288,slots:["今晚 20:00","周日 11:00"]},
+  {id:4,coach:"小林",av:"L",tags:"女性力量 · 产后恢复 · 轻氧馆",need:2,joined:0,price:219,origin:360,slots:["周六 14:00","周日 16:00"]}
+];
+const KEY="sj-join-v1";
+function loadState(){
+  const raw=JSON.parse(localStorage.getItem(KEY)||'{"active":1,"joinedIds":[],"joinedSlots":{}}');
+  if(!raw.joinedSlots) raw.joinedSlots={};
+  if(!Array.isArray(raw.joinedIds)) raw.joinedIds=[];
+  // migrate: fill missing slot labels for already-joined packs
+  raw.joinedIds.forEach(id=>{
+    if(!raw.joinedSlots[id]){
+      const p=PACKS.find(x=>x.id===id);
+      if(p) raw.joinedSlots[id]=p.slots[0];
+    }
+  });
+  return raw;
+}
+let state=loadState();
+let slotIdx=0;
+
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1600)}
+function circ(joined,need){
+  const C=2*Math.PI*52;
+  const off=C*(1-Math.min(joined,need)/need);
+  document.getElementById("arc").style.strokeDashoffset=off;
+}
+function getPack(){return PACKS.find(p=>p.id===state.active)}
+function effectiveJoined(p){
+  let n=p.joined;
+  if(state.joinedIds.includes(p.id)) n=Math.min(p.need,n+1);
+  return n;
+}
+function statusText(p,j){
+  if(j>=p.need) return "已成团 · 等待开课";
+  return `拼团中 · 还差 ${p.need-j} 人`;
+}
+function lockedSlotFor(p){
+  const label=state.joinedSlots[p.id];
+  if(label){
+    const i=p.slots.indexOf(label);
+    if(i>=0) return {label,idx:i};
+  }
+  return {label:p.slots[0],idx:0};
+}
+function renderDeal(){
+  const p=getPack();
+  const joined=state.joinedIds.includes(p.id);
+  if(joined){
+    const locked=lockedSlotFor(p);
+    slotIdx=locked.idx;
+  }
+  const j=effectiveJoined(p);
+  document.getElementById("av").textContent=p.av;
+  document.getElementById("coach-name").textContent="教练 · "+p.coach;
+  document.getElementById("coach-tags").textContent=p.tags;
+  document.getElementById("cnt").textContent=j+"/"+p.need;
+  document.getElementById("was").textContent="原价 ¥"+p.origin+" / 人";
+  document.getElementById("now").textContent=p.price;
+  document.getElementById("save").textContent="成团立省 ¥"+(p.origin-p.price);
+  circ(j,p.need);
+  document.getElementById("slots").innerHTML=p.slots.map((s,i)=>
+    `<button class="slot${i===slotIdx?" on":""}" data-s="${i}"${joined?" disabled":""}>${s}</button>`).join("");
+  const full=j>=p.need;
+  const btn=document.getElementById("join");
+  btn.disabled=joined||full;
+  btn.textContent=joined?(full?"已成团 · 等待开课":"已参团 · 邀请好友"):(full?"已满员":"立即参团 · ¥"+p.price);
+  const box=document.getElementById("joined");
+  if(joined){
+    const slot=state.joinedSlots[p.id]||p.slots[slotIdx];
+    box.classList.add("show");
+    box.textContent=`你已锁定 ${slot} · ${p.coach} 的拼团课 · ${statusText(p,j)}`;
+  }else box.classList.remove("show");
+}
+function renderPacks(){
+  document.getElementById("packs").innerHTML=PACKS.map(p=>{
+    const j=effectiveJoined(p);
+    const isJoined=state.joinedIds.includes(p.id);
+    return `<button class="item${p.id===state.active?" on":""}" data-id="${p.id}">
+      ${isJoined?'<span class="badge">已参团</span>':""}
+      <h3>${p.coach}</h3>
+      <div class="p">¥${p.price}<small>/人</small></div>
+      <div class="g">${j}/${p.need} 成团</div>
+    </button>`;
+  }).join("");
+}
+function renderMine(){
+  const panel=document.getElementById("minePanel");
+  const list=document.getElementById("mineList");
+  const ids=state.joinedIds.filter(id=>PACKS.some(p=>p.id===id));
+  if(!ids.length){
+    panel.classList.remove("show");
+    list.innerHTML="";
+    return;
+  }
+  panel.classList.add("show");
+  list.innerHTML=ids.map(id=>{
+    const p=PACKS.find(x=>x.id===id);
+    const j=effectiveJoined(p);
+    const slot=state.joinedSlots[id]||p.slots[0];
+    return `<div class="mine-card${p.id===state.active?" active":""}" data-mine="${p.id}">
+      <div class="row">
+        <h3>教练 · ${p.coach}</h3>
+        <div class="price">¥${p.price}</div>
+      </div>
+      <div class="meta">锁定时段：${slot}<br>成团进度：${j}/${p.need}</div>
+      <div class="status">${statusText(p,j)}</div>
+      <button class="cancel" data-cancel="${p.id}" type="button">取消参团</button>
+    </div>`;
+  }).join("");
+}
+function render(){renderDeal();renderPacks();renderMine()}
+function scrollToMine(){
+  const panel=document.getElementById("minePanel");
+  if(panel.classList.contains("show")){
+    requestAnimationFrame(()=>panel.scrollIntoView({behavior:"smooth",block:"start"}));
+  }
+}
+document.getElementById("slots").onclick=e=>{
+  const b=e.target.closest("[data-s]");if(!b||b.disabled)return;
+  slotIdx=+b.dataset.s;renderDeal();
+};
+document.getElementById("packs").onclick=e=>{
+  const b=e.target.closest("[data-id]");if(!b)return;
+  state.active=+b.dataset.id;
+  const p=getPack();
+  if(state.joinedIds.includes(p.id)){
+    slotIdx=lockedSlotFor(p).idx;
+  }else slotIdx=0;
+  save();render();
+};
+document.getElementById("mineList").onclick=e=>{
+  const cancel=e.target.closest("[data-cancel]");
+  if(cancel){
+    e.stopPropagation();
+    const id=+cancel.dataset.cancel;
+    state.joinedIds=state.joinedIds.filter(x=>x!==id);
+    delete state.joinedSlots[id];
+    save();
+    toast("已取消参团");
+    render();
+    return;
+  }
+  const card=e.target.closest("[data-mine]");
+  if(!card)return;
+  state.active=+card.dataset.mine;
+  slotIdx=lockedSlotFor(getPack()).idx;
+  save();render();
+  document.getElementById("deal").scrollIntoView({behavior:"smooth",block:"start"});
+};
+document.getElementById("join").onclick=()=>{
+  const p=getPack();
+  if(state.joinedIds.includes(p.id))return;
+  if(effectiveJoined(p)>=p.need)return toast("该团已满");
+  const slotLabel=p.slots[slotIdx];
+  state.joinedIds.push(p.id);
+  state.joinedSlots[p.id]=slotLabel;
+  save();
+  toast("参团成功");
+  render();
+  scrollToMine();
+};
+render();
+</script>
+</body>
+</html>

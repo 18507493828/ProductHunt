@@ -867,6 +867,7 @@ async function assembleProducts(productRows) {
       campaign: row.campaign || "",
       viewCount: Number(row.view_count) || 0,
       shareCount: Number(row.share_count) || 0,
+      appPlatform: row.app_platform || "h5",
     };
     if (row.submitted_nickname) {
       product.submittedNickname = row.submitted_nickname;
@@ -913,8 +914,8 @@ export async function writeProduct(product) {
         (id, name, tagline, description, url, category, topic_id, color, image_url,
          submitted_by, submitted_nickname, submitted_at, status, reject_reason,
          reviewed_at, reviewed_by, is_special, campaign, view_count, share_count,
-         updated_at, rank_pinned, rank_hidden, rank_weight)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         app_platform, updated_at, rank_pinned, rank_hidden, rank_weight)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          name = VALUES(name),
          tagline = VALUES(tagline),
@@ -935,6 +936,7 @@ export async function writeProduct(product) {
          campaign = VALUES(campaign),
          view_count = VALUES(view_count),
          share_count = VALUES(share_count),
+         app_platform = VALUES(app_platform),
          updated_at = VALUES(updated_at),
          rank_pinned = VALUES(rank_pinned),
          rank_hidden = VALUES(rank_hidden),
@@ -960,6 +962,7 @@ export async function writeProduct(product) {
         product.campaign || "",
         Number(product.viewCount) || 0,
         Number(product.shareCount) || 0,
+        product.appPlatform || "h5",
         toDbDate(product.updatedAt),
         fromBool(Boolean(product.rankPinned)),
         fromBool(Boolean(product.rankHidden)),

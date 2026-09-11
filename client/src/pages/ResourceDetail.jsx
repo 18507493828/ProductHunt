@@ -184,6 +184,11 @@ export default function ResourceDetail() {
 
                 <div className="ph-detail-main">
                   <div className="ph-detail-badges">
+                    {(resource.appPlatformLabel || resource.appPlatform) && (
+                      <span className="ph-category-badge ph-platform-badge">
+                        {resource.appPlatformLabel || resource.appPlatform}
+                      </span>
+                    )}
                     {(resource.categories?.length
                       ? resource.categories
                       : resource.category

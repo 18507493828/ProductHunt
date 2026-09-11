@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS products (
   campaign VARCHAR(64) NOT NULL DEFAULT '',
   view_count INT NOT NULL DEFAULT 0,
   share_count INT NOT NULL DEFAULT 0,
+  app_platform VARCHAR(32) NOT NULL DEFAULT 'h5',
   updated_at DATETIME(3) NULL,
   rank_pinned TINYINT(1) NOT NULL DEFAULT 0,
   rank_hidden TINYINT(1) NOT NULL DEFAULT 0,

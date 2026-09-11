@@ -122,6 +122,22 @@ async function applySchema(conn) {
   for (const statement of splitSqlStatements(schemaSql)) {
     await conn.query(statement);
   }
+  // 存量库兼容：补齐后续新增列
+  await ensureColumn(conn, "products", "app_platform", "VARCHAR(32) NOT NULL DEFAULT 'h5'");
+}
+
+async function ensureColumn(conn, table, column, definition) {
+  const [rows] = await conn.query(
+    `SELECT COUNT(*) AS c
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?
+       AND COLUMN_NAME = ?`,
+    [table, column],
+  );
+  if (Number(rows?.[0]?.c) > 0) return;
+  await conn.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
+  console.log(`[db] added column ${table}.${column}`);
 }
 
 export async function initDb() {

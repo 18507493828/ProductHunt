@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<title>饭搭子计划 · 同城拼饭</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+  :root {
+    --pink: #ff4d7a; --pink2: #ff8fab; --cream: #fff5f7; --ink: #2b1520;
+    --muted: #9a6b7a; --ok: #2a9d6e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: "Noto Sans SC", system-ui, sans-serif;
+    background: #f0d4dc; min-height: 100vh; display: flex; justify-content: center; color: var(--ink);
+  }
+  #phone {
+    width: 100%; max-width: 430px; min-height: 100vh;
+    background:
+      radial-gradient(ellipse at 20% 0%, #ffd6e2 0%, transparent 45%),
+      radial-gradient(ellipse at 100% 20%, #ffe8c8 0%, transparent 40%),
+      var(--cream);
+    display: flex; flex-direction: column; position: relative; overflow: hidden;
+  }
+  .brand {
+    padding: 20px 20px 8px; text-align: center;
+  }
+  .brand h1 {
+    font-family: "ZCOOL XiaoWei", serif; font-size: 28px; font-weight: 400; color: var(--pink);
+    letter-spacing: .06em;
+  }
+  .brand p { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .progress {
+    display: flex; justify-content: center; gap: 5px; margin: 6px 0 10px;
+  }
+  .progress i {
+    width: 18px; height: 4px; border-radius: 2px; background: #f0c8d4;
+  }
+  .progress i.done { background: var(--pink); }
+
+  .stack-area {
+    flex: 1; position: relative; padding: 8px 22px 0; display: flex; align-items: center; justify-content: center;
+    min-height: 420px;
+  }
+  .card-stack { position: relative; width: 100%; max-width: 340px; height: 440px; }
+  .swipe-card {
+    position: absolute; inset: 0; border-radius: 24px; background: #fff;
+    box-shadow: 0 16px 40px rgba(255,77,122,.18), 0 2px 8px rgba(0,0,0,.04);
+    overflow: hidden; touch-action: none; cursor: grab; user-select: none;
+    transition: box-shadow .2s;
+  }
+  .swipe-card:nth-child(1) { z-index: 3; }
+  .swipe-card:nth-child(2) { z-index: 2; transform: scale(.96) translateY(12px); opacity: .9; }
+  .swipe-card:nth-child(3) { z-index: 1; transform: scale(.92) translateY(22px); opacity: .7; }
+  .swipe-card.dragging { cursor: grabbing; box-shadow: 0 24px 50px rgba(255,77,122,.28); }
+  .card-photo {
+    height: 58%; display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 18px; color: #fff; position: relative;
+  }
+  .card-photo::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(transparent 30%, rgba(40,10,20,.75));
+  }
+  .card-photo > * { position: relative; z-index: 1; }
+  .emoji-bg {
+    position: absolute; right: 10px; top: 20px; font-size: 72px; opacity: .35; z-index: 0;
+    filter: blur(.5px);
+  }
+  .name { font-family: "ZCOOL XiaoWei", serif; font-size: 26px; }
+  .tagline { font-size: 13px; opacity: .92; margin-top: 2px; }
+  .card-body { padding: 16px 18px 18px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .chips span {
+    font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 999px;
+    background: #fff0f4; color: var(--pink);
+  }
+  .chips span.dist { background: #eef8f3; color: var(--ok); }
+  .chips span.time { background: #fff6e8; color: #c47a20; }
+  .bio { font-size: 13px; color: var(--muted); line-height: 1.55; }
+  .stamp {
+    position: absolute; top: 28%; left: 18px; font-size: 28px; font-weight: 800;
+    border: 3px solid; border-radius: 8px; padding: 6px 12px; transform: rotate(-18deg);
+    opacity: 0; z-index: 5; pointer-events: none;
+  }
+  .stamp.nope { color: #999; border-color: #999; left: auto; right: 18px; transform: rotate(18deg); }
+  .stamp.like { color: var(--pink); border-color: var(--pink); }
+
+  .controls {
+    display: flex; justify-content: center; align-items: center; gap: 28px;
+    padding: 18px 20px calc(28px + env(safe-area-inset-bottom));
+  }
+  .ctrl {
+    width: 64px; height: 64px; border-radius: 50%; border: none; cursor: pointer;
+    font: inherit; font-weight: 800; font-size: 14px; display: grid; place-items: center;
+    transition: transform .15s;
+  }
+  .ctrl:active { transform: scale(.92); }
+  .ctrl.skip { background: #fff; color: #8a8a8a; box-shadow: 0 6px 18px rgba(0,0,0,.08); width: 56px; height: 56px; }
+  .ctrl.invite {
+    background: linear-gradient(145deg, var(--pink2), var(--pink)); color: #fff;
+    box-shadow: 0 10px 28px rgba(255,77,122,.4); width: 72px; height: 72px; font-size: 15px;
+  }
+  .ctrl.mine {
+    position: absolute; top: 18px; right: 16px; width: auto; height: auto; padding: 8px 12px;
+    border-radius: 999px; background: rgba(255,255,255,.75); font-size: 12px; font-weight: 700;
+    color: var(--pink); box-shadow: 0 2px 8px rgba(255,77,122,.15);
+  }
+
+  .empty {
+    text-align: center; padding: 40px 20px; color: var(--muted);
+  }
+  .empty h2 { font-family: "ZCOOL XiaoWei", serif; font-size: 22px; color: var(--pink); margin-bottom: 8px; }
+  .empty button {
+    margin-top: 14px; border: none; background: var(--pink); color: #fff; padding: 12px 20px;
+    border-radius: 999px; font: inherit; font-weight: 700; cursor: pointer;
+  }
+  .toast {
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
+    background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 13px;
+    opacity: 0; transition: .25s; z-index: 50; pointer-events: none; max-width: 90%; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  .match-overlay {
+    position: absolute; inset: 0; background: rgba(255,245,247,.94); display: none;
+    flex-direction: column; align-items: center; justify-content: center; z-index: 40; text-align: center; padding: 24px;
+  }
+  .match-overlay.show { display: flex; animation: fadein .3s; }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+  .match-overlay h2 { font-family: "ZCOOL XiaoWei", serif; font-size: 32px; color: var(--pink); margin-bottom: 16px; }
+  .match-card {
+    width: 100%; max-width: 300px; background: #fff; border-radius: 18px; padding: 18px 16px;
+    text-align: left; box-shadow: 0 12px 32px rgba(255,77,122,.16); border: 1px solid #ffe8ef;
+    margin-bottom: 22px;
+  }
+  .match-card .mname {
+    font-family: "ZCOOL XiaoWei", serif; font-size: 22px; color: var(--ink); margin-bottom: 10px;
+  }
+  .match-card .mrow {
+    display: flex; justify-content: space-between; gap: 10px; font-size: 13px;
+    padding: 8px 0; border-top: 1px solid #ffe8ef;
+  }
+  .match-card .mrow:first-of-type { border-top: none; padding-top: 0; }
+  .match-card .mlabel { color: var(--muted); flex: none; }
+  .match-card .mval { font-weight: 600; color: var(--ink); text-align: right; }
+  .match-card .mval.taste { color: var(--pink); }
+  .match-card .mstatus {
+    margin-top: 10px; display: inline-block; font-size: 11px; font-weight: 600;
+    color: #c47a20; background: #fff6e8; padding: 4px 10px; border-radius: 999px;
+  }
+  .match-actions {
+    display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 280px;
+  }
+  .match-actions button {
+    border: none; padding: 13px 22px; border-radius: 999px;
+    font: inherit; font-weight: 700; cursor: pointer; width: 100%;
+  }
+  .match-actions .primary {
+    background: linear-gradient(145deg, var(--pink2), var(--pink)); color: #fff;
+    box-shadow: 0 8px 22px rgba(255,77,122,.35);
+  }
+  .match-actions .secondary {
+    background: #fff; color: var(--pink); border: 1.5px solid #f0c8d4;
+  }
+
+  .ctrl.mine .badge {
+    position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px;
+    padding: 0 5px; border-radius: 999px; background: var(--pink); color: #fff;
+    font-size: 11px; font-weight: 700; display: none; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(255,77,122,.35);
+  }
+  .ctrl.mine .badge.show { display: inline-flex; }
+
+  .sheet-bg {
+    position: absolute; inset: 0; background: rgba(43,21,32,.35);
+    opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 60;
+  }
+  .sheet-bg.open { opacity: 1; pointer-events: auto; }
+  .invite-sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 61;
+    height: 88%; max-height: 92vh;
+    background: linear-gradient(180deg, #fff8fa 0%, var(--cream) 40%, #fff 100%);
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -12px 40px rgba(255,77,122,.2);
+    transform: translateY(105%); transition: transform .3s cubic-bezier(.22,.9,.3,1);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .invite-sheet.open { transform: translateY(0); }
+  .sheet-handle {
+    width: 40px; height: 4px; border-radius: 2px; background: #f0c8d4;
+    margin: 10px auto 0; flex: none;
+  }
+  .sheet-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px 10px; flex: none;
+  }
+  .sheet-head h2 {
+    font-family: "ZCOOL XiaoWei", serif; font-size: 22px; color: var(--pink); font-weight: 400;
+  }
+  .sheet-close {
+    border: none; width: 36px; height: 36px; border-radius: 50%;
+    background: #fff0f4; color: var(--pink); font-size: 20px; cursor: pointer;
+    display: grid; place-items: center; line-height: 1;
+  }
+  .sheet-sub { font-size: 12px; color: var(--muted); padding: 0 18px 12px; flex: none; }
+  .sheet-list { flex: 1; overflow: auto; padding: 0 16px calc(24px + env(safe-area-inset-bottom)); }
+  .invite-row {
+    background: #fff; border-radius: 16px; padding: 14px 14px 12px;
+    margin-bottom: 10px; box-shadow: 0 4px 14px rgba(255,77,122,.08);
+    border: 1px solid #ffe8ef;
+  }
+  .invite-row .row-top {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  }
+  .invite-row .iname {
+    font-family: "ZCOOL XiaoWei", serif; font-size: 18px; color: var(--ink);
+  }
+  .invite-row .rel { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .invite-row .taste {
+    font-size: 13px; color: var(--pink); font-weight: 600; margin: 6px 0 4px;
+  }
+  .invite-row .itime { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .invite-row .idist { font-size: 12px; color: var(--ok); font-weight: 600; margin-bottom: 8px; }
+  .invite-row .status {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    color: #c47a20; background: #fff6e8; padding: 4px 8px; border-radius: 999px;
+    margin-bottom: 10px;
+  }
+  .invite-row .cancel-btn {
+    width: 100%; border: 1px solid #f0c8d4; background: #fff; color: var(--muted);
+    padding: 9px 12px; border-radius: 999px; font: inherit; font-size: 13px;
+    font-weight: 600; cursor: pointer;
+  }
+  .invite-row .cancel-btn:active { background: #fff0f4; color: var(--pink); }
+  .sheet-empty {
+    text-align: center; padding: 48px 24px; color: var(--muted);
+  }
+  .sheet-empty h3 {
+    font-family: "ZCOOL XiaoWei", serif; font-size: 20px; color: var(--pink);
+    margin-bottom: 8px; font-weight: 400;
+  }
+  .sheet-empty p { font-size: 13px; line-height: 1.5; margin-bottom: 18px; }
+  .sheet-empty button {
+    border: none; background: linear-gradient(145deg, var(--pink2), var(--pink));
+    color: #fff; padding: 12px 22px; border-radius: 999px; font: inherit;
+    font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(255,77,122,.3);
+  }
+</style>
+</head>
+<body>
+<div id="phone">
+  <button class="ctrl mine" id="btnInvites">我的邀约<span class="badge" id="inviteBadge">0</span></button>
+  <div class="brand">
+    <h1>饭搭子计划</h1>
+    <p>按口味 · 距离 · 时间 匹配周末拼饭</p>
+  </div>
+  <div class="progress" id="progress"></div>
+  <div class="toast" id="toast"></div>
+  <div class="stack-area">
+    <div class="card-stack" id="stack"></div>
+  </div>
+  <div class="controls" id="controls">
+    <button class="ctrl skip" id="btnSkip">跳过</button>
+    <button class="ctrl invite" id="btnInvite">邀约</button>
+  </div>
+  <div class="match-overlay" id="match">
+    <h2>邀约已送出！</h2>
+    <div class="match-card" id="matchCard"></div>
+    <div class="match-actions">
+      <button type="button" class="primary" id="matchView">查看邀约列表</button>
+      <button type="button" class="secondary" id="matchOk">继续刷</button>
+    </div>
+  </div>
+  <div class="sheet-bg" id="sheetBg"></div>
+  <div class="invite-sheet" id="inviteSheet" aria-hidden="true">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <h2>我的邀约</h2>
+      <button class="sheet-close" id="sheetClose" aria-label="关闭">×</button>
+    </div>
+    <p class="sheet-sub" id="sheetSub"></p>
+    <div class="sheet-list" id="sheetList"></div>
+  </div>
+</div>
+<script>
+const FOODS = [
+  { id:"f1", name:"阿杰", emoji:"🍜", taste:["螺蛳粉","麻辣烫"], dist:"0.8 km", time:"今晚 18:30", bio:"想吃点辣的，图书馆北门集合，AA。", color:"#ff6b8a" },
+  { id:"f2", name:"南南", emoji:"🍣", taste:["日料","寿司"], dist:"1.2 km", time:"周六中午", bio:"新开的回转寿司想尝尝，两人刚好。", color:"#ff9a6b" },
+  { id:"f3", name:"小周", emoji:"🍔", taste:["汉堡","炸鸡"], dist:"0.5 km", time:"今天 12:00", bio:"下课直接冲南门，速战速决党。", color:"#f5a623" },
+  { id:"f4", name:"米米", emoji:"🥗", taste:["轻食","沙拉"], dist:"1.5 km", time:"周日brunch", bio:"健身日想吃干净一点，咖啡店也行。", color:"#7bc96f" },
+  { id:"f5", name:"老王", emoji:"🍲", taste:["火锅","串串"], dist:"2.0 km", time:"周五晚上", bio:"人多热闹，3–4 人局，欢迎加一。", color:"#e85d4c" },
+  { id:"f6", name:"橙子", emoji:"🍰", taste:["甜品","下午茶"], dist:"0.9 km", time:"明天 15:00", bio:"想拍照打卡一家新店，聊聊天也好。", color:"#ff8fab" },
+  { id:"f7", name:"阿龙", emoji:"🍛", taste:["咖喱","泰餐"], dist:"1.8 km", time:"周六晚上", bio:"最近迷上泰式，拼个双人套餐。", color:"#c9a227" },
+  { id:"f8", name:"小雨", emoji:"🥟", taste:["饺子","家常菜"], dist:"0.6 km", time:"今晚 19:00", bio:"食堂对面饺子馆，暖和又快。", color:"#6bb3ff" },
+];
+
+const LS_IDX = "fandazi-idx";
+const LS_INV = "fandazi-invites";
+let idx = +localStorage.getItem(LS_IDX) || 0;
+let invites = JSON.parse(localStorage.getItem(LS_INV) || "[]");
+let drag = null;
+
+const $=id=>document.getElementById(id);
+const save=()=>{ localStorage.setItem(LS_IDX, String(idx)); localStorage.setItem(LS_INV, JSON.stringify(invites)); };
+const toast=m=>{ const t=$("toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); };
+
+function remaining(){ return FOODS.slice(idx); }
+
+function relTime(ts){
+  const d=Date.now()-ts;
+  if(d<60e3) return "刚刚";
+  if(d<3600e3) return Math.floor(d/60e3)+" 分钟前";
+  if(d<86400e3) return Math.floor(d/3600e3)+" 小时前";
+  if(d<604800e3) return Math.floor(d/86400e3)+" 天前";
+  return new Date(ts).toLocaleDateString("zh-CN",{month:"numeric",day:"numeric"});
+}
+
+function updateInviteBadge(){
+  const badge=$("inviteBadge");
+  const n=invites.length;
+  badge.textContent=n>99?"99+":String(n);
+  badge.classList.toggle("show", n>0);
+}
+
+function openInviteSheet(){
+  renderInviteSheet();
+  $("sheetBg").classList.add("open");
+  $("inviteSheet").classList.add("open");
+  $("inviteSheet").setAttribute("aria-hidden","false");
+}
+
+function closeInviteSheet(){
+  $("sheetBg").classList.remove("open");
+  $("inviteSheet").classList.remove("open");
+  $("inviteSheet").setAttribute("aria-hidden","true");
+}
+
+function showMatch(person){
+  $("matchCard").innerHTML = `
+    <div class="mname">${person.name}</div>
+    <div class="mrow"><span class="mlabel">口味</span><span class="mval taste">${(person.taste||[]).join(" · ")||"待定"}</span></div>
+    <div class="mrow"><span class="mlabel">时间</span><span class="mval">${person.time||"待商议"}</span></div>
+    <div class="mrow"><span class="mlabel">距离</span><span class="mval">${person.dist||"—"}</span></div>
+    <div class="mstatus">已发送 · 待对方确认</div>`;
+  $("match").classList.add("show");
+}
+
+function renderInviteSheet(){
+  const list=$("sheetList");
+  $("sheetSub").textContent = invites.length
+    ? `共 ${invites.length} 条邀约 · 等待对方确认中`
+    : "";
+  if(!invites.length){
+    list.innerHTML=`<div class="sheet-empty">
+      <h3>还没有发出邀约</h3>
+      <p>右滑卡片或点「邀约」，把想拼饭的人加进来</p>
+      <button type="button" id="keepSwipe">继续刷卡</button>
+    </div>`;
+    $("keepSwipe").onclick=()=>closeInviteSheet();
+    return;
+  }
+  list.innerHTML=invites.map((inv,i)=>`
+    <div class="invite-row" data-idx="${i}">
+      <div class="row-top">
+        <span class="iname">${inv.name}</span>
+        <span class="rel">${relTime(inv.at||Date.now())}</span>
+      </div>
+      <div class="taste">${(inv.taste||[]).join(" · ")||"口味待定"}</div>
+      <div class="itime">约定时间：${inv.time||"待商议"}</div>
+      <div class="idist">距离：${inv.dist||"—"}</div>
+      <div class="status">已发送·待对方确认</div>
+      <button type="button" class="cancel-btn" data-cancel="${i}">取消邀约</button>
+    </div>`).join("");
+  list.querySelectorAll("[data-cancel]").forEach(btn=>{
+    btn.onclick=()=>{
+      const i=+btn.dataset.cancel;
+      const name=invites[i]?.name;
+      invites.splice(i,1);
+      save();
+      updateInviteBadge();
+      renderInviteSheet();
+      if(name) toast(`已取消与 ${name} 的邀约`);
+    };
+  });
+}
+
+function renderProgress(){
+  $("progress").innerHTML = FOODS.map((_,i)=>`<i class="${i<idx?'done':''}"></i>`).join("");
+}
+
+function renderStack(){
+  const list = remaining().slice(0,3);
+  const stack = $("stack");
+  if(!list.length){
+    stack.innerHTML = `<div class="empty"><h2>今天刷完啦</h2><p>去看看已发出的邀约，或重置卡片</p><button id="reset">重新匹配</button></div>`;
+    $("controls").style.visibility = "hidden";
+    $("reset")?.addEventListener("click", ()=>{ idx=0; save(); $("controls").style.visibility="visible"; render(); });
+    renderProgress();
+    return;
+  }
+  $("controls").style.visibility = "visible";
+  stack.innerHTML = list.map((p,i)=>`
+    <div class="swipe-card" data-i="${i}" style="${i===0?'':'pointer-events:none'}">
+      <div class="stamp like">邀约</div>
+      <div class="stamp nope">跳过</div>
+      <div class="card-photo" style="background:linear-gradient(160deg,${p.color},${p.color}cc)">
+        <div class="emoji-bg">${p.emoji}</div>
+        <div class="name">${p.name}</div>
+        <div class="tagline">想吃 ${p.taste.join(" / ")}</div>
+      </div>
+      <div class="card-body">
+        <div class="chips">
+          ${p.taste.map(t=>`<span>${t}</span>`).join("")}
+          <span class="dist">${p.dist}</span>
+          <span class="time">${p.time}</span>
+        </div>
+        <p class="bio">${p.bio}</p>
+      </div>
+    </div>`).join("");
+  bindTopCard();
+  renderProgress();
+}
+
+function topCard(){ return $("stack").querySelector('.swipe-card[data-i="0"]'); }
+
+function bindTopCard(){
+  const card = topCard(); if(!card) return;
+  const likeStamp = card.querySelector(".stamp.like");
+  const nopeStamp = card.querySelector(".stamp.nope");
+
+  const onStart = (x,y) => { drag = { x, y, dx:0 }; card.classList.add("dragging"); };
+  const onMove = (x) => {
+    if(!drag) return;
+    drag.dx = x - drag.x;
+    const rot = drag.dx * .05;
+    card.style.transform = `translateX(${drag.dx}px) rotate(${rot}deg)`;
+    const abs = Math.abs(drag.dx);
+    likeStamp.style.opacity = drag.dx > 0 ? Math.min(1, abs/80) : 0;
+    nopeStamp.style.opacity = drag.dx < 0 ? Math.min(1, abs/80) : 0;
+  };
+  const onEnd = () => {
+    if(!drag) return;
+    const dx = drag.dx; drag = null; card.classList.remove("dragging");
+    if(dx > 100) fly("right");
+    else if(dx < -100) fly("left");
+    else {
+      card.style.transition = "transform .25s ease";
+      card.style.transform = "";
+      likeStamp.style.opacity = 0; nopeStamp.style.opacity = 0;
+      setTimeout(()=>card.style.transition="",260);
+    }
+  };
+
+  card.ontouchstart = e => onStart(e.touches[0].clientX, e.touches[0].clientY);
+  card.ontouchmove = e => onMove(e.touches[0].clientX);
+  card.ontouchend = onEnd;
+  card.onmousedown = e => {
+    onStart(e.clientX, e.clientY);
+    const move = ev => onMove(ev.clientX);
+    const up = () => { onEnd(); window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+  };
+}
+
+function fly(dir){
+  const card = topCard(); if(!card) return;
+  const person = FOODS[idx];
+  const invite = dir === "right";
+  card.style.transition = "transform .35s ease, opacity .35s";
+  card.style.transform = `translateX(${invite?480:-480}px) rotate(${invite?18:-18}deg)`;
+  card.style.opacity = "0";
+  if(invite){
+    invites.unshift({
+      id:person.id, name:person.name, taste:person.taste,
+      time:person.time, dist:person.dist, at:Date.now()
+    });
+    updateInviteBadge();
+    showMatch(person);
+  }
+  setTimeout(()=>{
+    idx++; save(); renderStack();
+  }, 320);
+}
+
+$("btnSkip").onclick = () => fly("left");
+$("btnInvite").onclick = () => fly("right");
+$("matchOk").onclick = () => $("match").classList.remove("show");
+$("matchView").onclick = () => {
+  $("match").classList.remove("show");
+  openInviteSheet();
+};
+$("btnInvites").onclick = () => openInviteSheet();
+$("sheetClose").onclick = () => closeInviteSheet();
+$("sheetBg").onclick = () => closeInviteSheet();
+
+function render(){ renderStack(); updateInviteBadge(); }
+render();
+</script>
+</body>
+</html>

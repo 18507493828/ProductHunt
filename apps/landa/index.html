@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<title>篮搭一下 · 校园约球</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+  :root {
+    --orange: #ff6b1a; --orange-deep: #e04e00; --court: #f07a2a;
+    --ink: #1a120c; --muted: #8a7466; --line: rgba(0,0,0,.08);
+    --bg: #1c1410;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: "Noto Sans SC", system-ui, sans-serif;
+    background: #2a1e16; color: var(--ink); min-height: 100vh;
+    display: flex; justify-content: center;
+  }
+  #phone {
+    width: 100%; max-width: 430px; min-height: 100vh; background: #f6ebe3;
+    display: flex; flex-direction: column; position: relative; overflow: hidden;
+  }
+  .status {
+    padding: 12px 16px 8px; display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(180deg, #ff8a3d, #ff6b1a); color: #fff;
+  }
+  .status h1 { font-family: Outfit, sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+  .status .live { font-size: 11px; font-weight: 700; background: rgba(0,0,0,.2); padding: 4px 9px; border-radius: 999px; }
+
+  .swipe-track {
+    flex: 1; display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .swipe-track::-webkit-scrollbar { display: none; }
+  .panel {
+    flex: 0 0 100%; scroll-snap-align: start; padding: 14px 14px 100px;
+    overflow-y: auto; min-height: 0;
+  }
+
+  .court-card {
+    background: var(--court); border-radius: 18px; padding: 16px; color: #fff;
+    box-shadow: 0 14px 32px rgba(224,78,0,.35); margin-bottom: 14px; position: relative; overflow: hidden;
+  }
+  .court-card::before {
+    content: ""; position: absolute; inset: 12px; border: 2px solid rgba(255,255,255,.35); border-radius: 8px; pointer-events: none;
+  }
+  .court-card::after {
+    content: ""; position: absolute; left: 50%; top: 12px; bottom: 12px; width: 2px;
+    background: rgba(255,255,255,.25); transform: translateX(-50%); pointer-events: none;
+  }
+  .court-top { display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 1; margin-bottom: 18px; }
+  .court-top h2 { font-family: Outfit, sans-serif; font-size: 20px; font-weight: 800; }
+  .court-top p { font-size: 12px; opacity: .9; margin-top: 2px; }
+  .level {
+    font-size: 11px; font-weight: 800; background: rgba(0,0,0,.22); padding: 5px 9px; border-radius: 8px;
+  }
+  .slots {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; position: relative; z-index: 1;
+    min-height: 72px; align-items: center; margin: 8px 0 16px;
+  }
+  .slot {
+    width: 36px; height: 36px; border-radius: 50%; border: 2px dashed rgba(255,255,255,.55);
+    display: grid; place-items: center; font-size: 11px; font-weight: 700; color: rgba(255,255,255,.7);
+    transition: transform .25s, background .25s, border .25s;
+  }
+  .slot.filled {
+    border-style: solid; background: #fff; color: var(--orange-deep);
+    box-shadow: 0 4px 10px rgba(0,0,0,.15); animation: pop .35s ease;
+  }
+  .slot.me { background: #1a120c; color: #fff; border-color: #1a120c; }
+  @keyframes pop { from { transform: scale(.4); } to { transform: scale(1); } }
+  .court-meta {
+    display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; position: relative; z-index: 1; opacity: .95;
+  }
+  .court-meta span { background: rgba(0,0,0,.18); padding: 4px 8px; border-radius: 999px; }
+  .join-btn {
+    width: 100%; margin-top: 14px; border: none; border-radius: 12px; padding: 13px;
+    font: inherit; font-weight: 800; font-size: 15px; cursor: pointer; position: relative; z-index: 1;
+    background: #1a120c; color: #fff; transition: transform .15s;
+  }
+  .join-btn:active { transform: scale(.98); }
+  .join-btn:disabled { opacity: .55; cursor: not-allowed; }
+  .join-btn.joined { background: #fff; color: var(--orange-deep); }
+
+  .hint { text-align: center; font-size: 12px; color: var(--muted); margin: 4px 0 16px; }
+  .dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 10px; }
+  .dots i { width: 6px; height: 6px; border-radius: 50%; background: #d4c0b0; }
+  .dots i.on { background: var(--orange); width: 16px; border-radius: 4px; }
+
+  .form-card {
+    background: #fff; border-radius: 16px; padding: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.05);
+  }
+  .form-card h3 { font-family: Outfit, sans-serif; font-size: 18px; margin-bottom: 4px; }
+  .form-card .sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 600; }
+  .field input, .field select {
+    width: 100%; border: 1.5px solid var(--line); border-radius: 10px; padding: 11px 12px; font: inherit; background: #fffaf7;
+  }
+  .seg { display: flex; gap: 6px; }
+  .seg button {
+    flex: 1; border: 1.5px solid var(--line); background: #fff; border-radius: 10px; padding: 10px;
+    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--muted);
+  }
+  .seg button.on { border-color: var(--orange); color: var(--orange); background: #fff4ec; }
+  .submit {
+    width: 100%; border: none; border-radius: 12px; padding: 13px; margin-top: 6px;
+    background: linear-gradient(135deg, #ff8a3d, #ff6b1a); color: #fff; font: inherit; font-weight: 800; font-size: 15px; cursor: pointer;
+  }
+
+  .mine-head { margin-bottom: 14px; }
+  .mine-head h3 { font-family: Outfit, sans-serif; font-size: 18px; margin-bottom: 4px; }
+  .mine-head p { font-size: 12px; color: var(--muted); }
+  .mine-card {
+    background: #fff; border-radius: 16px; padding: 14px; margin-bottom: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.05); border: 1px solid rgba(255,107,26,.12);
+  }
+  .mine-card .mtop { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+  .mine-card h4 { font-size: 16px; font-weight: 800; }
+  .mine-card .mtime { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .mine-card .mlvl {
+    font-size: 11px; font-weight: 800; background: #fff4ec; color: var(--orange);
+    padding: 4px 8px; border-radius: 8px; flex: none;
+  }
+  .mine-roster {
+    font-size: 13px; color: var(--ink); line-height: 1.5; margin-bottom: 8px;
+  }
+  .mine-roster b { color: var(--orange-deep); }
+  .mine-need {
+    display: inline-block; font-size: 12px; font-weight: 700; color: var(--orange-deep);
+    background: #fff4ec; padding: 4px 9px; border-radius: 999px; margin-bottom: 12px;
+  }
+  .mine-actions { display: flex; gap: 8px; }
+  .mine-actions button {
+    flex: 1; border: none; border-radius: 10px; padding: 11px; font: inherit;
+    font-weight: 700; font-size: 13px; cursor: pointer;
+  }
+  .mine-actions .view { background: linear-gradient(135deg, #ff8a3d, #ff6b1a); color: #fff; }
+  .mine-actions .leave { background: #ebe0d6; color: var(--muted); }
+  .mine-empty {
+    text-align: center; padding: 48px 20px; background: #fff; border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.05);
+  }
+  .mine-empty h3 { font-family: Outfit, sans-serif; font-size: 18px; margin-bottom: 8px; }
+  .mine-empty p { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 16px; }
+  .mine-empty button {
+    border: none; border-radius: 12px; padding: 12px 20px;
+    background: linear-gradient(135deg, #ff8a3d, #ff6b1a); color: #fff;
+    font: inherit; font-weight: 800; cursor: pointer;
+  }
+
+  .bottom-nav {
+    position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(246,235,227,.92); backdrop-filter: blur(12px); border-top: 1px solid var(--line);
+  }
+  .bottom-nav button {
+    flex: 1; border: none; border-radius: 14px; padding: 12px; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer;
+    background: #ebe0d6; color: var(--muted);
+  }
+  .bottom-nav button.on { background: var(--orange); color: #fff; box-shadow: 0 6px 16px rgba(255,107,26,.35); }
+  .toast {
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
+    background: #1a120c; color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    opacity: 0; transition: .25s; z-index: 40; pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  .ripple {
+    position: absolute; width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,.35);
+    pointer-events: none; animation: ripple .6s ease-out forwards; z-index: 2;
+  }
+  @keyframes ripple { to { transform: scale(3); opacity: 0; } }
+  .court-card.flash {
+    animation: courtFlash .9s ease;
+  }
+  @keyframes courtFlash {
+    0%, 100% { box-shadow: 0 14px 32px rgba(224,78,0,.35); }
+    40% { box-shadow: 0 0 0 4px #fff, 0 14px 40px rgba(255,107,26,.7); }
+  }
+</style>
+</head>
+<body>
+<div id="phone">
+  <div class="status">
+    <h1>篮搭一下</h1>
+    <div class="live" id="liveCount">今日 3 局进行中</div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <div class="swipe-track" id="track">
+    <section class="panel" id="panelGames">
+      <div class="hint">左右滑动切换球场 · 点亮空位加入</div>
+      <div class="dots" id="dots"></div>
+      <div id="courts"></div>
+    </section>
+    <section class="panel" id="panelCreate">
+      <div class="form-card">
+        <h3>开一局</h3>
+        <p class="sub">定场地、定人数，等球友来填位</p>
+        <div class="field"><label>球场</label>
+          <select id="cCourt"><option>北区室外场 A</option><option>南体育馆 3 号场</option><option>西区半场</option><option>东门夜光场</option></select>
+        </div>
+        <div class="field"><label>时间</label><input id="cTime" type="text" value="今天 19:30"></div>
+        <div class="field"><label>人数</label>
+          <div class="seg" id="cSize">
+            <button type="button" data-n="6" class="on">3v3</button>
+            <button type="button" data-n="10">5v5</button>
+            <button type="button" data-n="4">半场 4</button>
+          </div>
+        </div>
+        <div class="field"><label>水平</label>
+          <div class="seg" id="cLevel">
+            <button type="button" class="on">休闲</button>
+            <button type="button">中等</button>
+            <button type="button">硬仗</button>
+          </div>
+        </div>
+        <button class="submit" id="createBtn">发布约球</button>
+      </div>
+    </section>
+    <section class="panel" id="panelMine">
+      <div class="mine-head">
+        <h3>我的约球</h3>
+        <p id="mineSub">已加入的局会显示在这里</p>
+      </div>
+      <div id="mineList"></div>
+    </section>
+  </div>
+  <nav class="bottom-nav">
+    <button class="on" data-panel="0" id="nav0">局</button>
+    <button data-panel="1" id="nav1">开局</button>
+    <button data-panel="2" id="nav2">我的</button>
+  </nav>
+</div>
+<script>
+const LS = "landa-games-v2";
+const NAMES = ["阿凯","小周","老王","米米","阿杰","南南","阿龙","橙子","皮皮","大熊"];
+let sizePick = 6, levelPick = "休闲";
+let games = JSON.parse(localStorage.getItem(LS) || "null") || [
+  { id:"g1", court:"北区室外场 A", time:"今天 18:00", level:"休闲", slots:6, filled:["阿凯","小周","老王","米米"], joined:false },
+  { id:"g2", court:"南体育馆 3 号场", time:"今天 20:00", level:"硬仗", slots:10, filled:["阿杰","南南","阿龙","橙子","皮皮","大熊"], joined:false },
+  { id:"g3", court:"西区半场", time:"明天 09:30", level:"中等", slots:4, filled:["小何"], joined:false },
+];
+
+const $=id=>document.getElementById(id);
+const save=()=>localStorage.setItem(LS, JSON.stringify(games));
+const toast=m=>{ const t=$("toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2000); };
+
+function renderMine(){
+  const mine = games.filter(g=>g.joined);
+  $("mineSub").textContent = mine.length
+    ? `已加入 ${mine.length} 局 · 可查看球场或退出`
+    : "已加入的局会显示在这里";
+  if(!mine.length){
+    $("mineList").innerHTML = `<div class="mine-empty">
+      <h3>还没有上车</h3>
+      <p>去「局」里点亮空位，或在「开局」发布一场，加入后会出现在这里</p>
+      <button type="button" id="goGames">去看球场</button>
+    </div>`;
+    $("goGames").onclick = () => setNav(0);
+    return;
+  }
+  $("mineList").innerHTML = mine.map(g=>{
+    const need = Math.max(0, g.slots - g.filled.length);
+    const roster = g.filled.length ? g.filled.join("、") : "暂无";
+    return `<article class="mine-card" data-mine="${g.id}">
+      <div class="mtop">
+        <div>
+          <h4>${g.court}</h4>
+          <div class="mtime">${g.time}</div>
+        </div>
+        <div class="mlvl">${g.level}</div>
+      </div>
+      <div class="mine-roster">阵容：<b>${roster}</b>（${g.filled.length}/${g.slots}）</div>
+      <div class="mine-need">${need ? `还差 ${need} 人` : "已满员"}</div>
+      <div class="mine-actions">
+        <button type="button" class="view" data-view="${g.id}">查看球场</button>
+        <button type="button" class="leave" data-leave="${g.id}">退出</button>
+      </div>
+    </article>`;
+  }).join("");
+
+  $("mineList").onclick = e => {
+    const view = e.target.closest("[data-view]");
+    const leave = e.target.closest("[data-leave]");
+    if(view){
+      scrollToCourt(view.dataset.view);
+      return;
+    }
+    if(leave){
+      const g = games.find(x=>x.id===leave.dataset.leave);
+      if(!g) return;
+      g.filled = g.filled.filter(n=>n!=="我");
+      g.joined = false;
+      save();
+      toast("已退出本局");
+      render();
+    }
+  };
+}
+
+function scrollToCourt(id){
+  setNav(0);
+  setTimeout(()=>{
+    const el = $("courts").querySelector(`.court-card[data-id="${id}"]`);
+    if(!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.remove("flash");
+    void el.offsetWidth;
+    el.classList.add("flash");
+    setTimeout(()=>el.classList.remove("flash"), 900);
+  }, 280);
+}
+
+function render(){
+  $("liveCount").textContent = `今日 ${games.length} 局进行中`;
+  $("dots").innerHTML = games.map((_,i)=>`<i class="${i===0?'on':''}"></i>`).join("");
+  $("courts").innerHTML = games.map((g,idx)=>{
+    const dots = Array.from({length:g.slots},(_,i)=>{
+      const name = g.filled[i];
+      if(!name) return `<div class="slot">${i+1}</div>`;
+      const me = name === "我";
+      return `<div class="slot filled ${me?'me':''}" title="${name}">${me?'我':name[0]}</div>`;
+    }).join("");
+    const full = g.filled.length >= g.slots;
+    const label = g.joined ? "已上车 · 再点可退出" : full ? "已满员" : `加入空位（${g.filled.length}/${g.slots}）`;
+    return `<article class="court-card" data-id="${g.id}">
+      <div class="court-top">
+        <div><h2>${g.court}</h2><p>${g.time}</p></div>
+        <div class="level">${g.level}</div>
+      </div>
+      <div class="slots">${dots}</div>
+      <div class="court-meta">
+        <span>${g.slots<=4?'半场':g.slots<=6?'3v3':'5v5'}</span>
+        <span>差 ${Math.max(0,g.slots-g.filled.length)} 人</span>
+      </div>
+      <button class="join-btn ${g.joined?'joined':''}" data-join="${g.id}" ${!g.joined && full?'disabled':''}>${label}</button>
+    </article>`;
+  }).join("");
+
+  $("courts").onclick = e => {
+    const btn = e.target.closest("[data-join]");
+    if(!btn) return;
+    const g = games.find(x=>x.id===btn.dataset.join);
+    if(!g) return;
+    if(g.joined){
+      g.filled = g.filled.filter(n=>n!=="我");
+      g.joined = false;
+      toast("已退出本局");
+      save(); render();
+    } else if(g.filled.length < g.slots){
+      g.filled.push("我");
+      g.joined = true;
+      const rect = btn.getBoundingClientRect();
+      const phone = $("phone").getBoundingClientRect();
+      const rip = document.createElement("div");
+      rip.className = "ripple";
+      rip.style.left = (rect.left - phone.left + rect.width/2 - 40) + "px";
+      rip.style.top = (rect.top - phone.top + rect.height/2 - 40) + "px";
+      $("phone").appendChild(rip);
+      setTimeout(()=>rip.remove(),600);
+      toast("已占位！等球友开打");
+      save(); render();
+      setNav(2);
+    }
+  };
+
+  renderMine();
+}
+
+$("cSize").onclick = e => {
+  const b = e.target.closest("[data-n]"); if(!b) return;
+  [...$("cSize").children].forEach(x=>x.classList.remove("on")); b.classList.add("on"); sizePick = +b.dataset.n;
+};
+$("cLevel").onclick = e => {
+  const b = e.target.closest("button"); if(!b) return;
+  [...$("cLevel").children].forEach(x=>x.classList.remove("on")); b.classList.add("on"); levelPick = b.textContent;
+};
+$("createBtn").onclick = () => {
+  games.unshift({
+    id: "g"+Date.now(), court: $("cCourt").value, time: $("cTime").value || "待定",
+    level: levelPick, slots: sizePick, filled: ["我"], joined: true
+  });
+  save(); render(); toast("新局已开，你已占 1 位");
+  setNav(2);
+};
+
+function setNav(i){
+  $("nav0").classList.toggle("on", i===0);
+  $("nav1").classList.toggle("on", i===1);
+  $("nav2").classList.toggle("on", i===2);
+  $("track").scrollTo({ left: i * $("track").clientWidth, behavior: "smooth" });
+}
+$("nav0").onclick = () => setNav(0);
+$("nav1").onclick = () => setNav(1);
+$("nav2").onclick = () => setNav(2);
+$("track").onscroll = () => {
+  const i = Math.round($("track").scrollLeft / $("track").clientWidth);
+  $("nav0").classList.toggle("on", i===0);
+  $("nav1").classList.toggle("on", i===1);
+  $("nav2").classList.toggle("on", i===2);
+};
+
+render();
+</script>
+</body>
+</html>

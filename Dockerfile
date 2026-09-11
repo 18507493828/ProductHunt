@@ -23,8 +23,11 @@ COPY server/ ./server/
 # Copy built frontend
 COPY --from=client-build /app/client/dist ./client/dist
 
+# Local mini-apps (H5/PC static pages under /apps/<name>/)
+COPY apps/ ./apps/
+
 # Ensure uploads dir exists (legacy compat)
-RUN mkdir -p ./server/storage/uploads
+RUN mkdir -p ./server/storage/uploads ./apps
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0

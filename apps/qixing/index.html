@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>骑行城市线</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+:root{
+  --cyan:#22d3ee;--teal:#06b6d4;--bg:#041016;--panel:#0b1c24;--ink:#e6fbff;--muted:#7aa8b5;--line:rgba(34,211,238,.18);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:"Noto Sans SC",system-ui,sans-serif;color:var(--ink);
+  background:
+    radial-gradient(700px 360px at 80% 0%,rgba(34,211,238,.18),transparent 55%),
+    radial-gradient(600px 300px at 0% 100%,rgba(6,182,212,.12),transparent 50%),
+    var(--bg);
+}
+.app{max-width:1200px;margin:0 auto;padding:18px 20px 36px;min-height:100%;display:grid;grid-template-rows:auto auto 1fr;gap:14px}
+.hud{
+  display:grid;grid-template-columns:1.2fr repeat(3,1fr);gap:12px;
+}
+@media(max-width:900px){.hud{grid-template-columns:1fr 1fr}}
+.gauge-card{
+  background:linear-gradient(160deg,#0e2430,#07151c);border:1px solid var(--line);border-radius:18px;
+  padding:16px 18px;box-shadow:inset 0 0 40px rgba(34,211,238,.05);
+}
+.gauge-card .label{font-size:11px;letter-spacing:.16em;color:var(--muted);font-family:"Share Tech Mono",monospace}
+.gauge-card .val{
+  font-family:"Share Tech Mono",monospace;font-size:48px;line-height:1.1;color:var(--cyan);margin-top:6px;
+  text-shadow:0 0 18px rgba(34,211,238,.35);
+}
+.gauge-card .val small{font-size:16px;color:var(--muted);margin-left:4px}
+.gauge-card.main{grid-row:span 1}
+.main-title{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px}
+.main-title h1{font-size:22px;font-weight:900}
+.main-title span{font-family:"Share Tech Mono",monospace;font-size:12px;color:var(--cyan)}
+.body{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-height:0}
+@media(max-width:900px){.body{grid-template-columns:1fr}}
+.panel{
+  background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;
+}
+.panel-h{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.panel-h h2{font-size:14px;font-weight:900}
+.panel-h span{font-size:11px;color:var(--muted);font-family:"Share Tech Mono",monospace}
+.filter-chips{
+  display:flex;gap:8px;padding:10px 12px 0;
+}
+.filter-chips button{
+  border:1px solid rgba(34,211,238,.28);background:transparent;color:var(--muted);
+  border-radius:999px;padding:6px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+}
+.filter-chips button.on{background:rgba(34,211,238,.15);color:var(--cyan);border-color:rgba(34,211,238,.55)}
+.routes{padding:10px;overflow:auto;display:flex;flex-direction:column;gap:8px;max-height:520px}
+.route{
+  text-align:left;border:1px solid transparent;background:rgba(34,211,238,.04);border-radius:14px;
+  padding:12px 14px;cursor:pointer;color:inherit;font:inherit;
+}
+.route.on{border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.1)}
+.route.flash{animation:favFlash .9s ease}
+@keyframes favFlash{0%,100%{box-shadow:none}40%{box-shadow:0 0 0 2px rgba(34,211,238,.55)}}
+.route b{display:block;font-size:15px;font-weight:900;margin-bottom:4px}
+.route .m{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.route .m em{font-style:normal;color:var(--cyan);font-family:"Share Tech Mono",monospace}
+.routes-empty{
+  padding:36px 18px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6;
+}
+.routes-empty b{display:block;color:var(--ink);font-size:14px;margin-bottom:6px}
+.mapbox{position:relative;min-height:280px;background:
+  linear-gradient(90deg,rgba(34,211,238,.05) 1px,transparent 1px) 0 0/40px 40px,
+  linear-gradient(rgba(34,211,238,.05) 1px,transparent 1px) 0 0/40px 40px,
+  #06141b;
+}
+.mapbox svg{width:100%;height:100%;min-height:280px;display:block}
+.stations{padding:12px;display:flex;flex-direction:column;gap:8px;overflow:auto;max-height:220px}
+.station{
+  display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;
+  background:rgba(255,255,255,.03);border-radius:12px;padding:10px 12px;border:1px solid rgba(34,211,238,.08);
+}
+.station.next{border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.08)}
+.station .dot{width:10px;height:10px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+.station b{display:block;font-size:13px}.station span{font-size:11px;color:var(--muted)}
+.station .km{font-family:"Share Tech Mono",monospace;color:var(--cyan);font-size:13px}
+.action-bar{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px}
+.btn{
+  flex:1;border:none;border-radius:12px;padding:12px;font:inherit;font-weight:800;cursor:pointer;
+  background:linear-gradient(135deg,var(--cyan),var(--teal));color:#042028;
+}
+.btn.ghost{background:transparent;color:var(--cyan);border:1px solid rgba(34,211,238,.35)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.toast{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
+  background:rgba(230,251,255,.95);color:#042028;padding:10px 16px;border-radius:12px;font-size:13px;font-weight:700;
+  opacity:0;pointer-events:none;transition:.25s;z-index:40;
+}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.blink{animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
+.trip-card{
+  display:none;position:relative;z-index:5;
+  background:linear-gradient(120deg,#0a2a36,#083040);
+  border:1px solid rgba(34,211,238,.4);border-radius:16px;padding:14px 16px;
+  box-shadow:0 12px 40px rgba(0,0,0,.35),inset 0 0 30px rgba(34,211,238,.06);
+  scroll-margin-top:8px;
+}
+.trip-card.open{display:block}
+.trip-card .nav-top{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px;
+}
+.trip-card .nav-live{
+  font-family:"Share Tech Mono",monospace;font-size:11px;letter-spacing:.14em;color:var(--cyan);
+}
+.trip-card h3{font-size:16px;font-weight:900;margin-top:2px}
+.trip-card .nav-end{
+  border:1px solid rgba(34,211,238,.4);background:rgba(34,211,238,.08);color:var(--cyan);
+  border-radius:10px;padding:8px 14px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;
+}
+.nav-meta{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;
+}
+@media(max-width:700px){.nav-meta{grid-template-columns:1fr 1fr}}
+.nav-meta .cell{
+  background:rgba(0,0,0,.22);border-radius:12px;padding:10px 12px;border:1px solid rgba(34,211,238,.1);
+}
+.nav-meta .cell .k{font-size:10px;letter-spacing:.12em;color:var(--muted);font-family:"Share Tech Mono",monospace}
+.nav-meta .cell .v{font-size:14px;font-weight:800;margin-top:4px}
+.trip-stops-h{
+  font-size:11px;letter-spacing:.12em;color:var(--muted);font-family:"Share Tech Mono",monospace;
+  margin-bottom:8px;
+}
+.trip-stops{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.trip-stop{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  background:rgba(0,0,0,.18);border-radius:10px;padding:8px 12px;border:1px solid rgba(34,211,238,.08);
+  font-size:13px;
+}
+.trip-stop.next{border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.1)}
+.trip-stop span{color:var(--muted);font-family:"Share Tech Mono",monospace;font-size:12px}
+.nav-progress{
+  height:8px;border-radius:999px;background:rgba(34,211,238,.12);overflow:hidden;
+}
+.nav-progress i{
+  display:block;height:100%;width:0%;border-radius:999px;
+  background:linear-gradient(90deg,var(--cyan),var(--teal));
+  box-shadow:0 0 12px rgba(34,211,238,.5);transition:width .35s linear;
+}
+.panel.fav-focus{box-shadow:0 0 0 2px rgba(34,211,238,.35)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="main-title">
+    <h1>骑行城市线</h1>
+    <span class="blink" id="rec">● REC HUD</span>
+  </div>
+  <div class="trip-card" id="trip-card">
+    <div class="nav-top">
+      <div>
+        <div class="nav-live blink">● 当前行程</div>
+        <h3 id="nav-name">—</h3>
+      </div>
+      <button type="button" class="nav-end" id="nav-end">结束导航</button>
+    </div>
+    <div class="nav-meta">
+      <div class="cell"><div class="k">里程</div><div class="v" id="nav-km">—</div></div>
+      <div class="cell"><div class="k">预计 ETA</div><div class="v" id="nav-eta">—</div></div>
+      <div class="cell"><div class="k">进度</div><div class="v" id="nav-pct">0%</div></div>
+      <div class="cell"><div class="k">已骑行</div><div class="v" id="nav-elapsed">00:00</div></div>
+    </div>
+    <div class="trip-stops-h">补给站清单</div>
+    <div class="trip-stops" id="trip-stops"></div>
+    <div class="nav-progress"><i id="nav-bar"></i></div>
+  </div>
+  <section class="hud">
+    <div class="gauge-card main">
+      <div class="label">CURRENT SPEED</div>
+      <div class="val" id="spd">24.6<small>km/h</small></div>
+    </div>
+    <div class="gauge-card">
+      <div class="label">DISTANCE</div>
+      <div class="val" id="dist" style="font-size:32px">18.4<small>km</small></div>
+    </div>
+    <div class="gauge-card">
+      <div class="label">RIDE TIME</div>
+      <div class="val" id="time" style="font-size:32px">48<small>min</small></div>
+    </div>
+    <div class="gauge-card">
+      <div class="label">AVG CADENCE</div>
+      <div class="val" id="cad" style="font-size:32px">86<small>rpm</small></div>
+    </div>
+  </section>
+  <div class="body">
+    <section class="panel" id="list-panel">
+      <div class="panel-h"><h2>城市路线库</h2><span id="count">0 ROUTES</span></div>
+      <div class="filter-chips" id="chips">
+        <button type="button" class="on" data-chip="all">全部</button>
+        <button type="button" data-chip="saved">已收藏 <span id="chip-saved-n">0</span></button>
+      </div>
+      <div class="routes" id="routes"></div>
+      <div class="action-bar">
+        <button class="btn" id="start">开始导航（演示）</button>
+        <button class="btn ghost" id="save">收藏路线</button>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="panel-h"><h2 id="rname">河岸绿道环线</h2><span id="rtag">CITY LOOP</span></div>
+      <div class="mapbox">
+        <svg viewBox="0 0 560 280" id="svg">
+          <defs>
+            <linearGradient id="cyanGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#06b6d4"/>
+            </linearGradient>
+          </defs>
+          <path id="road" d="" fill="none" stroke="rgba(34,211,238,.15)" stroke-width="14" stroke-linecap="round"/>
+          <path id="line" d="" fill="none" stroke="url(#cyanGrad)" stroke-width="4" stroke-linecap="round"/>
+          <g id="pins"></g>
+        </svg>
+      </div>
+      <div class="panel-h" style="border-top:1px solid var(--line);border-bottom:none"><h2>补给站</h2><span>SUPPLY</span></div>
+      <div class="stations" id="stations"></div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const ROUTES=[
+  {id:1,name:"河岸绿道环线",tag:"CITY LOOP",km:18.4,mins:48,spd:24.6,cad:86,path:"M40 200 C120 160,180 120,260 140 S400 220,480 160 S520 100,540 90",
+    stations:[{name:"东桥补给点",desc:"饮水 · 打气筒",at:"4.2km"},{name:"湿地驿站",desc:"能量胶 · 卫生间",at:"9.8km"},{name:"南岸咖啡",desc:"休息 · 简易维修",at:"14.5km"}]},
+  {id:2,name:"大学城通勤快线",tag:"COMMUTE",km:12.0,mins:32,spd:27.1,cad:92,path:"M30 160 C140 140,220 200,320 170 S450 90,530 120",
+    stations:[{name:"南门便利店",desc:"补给饮料",at:"3.0km"},{name:"体育馆气站",desc:"打气 · 补胎",at:"7.5km"}]},
+  {id:3,name:"古城骑行观光线",tag:"SIGHTSEE",km:22.5,mins:70,spd:21.0,cad:78,path:"M50 240 C100 100,200 80,280 150 S380 250,460 180 S520 120,540 140",
+    stations:[{name:"北门茶馆",desc:"歇脚 · 加水",at:"5.5km"},{name:"钟楼补给",desc:"能量棒",at:"11.0km"},{name:"护城河驿",desc:"维修工具箱",at:"17.2km"}]},
+  {id:4,name:"滨海风道冲刺",tag:"SPRINT",km:15.8,mins:38,spd:29.4,cad:98,path:"M40 120 C160 100,240 160,340 130 S470 70,540 80",
+    stations:[{name:"风车广场",desc:"饮水机",at:"6.0km"},{name:"灯塔补给",desc:"电解质 · 打气",at:"12.4km"}]},
+  {id:5,name:"山地公园爬坡线",tag:"CLIMB",km:25.0,mins:95,spd:16.8,cad:70,path:"M40 220 C90 200,130 80,220 100 S300 220,380 140 S470 60,540 100",
+    stations:[{name:"山脚补给",desc:"重装补水",at:"2.0km"},{name:"半山观景台",desc:"休息 · 补给",at:"13.5km"},{name:"顶峰驿站",desc:"热饮 · 简修",at:"22.0km"}]}
+];
+const KEY="qx-saved-v1";
+let saved=JSON.parse(localStorage.getItem(KEY)||"[]");
+let active=ROUTES[0];
+let listFilter="all";
+let navTimer=null;
+let navTick=0;
+let navigating=false;
+let flashId=null;
+
+function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1600)}
+function fmtElapsed(sec){
+  const m=String(Math.floor(sec/60)).padStart(2,"0");
+  const s=String(sec%60).padStart(2,"0");
+  return m+":"+s;
+}
+function etaText(r,progress){
+  const left=Math.max(0,Math.round(r.mins*(1-progress/100)));
+  if(progress>=100) return "已到达";
+  return left+" min";
+}
+function setHud(r,override){
+  const spd=override?.spd??r.spd;
+  const dist=override?.dist??r.km;
+  const mins=override?.mins??r.mins;
+  const cad=override?.cad??r.cad;
+  document.getElementById("spd").innerHTML=(typeof spd==="number"?spd.toFixed(1):spd)+"<small>km/h</small>";
+  document.getElementById("dist").innerHTML=(typeof dist==="number"?dist.toFixed(1):dist)+"<small>km</small>";
+  document.getElementById("time").innerHTML=mins+"<small>min</small>";
+  document.getElementById("cad").innerHTML=cad+"<small>rpm</small>";
+}
+function drawMap(r){
+  document.getElementById("road").setAttribute("d",r.path);
+  document.getElementById("line").setAttribute("d",r.path);
+  const pins=document.getElementById("pins");
+  pins.innerHTML="";
+  const pts=[[40,200],[260,140],[480,160],[540,90]];
+  r.stations.forEach((s,i)=>{
+    const p=pts[Math.min(i+1,pts.length-1)];
+    const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
+    c.setAttribute("cx",p[0]);c.setAttribute("cy",p[1]);c.setAttribute("r","6");
+    c.setAttribute("fill","#22d3ee");c.setAttribute("stroke","#041016");c.setAttribute("stroke-width","2");
+    pins.appendChild(c);
+  });
+}
+function nextStationIndex(progress){
+  const n=active.stations.length;
+  if(!n)return -1;
+  return Math.min(n-1, Math.floor(progress/100*n));
+}
+function renderStations(r,nextIdx){
+  document.getElementById("stations").innerHTML=r.stations.map((s,i)=>`
+    <div class="station${i===nextIdx?" next":""}">
+      <div class="dot"></div>
+      <div><b>${s.name}${i===nextIdx?" · 下一站":""}</b><span>${s.desc}</span></div>
+      <div class="km">${s.at}</div>
+    </div>`).join("");
+}
+function renderTripStops(progress){
+  const nextIdx=progress>=100?-1:nextStationIndex(progress);
+  document.getElementById("trip-stops").innerHTML=active.stations.map((s,i)=>`
+    <div class="trip-stop${i===nextIdx?" next":""}">
+      <b>${s.name}${i===nextIdx?" · 下一站":""}</b>
+      <span>${s.at}</span>
+    </div>`).join("")||`<div class="trip-stop"><b>直达终点 · 无中途补给</b><span>—</span></div>`;
+}
+function updateTripCard(progress){
+  document.getElementById("nav-name").textContent=active.name;
+  document.getElementById("nav-km").textContent=active.km.toFixed(1)+" km";
+  document.getElementById("nav-eta").textContent=etaText(active,progress);
+  document.getElementById("nav-pct").textContent=progress+"%";
+  document.getElementById("nav-bar").style.width=progress+"%";
+  renderTripStops(progress);
+}
+function visibleRoutes(){
+  if(listFilter==="saved") return ROUTES.filter(r=>saved.includes(r.id));
+  return ROUTES;
+}
+function setChip(chip){
+  listFilter=chip;
+  document.querySelectorAll("#chips button").forEach(x=>x.classList.toggle("on",x.dataset.chip===chip));
+}
+function visibleRoutesRender(){
+  const list=visibleRoutes();
+  document.getElementById("count").textContent=list.length+" ROUTES";
+  document.getElementById("chip-saved-n").textContent=String(saved.length);
+  if(!list.length){
+    document.getElementById("routes").innerHTML=`<div class="routes-empty"><b>还没有收藏路线</b>选一条路线点「收藏路线」，再回来看这里</div>`;
+    return;
+  }
+  document.getElementById("routes").innerHTML=list.map(r=>`
+    <button class="route${r.id===active.id?" on":""}${r.id===flashId?" flash":""}" data-id="${r.id}">
+      <b>${r.name}${saved.includes(r.id)?" ★":""}</b>
+      <div class="m"><em>${r.km}km</em><span>${r.mins} min</span><span>${r.tag}</span><span>${r.stations.length} 站补给</span></div>
+    </button>`).join("");
+}
+function render(){
+  if(!navigating) setHud(active);
+  document.getElementById("rname").textContent=active.name;
+  document.getElementById("rtag").textContent=active.tag;
+  drawMap(active);
+  const nextIdx=navigating?nextStationIndex(Math.min(100,navTick*2)): -1;
+  renderStations(active, nextIdx);
+  visibleRoutesRender();
+  document.getElementById("save").textContent=saved.includes(active.id)?"已收藏":"收藏路线";
+  document.getElementById("start").disabled=navigating;
+  document.getElementById("start").textContent=navigating?"导航中…":"开始导航（演示）";
+}
+function stopNav(done){
+  clearInterval(navTimer);navTimer=null;
+  navigating=false;
+  document.getElementById("trip-card").classList.remove("open");
+  document.getElementById("rec").textContent="● REC HUD";
+  setHud(active);
+  render();
+  if(done) toast("导航已结束 · "+active.name);
+}
+function startNav(){
+  if(navigating) return;
+  navigating=true;
+  navTick=0;
+  const card=document.getElementById("trip-card");
+  card.classList.add("open");
+  updateTripCard(0);
+  document.getElementById("nav-elapsed").textContent="00:00";
+  document.getElementById("rec").textContent="● NAV LIVE";
+  render();
+  card.scrollIntoView({behavior:"smooth",block:"nearest"});
+  toast("导航已启动 · "+active.name);
+  clearInterval(navTimer);
+  navTimer=setInterval(()=>{
+    navTick++;
+    const progress=Math.min(100,navTick*2);
+    document.getElementById("nav-elapsed").textContent=fmtElapsed(navTick);
+    updateTripCard(progress);
+    const distCovered=+(active.km*progress/100).toFixed(1);
+    const mins=Math.max(1, Math.round(active.mins*progress/100));
+    const wobble=Math.sin(navTick/3)*1.8;
+    const v=Math.max(12,active.spd+wobble);
+    const cad=Math.round(active.cad+Math.sin(navTick/4)*4);
+    setHud(active,{spd:v,dist:distCovered,mins,cad});
+    renderStations(active, progress>=100?-1:nextStationIndex(progress));
+    if(progress>=100){
+      clearInterval(navTimer);navTimer=null;
+      toast("已到达终点");
+    }
+  },500);
+}
+document.getElementById("chips").onclick=e=>{
+  const b=e.target.closest("[data-chip]");if(!b)return;
+  setChip(b.dataset.chip);
+  const list=visibleRoutes();
+  if(list.length && !list.some(r=>r.id===active.id)) active=list[0];
+  render();
+};
+document.getElementById("routes").onclick=e=>{
+  const b=e.target.closest("[data-id]");if(!b)return;
+  if(navigating){toast("请先结束当前导航");return}
+  active=ROUTES.find(r=>r.id===+b.dataset.id);render();
+};
+document.getElementById("save").onclick=()=>{
+  const wasSaved=saved.includes(active.id);
+  if(wasSaved) saved=saved.filter(id=>id!==active.id);
+  else saved.unshift(active.id);
+  localStorage.setItem(KEY,JSON.stringify(saved));
+  if(!wasSaved){
+    setChip("saved");
+    flashId=active.id;
+    const panel=document.getElementById("list-panel");
+    panel.classList.add("fav-focus");
+    toast("路线已收藏 · 已切换到收藏列表");
+    render();
+    document.querySelector(`.route[data-id="${active.id}"]`)?.scrollIntoView({behavior:"smooth",block:"nearest"});
+    clearTimeout(window.__fav);window.__fav=setTimeout(()=>{
+      flashId=null;panel.classList.remove("fav-focus");render();
+    },1600);
+  } else {
+    toast("已取消收藏");
+    render();
+  }
+};
+document.getElementById("start").onclick=()=>startNav();
+document.getElementById("nav-end").onclick=()=>stopNav(true);
+render();
+</script>
+</body>
+</html>

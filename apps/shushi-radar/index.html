@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>书市雷达 · 校园二手书</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+  :root {
+    --ink: #1a1612; --muted: #7a6f63; --line: #e8e0d4;
+    --paper: #faf6f0; --panel: #fffdf9; --wood: #8b5e3c;
+    --accent: #c45c26; --accent-soft: #f3e4d4; --ok: #2d6a4f;
+    --sidebar: 220px; --drawer: 340px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Noto Sans SC", system-ui, sans-serif;
+    background: #d9d0c4 url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c4b8a8' fill-opacity='0.25'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    color: var(--ink); min-height: 100vh; display: flex; align-items: stretch; justify-content: center;
+    padding: 18px;
+  }
+  #workspace {
+    width: min(1180px, 100%); background: var(--paper); border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(60,40,20,.18), 0 0 0 1px rgba(0,0,0,.06);
+    display: grid; grid-template-columns: var(--sidebar) 1fr; grid-template-rows: auto 1fr;
+    min-height: calc(100vh - 36px); overflow: hidden; position: relative;
+  }
+  .topbar {
+    grid-column: 1 / -1; display: flex; align-items: center; gap: 16px;
+    padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; flex: none; }
+  .brand h1 { font-family: "Noto Serif SC", serif; font-size: 22px; font-weight: 700; letter-spacing: .02em; }
+  .brand span { font-size: 12px; color: var(--muted); }
+  .search-wrap { flex: 1; max-width: 420px; position: relative; }
+  .search-wrap input {
+    width: 100%; border: 1px solid var(--line); background: #fff; border-radius: 8px;
+    padding: 10px 14px 10px 36px; font: inherit; font-size: 14px; outline: none;
+  }
+  .search-wrap input:focus { border-color: var(--wood); box-shadow: 0 0 0 3px rgba(139,94,60,.12); }
+  .search-wrap::before { content: "⌕"; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 16px; }
+  .top-actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn {
+    border: none; border-radius: 8px; padding: 9px 14px; font: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; background: var(--accent); color: #fff;
+  }
+  .btn:hover { filter: brightness(1.05); }
+  .btn.ghost { background: var(--accent-soft); color: var(--wood); }
+  .btn.outline { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  aside {
+    border-right: 1px solid var(--line); background: #f3ebe1; padding: 16px 14px; overflow: auto;
+  }
+  aside h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 14px 0 8px; font-weight: 700; }
+  aside h3:first-child { margin-top: 0; }
+  .filter-list { display: flex; flex-direction: column; gap: 4px; }
+  .filter-list button {
+    text-align: left; border: none; background: transparent; padding: 8px 10px; border-radius: 7px;
+    font: inherit; font-size: 13px; cursor: pointer; color: var(--ink); display: flex; justify-content: space-between;
+  }
+  .filter-list button:hover { background: rgba(255,255,255,.55); }
+  .filter-list button.on { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.06); font-weight: 600; color: var(--accent); }
+  .filter-list button .n { color: var(--muted); font-size: 11px; font-weight: 500; }
+  .cond-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 5px 10px;
+    font-size: 12px; cursor: pointer; color: var(--muted);
+  }
+  .chip.on { border-color: var(--accent); color: var(--accent); background: #fff5ee; font-weight: 600; }
+
+  .main { display: flex; min-width: 0; position: relative; background: var(--paper); }
+  .grid-area { flex: 1; padding: 16px 18px; overflow: auto; min-width: 0; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .toolbar .count { font-size: 13px; color: var(--muted); }
+  .sort select { border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px; font: inherit; font-size: 12px; background: #fff; }
+
+  .book-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px;
+  }
+  .book-card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+    cursor: pointer; transition: transform .15s, box-shadow .15s; text-align: left;
+    font: inherit; color: inherit; padding: 0; display: block; width: 100%;
+  }
+  .book-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(60,40,20,.1); }
+  .book-card.selected { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .cover {
+    height: 120px; display: flex; align-items: flex-end; justify-content: center;
+    padding: 12px; position: relative;
+  }
+  .cover .spine {
+    width: 78%; height: 100%; border-radius: 3px 6px 6px 3px; box-shadow: 4px 4px 0 rgba(0,0,0,.08);
+    display: flex; align-items: center; justify-content: center; color: #fff; font-family: "Noto Serif SC", serif;
+    font-size: 13px; font-weight: 700; writing-mode: vertical-rl; letter-spacing: .12em; text-shadow: 0 1px 2px rgba(0,0,0,.2);
+  }
+  .badge {
+    position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,.92); font-size: 10px;
+    font-weight: 700; padding: 3px 7px; border-radius: 999px; color: var(--wood);
+  }
+  .book-body { padding: 10px 12px 12px; }
+  .book-body h4 { font-size: 13.5px; font-weight: 700; line-height: 1.35; margin-bottom: 4px; }
+  .book-meta { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .price-row { display: flex; align-items: baseline; justify-content: space-between; }
+  .price { font-size: 16px; font-weight: 800; color: var(--accent); }
+  .price small { font-size: 11px; font-weight: 500; color: var(--muted); text-decoration: line-through; margin-left: 4px; }
+  .spot { font-size: 11px; color: var(--ok); font-weight: 600; }
+
+  .drawer {
+    width: 0; overflow: hidden; border-left: 0 solid var(--line); background: var(--panel);
+    transition: width .25s ease; flex: none;
+  }
+  .drawer.open { width: var(--drawer); border-left-width: 1px; }
+  .drawer-inner { width: var(--drawer); padding: 18px; height: 100%; overflow: auto; display: flex; flex-direction: column; }
+  .drawer-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .drawer-head h2 { font-family: "Noto Serif SC", serif; font-size: 20px; line-height: 1.3; }
+  .close-x { border: none; background: #f0ebe3; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 16px; }
+  .big-cover {
+    height: 160px; border-radius: 10px; margin-bottom: 14px; display: grid; place-items: center;
+  }
+  .big-cover .spine {
+    width: 100px; height: 140px; border-radius: 3px 8px 8px 3px; color: #fff;
+    display: grid; place-items: center; writing-mode: vertical-rl; font-family: "Noto Serif SC", serif;
+    font-weight: 700; letter-spacing: .15em; box-shadow: 6px 6px 0 rgba(0,0,0,.1);
+  }
+  .kv { display: grid; gap: 8px; margin: 12px 0 16px; font-size: 13px; }
+  .kv div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+  .kv span { color: var(--muted); }
+  .kv b { font-weight: 600; text-align: right; }
+  .seller { display: flex; gap: 10px; align-items: center; padding: 12px; background: #f7f1e8; border-radius: 10px; margin-bottom: 14px; }
+  .av { width: 40px; height: 40px; border-radius: 50%; background: var(--wood); color: #fff; display: grid; place-items: center; font-weight: 700; }
+  .seller p { font-size: 12px; color: var(--muted); }
+  .drawer-actions { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+  .back-link {
+    border: none; background: none; color: var(--wood); font: inherit; font-size: 13px;
+    font-weight: 600; cursor: pointer; padding: 0; margin-bottom: 10px; text-align: left;
+  }
+  .back-link:hover { color: var(--accent); }
+  .mine-list { display: flex; flex-direction: column; gap: 10px; flex: 1; overflow: auto; }
+  .mine-row {
+    width: 100%; text-align: left; border: 1px solid var(--line); background: #fff;
+    border-radius: 10px; padding: 12px; cursor: pointer; font: inherit; color: inherit;
+    transition: box-shadow .15s, border-color .15s;
+  }
+  .mine-row:hover { border-color: #d4b896; box-shadow: 0 4px 12px rgba(60,40,20,.08); }
+  .mine-row h4 { font-size: 14px; font-weight: 700; line-height: 1.35; margin-bottom: 6px; }
+  .mine-row .meta { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .mine-row .price-line {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 13px; margin-top: 8px;
+  }
+  .mine-row .price-line b { color: var(--accent); font-size: 15px; }
+  .mine-row .spot { color: var(--ok); font-weight: 600; font-size: 12px; }
+  .mine-actions {
+    display: flex; gap: 8px; margin-top: 10px;
+  }
+  .mine-actions .btn { flex: 1; padding: 7px 10px; font-size: 12px; }
+  .mine-empty {
+    text-align: center; padding: 40px 16px; color: var(--muted); flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .mine-empty h3 {
+    font-family: "Noto Serif SC", serif; font-size: 18px; color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .mine-empty p { font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+  .toast {
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
+    background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 13px;
+    opacity: 0; transition: .3s; z-index: 20; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .modal-bg {
+    position: absolute; inset: 0; background: rgba(30,20,10,.35); display: none; place-items: center; z-index: 30;
+  }
+  .modal-bg.show { display: grid; }
+  .modal {
+    width: min(400px, 92%); background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,.2);
+  }
+  .modal h3 { font-family: "Noto Serif SC", serif; margin-bottom: 12px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .field input, .field select, .field textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font: inherit; font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<div id="workspace">
+  <header class="topbar">
+    <div class="brand">
+      <h1>书市雷达</h1>
+      <span>校园二手书当面撮合</span>
+    </div>
+    <div class="search-wrap">
+      <input id="q" type="search" placeholder="搜书名、课程、卖家…" autocomplete="off">
+    </div>
+    <div class="top-actions">
+      <button class="btn ghost" id="btnMine">我的预约</button>
+      <button class="btn" id="btnPublish">发布闲书</button>
+    </div>
+  </header>
+
+  <aside>
+    <h3>院系 / 科目</h3>
+    <div class="filter-list" id="catFilters"></div>
+    <h3>成色</h3>
+    <div class="cond-row" id="condFilters"></div>
+    <h3>交易点</h3>
+    <div class="filter-list" id="spotFilters"></div>
+  </aside>
+
+  <div class="main">
+    <div class="grid-area">
+      <div class="toolbar">
+        <div class="count" id="countLabel">加载中…</div>
+        <div class="sort">
+          <select id="sort">
+            <option value="new">最新发布</option>
+            <option value="priceAsc">价格从低到高</option>
+            <option value="priceDesc">价格从高到低</option>
+          </select>
+        </div>
+      </div>
+      <div class="book-grid" id="grid"></div>
+    </div>
+    <aside class="drawer" id="drawer">
+      <div class="drawer-inner" id="drawerInner"></div>
+    </aside>
+  </div>
+  <div class="toast" id="toast"></div>
+  <div class="modal-bg" id="modal">
+    <div class="modal">
+      <h3>发布闲书</h3>
+      <div class="field"><label>书名</label><input id="fTitle" placeholder="如：高等数学（同济第七版）"></div>
+      <div class="field"><label>科目</label>
+        <select id="fCat"><option>数学</option><option>英语</option><option>计算机</option><option>经管</option><option>文学</option><option>考研</option></select>
+      </div>
+      <div class="field"><label>价格（元）</label><input id="fPrice" type="number" min="1" value="15"></div>
+      <div class="field"><label>成色</label>
+        <select id="fCond"><option>几乎全新</option><option>轻微划线</option><option>笔记较多</option><option>有磨损</option></select>
+      </div>
+      <div class="field"><label>面交地点</label>
+        <select id="fSpot"><option>一食堂门口</option><option>图书馆大厅</option><option>二教北门</option><option>南门快递点</option></select>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn outline" style="flex:1" id="cancelPub">取消</button>
+        <button class="btn" style="flex:1" id="okPub">上架</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const COLORS = ["#8b5e3c","#3d5a80","#6d597a","#bc4749","#2a9d8f","#e9c46a","#264653","#9c6644"];
+const DEFAULT = [
+  { id:"b1", title:"高等数学（同济第七版）上册", cat:"数学", price:18, orig:45, cond:"轻微划线", spot:"一食堂门口", seller:"小林", college:"理学院", note:"有课后题答案笔记，适合期末突击", time: Date.now()-3600e3 },
+  { id:"b2", title:"C++ Primer 中文版", cat:"计算机", price:42, orig:128, cond:"几乎全新", spot:"图书馆大厅", seller:"阿哲", college:"计科", note:"塑封刚拆，无笔记", time: Date.now()-7200e3 },
+  { id:"b3", title:"考研英语真题黄皮书", cat:"考研", price:25, orig:68, cond:"笔记较多", spot:"二教北门", seller:"小雨", college:"外语", note:"阅读理解全标了，写作模板在扉页", time: Date.now()-1e7 },
+  { id:"b4", title:"微观经济学（平狄克）", cat:"经管", price:30, orig:79, cond:"轻微划线", spot:"南门快递点", seller:"老周", college:"经管", note:"第8章重点已标", time: Date.now()-2e7 },
+  { id:"b5", title:"人间失格", cat:"文学", price:8, orig:25, cond:"几乎全新", spot:"图书馆大厅", seller:"南南", college:"中文", note:"周末文学社同款", time: Date.now()-3e7 },
+  { id:"b6", title:"线性代数辅导讲义", cat:"数学", price:12, orig:35, cond:"有磨损", spot:"一食堂门口", seller:"阿凯", college:"工科", note:"封面有折痕，内容完整", time: Date.now()-4e7 },
+  { id:"b7", title:"Python编程：从入门到实践", cat:"计算机", price:35, orig:89, cond:"几乎全新", spot:"二教北门", seller:"米米", college:"软工", note:"项目代码已下载可分享", time: Date.now()-5e7 },
+  { id:"b8", title:"大学英语四级词汇", cat:"英语", price:10, orig:32, cond:"笔记较多", spot:"南门快递点", seller:"小何", college:"外语", note:"核心词已勾", time: Date.now()-6e7 },
+  { id:"b9", title:"会计学原理", cat:"经管", price:22, orig:58, cond:"轻微划线", spot:"图书馆大厅", seller:"橙子", college:"经管", note:"课后题做过一半", time: Date.now()-8e7 },
+  { id:"b10", title:"数据结构（严蔚敏）", cat:"计算机", price:15, orig:42, cond:"有磨损", spot:"一食堂门口", seller:"阿龙", college:"计科", note:"经典旧版，算法课够用", time: Date.now()-9e7 },
+  { id:"b11", title:"红楼梦（人民文学）", cat:"文学", price:28, orig:68, cond:"几乎全新", spot:"二教北门", seller:"书虫", college:"中文", note:"四册合售可议", time: Date.now()-1e8 },
+  { id:"b12", title:"考研数学复习全书", cat:"考研", price:48, orig:98, cond:"轻微划线", spot:"图书馆大厅", seller:"上岸鱼", college:"工科", note:"高数线代概率全套", time: Date.now()-12e7 },
+];
+
+const LS_BOOKS = "shushi-radar-books";
+const LS_RESERVED = "shushi-radar-reserved";
+let books = JSON.parse(localStorage.getItem(LS_BOOKS) || "null") || DEFAULT.slice();
+let reserved = JSON.parse(localStorage.getItem(LS_RESERVED) || "[]");
+let state = { cat:"全部", cond:"全部", spot:"全部", q:"", sort:"new", selected:null, drawerMode:"detail" };
+
+const $=id=>document.getElementById(id);
+const toast=(m)=>{ const t=$("toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1800); };
+const save=()=>{ localStorage.setItem(LS_BOOKS,JSON.stringify(books)); localStorage.setItem(LS_RESERVED,JSON.stringify(reserved)); };
+
+function updateMineBtn(){
+  const n=reserved.length;
+  $("btnMine").textContent = n ? `我的预约 (${n})` : "我的预约";
+}
+
+function colorFor(title){ let h=0; for(const c of title) h=(h+c.charCodeAt(0))%COLORS.length; return COLORS[h]; }
+
+function filtered(){
+  let list = books.filter(b=>{
+    if(state.cat!=="全部" && b.cat!==state.cat) return false;
+    if(state.cond!=="全部" && b.cond!==state.cond) return false;
+    if(state.spot!=="全部" && b.spot!==state.spot) return false;
+    if(state.q){
+      const s=state.q.toLowerCase();
+      if(![b.title,b.cat,b.seller,b.spot,b.note].join(" ").toLowerCase().includes(s)) return false;
+    }
+    return true;
+  });
+  if(state.sort==="priceAsc") list.sort((a,b)=>a.price-b.price);
+  else if(state.sort==="priceDesc") list.sort((a,b)=>b.price-a.price);
+  else list.sort((a,b)=>b.time-a.time);
+  return list;
+}
+
+function renderFilters(){
+  const cats=["全部",...new Set(books.map(b=>b.cat))];
+  const spots=["全部",...new Set(books.map(b=>b.spot))];
+  const conds=["全部","几乎全新","轻微划线","笔记较多","有磨损"];
+  $("catFilters").innerHTML = cats.map(c=>{
+    const n=c==="全部"?books.length:books.filter(b=>b.cat===c).length;
+    return `<button class="${state.cat===c?'on':''}" data-cat="${c}">${c}<span class="n">${n}</span></button>`;
+  }).join("");
+  $("spotFilters").innerHTML = spots.map(s=>`<button class="${state.spot===s?'on':''}" data-spot="${s}">${s}</button>`).join("");
+  $("condFilters").innerHTML = conds.map(c=>`<button class="chip ${state.cond===c?'on':''}" data-cond="${c}">${c}</button>`).join("");
+  $("catFilters").onclick=e=>{ const b=e.target.closest("[data-cat]"); if(!b)return; state.cat=b.dataset.cat; render(); };
+  $("spotFilters").onclick=e=>{ const b=e.target.closest("[data-spot]"); if(!b)return; state.spot=b.dataset.spot; render(); };
+  $("condFilters").onclick=e=>{ const b=e.target.closest("[data-cond]"); if(!b)return; state.cond=b.dataset.cond; render(); };
+}
+
+function renderGrid(){
+  const list=filtered();
+  $("countLabel").textContent = `共 ${list.length} 本可交易`;
+  if(!list.length){ $("grid").innerHTML=`<div class="empty">没有匹配的书，试试放宽筛选</div>`; return; }
+  $("grid").innerHTML = list.map(b=>{
+    const reservedAlready = reserved.includes(b.id);
+    return `<button class="book-card ${state.selected===b.id?'selected':''}" data-id="${b.id}">
+      <div class="cover" style="background:linear-gradient(160deg,${colorFor(b.title)}22,${colorFor(b.title)}08)">
+        <div class="spine" style="background:${colorFor(b.title)}">${b.title.slice(0,6)}</div>
+        <span class="badge">${b.cond}</span>
+      </div>
+      <div class="book-body">
+        <h4>${b.title}</h4>
+        <div class="book-meta">${b.cat} · ${b.seller}</div>
+        <div class="price-row">
+          <div class="price">¥${b.price}<small>¥${b.orig}</small></div>
+          <div class="spot">${reservedAlready?"已预约":b.spot}</div>
+        </div>
+      </div>
+    </button>`;
+  }).join("");
+  $("grid").onclick=e=>{
+    const card=e.target.closest("[data-id]");
+    if(!card) return;
+    state.selected=card.dataset.id;
+    state.drawerMode="detail";
+    state.fromMine=false;
+    renderDrawer();
+    renderGrid();
+  };
+}
+
+function reservedBooks(){
+  return reserved.map(id=>books.find(b=>b.id===id)).filter(Boolean);
+}
+
+function cancelReservation(id){
+  reserved = reserved.filter(x=>x!==id);
+  save();
+  updateMineBtn();
+  toast("已取消预约");
+  if(state.drawerMode==="mine") renderMineDrawer();
+  else if(state.selected===id) renderDrawer();
+  renderGrid();
+}
+
+function renderMineDrawer(){
+  const drawer=$("drawer");
+  state.drawerMode="mine";
+  drawer.classList.add("open");
+  const list=reservedBooks();
+  if(!list.length){
+    $("drawerInner").innerHTML=`
+      <div class="drawer-head">
+        <h2>我的预约</h2>
+        <button class="close-x" id="closeDrawer">×</button>
+      </div>
+      <div class="mine-empty">
+        <h3>还没有预约</h3>
+        <p>点开一本书，预约面交后会出现在这里</p>
+        <button class="btn ghost" id="browseBooks">去逛书市</button>
+      </div>`;
+    $("closeDrawer").onclick=()=>{ state.selected=null; state.drawerMode="detail"; drawer.classList.remove("open"); $("drawerInner").innerHTML=""; renderGrid(); };
+    $("browseBooks").onclick=()=>{ state.selected=null; state.drawerMode="detail"; drawer.classList.remove("open"); $("drawerInner").innerHTML=""; renderGrid(); };
+    return;
+  }
+  $("drawerInner").innerHTML=`
+    <div class="drawer-head">
+      <h2>我的预约</h2>
+      <button class="close-x" id="closeDrawer">×</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin:-6px 0 12px">共 ${list.length} 本 · 点击查看详情</p>
+    <div class="mine-list">
+      ${list.map(b=>`
+        <div class="mine-row" data-open="${b.id}">
+          <h4>${b.title}</h4>
+          <div class="meta">卖家 ${b.seller} · ${b.cond}</div>
+          <div class="price-line">
+            <b>¥${b.price}</b>
+            <span class="spot">${b.spot}</span>
+          </div>
+          <div class="mine-actions">
+            <button type="button" class="btn outline" data-detail="${b.id}">查看详情</button>
+            <button type="button" class="btn ghost" data-cancel="${b.id}">取消预约</button>
+          </div>
+        </div>`).join("")}
+    </div>`;
+  $("closeDrawer").onclick=()=>{ state.selected=null; state.drawerMode="detail"; drawer.classList.remove("open"); $("drawerInner").innerHTML=""; renderGrid(); };
+  $("drawerInner").onclick=e=>{
+    const cancel=e.target.closest("[data-cancel]");
+    if(cancel){ e.stopPropagation(); cancelReservation(cancel.dataset.cancel); return; }
+    const detail=e.target.closest("[data-detail]");
+    const row=e.target.closest("[data-open]");
+    const id=detail?.dataset.detail || row?.dataset.open;
+    if(!id) return;
+    state.selected=id;
+    state.drawerMode="detail";
+    state.fromMine=true;
+    renderDrawer();
+    renderGrid();
+  };
+}
+
+function renderDrawer(){
+  const drawer=$("drawer");
+  if(state.drawerMode==="mine"){ renderMineDrawer(); return; }
+  const b=books.find(x=>x.id===state.selected);
+  if(!b){ drawer.classList.remove("open"); return; }
+  drawer.classList.add("open");
+  const isRes=reserved.includes(b.id);
+  const backHtml = state.fromMine
+    ? `<button type="button" class="back-link" id="backToMine">← 返回预约列表</button>`
+    : "";
+  $("drawerInner").innerHTML=`
+    ${backHtml}
+    <div class="drawer-head">
+      <h2>${b.title}</h2>
+      <button class="close-x" id="closeDrawer">×</button>
+    </div>
+    <div class="big-cover" style="background:linear-gradient(160deg,${colorFor(b.title)}28,#faf6f0)">
+      <div class="spine" style="background:${colorFor(b.title)}">${b.title.slice(0,8)}</div>
+    </div>
+    <div class="seller">
+      <div class="av">${b.seller[0]}</div>
+      <div><strong>${b.seller}</strong><p>${b.college} · 当面交易</p></div>
+    </div>
+    <div class="kv">
+      <div><span>售价</span><b style="color:var(--accent);font-size:18px">¥${b.price}</b></div>
+      <div><span>原价参考</span><b>¥${b.orig}</b></div>
+      <div><span>成色</span><b>${b.cond}</b></div>
+      <div><span>面交地点</span><b>${b.spot}</b></div>
+      <div><span>科目</span><b>${b.cat}</b></div>
+    </div>
+    <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px">${b.note||""}</p>
+    <div class="drawer-actions">
+      ${isRes
+        ? `<button class="btn ghost" id="cancelResBtn">取消预约</button>
+           <button class="btn" disabled>已预约面交</button>`
+        : `<button class="btn" id="reserveBtn">预约面交</button>`}
+      <button class="btn ghost" id="copySpot">复制见面地点</button>
+    </div>`;
+  $("closeDrawer").onclick=()=>{ state.selected=null; state.fromMine=false; state.drawerMode="detail"; drawer.classList.remove("open"); $("drawerInner").innerHTML=""; renderGrid(); };
+  $("backToMine")?.addEventListener("click", ()=>{ state.fromMine=false; renderMineDrawer(); renderGrid(); });
+  $("reserveBtn")?.addEventListener("click", ()=>{
+    if(!reserved.includes(b.id)){
+      reserved.push(b.id);
+      save();
+      updateMineBtn();
+      toast(`已预约 · ${b.spot}`);
+      state.fromMine=true;
+      renderDrawer();
+      renderGrid();
+    }
+  });
+  $("cancelResBtn")?.addEventListener("click", ()=>cancelReservation(b.id));
+  $("copySpot").onclick=()=>{ navigator.clipboard?.writeText(b.spot); toast("已复制："+b.spot); };
+}
+
+function render(){ renderFilters(); renderGrid(); renderDrawer(); updateMineBtn(); }
+
+$("q").oninput=e=>{ state.q=e.target.value.trim(); renderGrid(); };
+$("sort").onchange=e=>{ state.sort=e.target.value; renderGrid(); };
+$("btnPublish").onclick=()=>$("modal").classList.add("show");
+$("cancelPub").onclick=()=>$("modal").classList.remove("show");
+$("okPub").onclick=()=>{
+  const title=$("fTitle").value.trim();
+  if(!title){ toast("请填写书名"); return; }
+  books.unshift({
+    id:"u"+Date.now(), title, cat:$("fCat").value, price:+$("fPrice").value||10,
+    orig: Math.round((+$("fPrice").value||10)*2.5), cond:$("fCond").value, spot:$("fSpot").value,
+    seller:"我", college:"本校", note:"刚发布", time:Date.now()
+  });
+  save(); $("modal").classList.remove("show"); $("fTitle").value=""; toast("已上架到书市"); render();
+};
+$("btnMine").onclick=()=>{
+  state.fromMine=false;
+  renderMineDrawer();
+  renderGrid();
+};
+
+render();
+</script>
+</body>
+</html>

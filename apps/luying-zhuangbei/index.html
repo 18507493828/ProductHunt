@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>露营装备单</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+:root{
+  --khaki:#8b7355;--brown:#5c4033;--sand:#e8dcc4;--ink:#2c241b;--muted:#7a6a55;--crate:#f3ebe0;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:"Noto Sans SC",system-ui,sans-serif;color:var(--ink);
+  background:
+    radial-gradient(900px 400px at 10% 0%,#d4c4a8 0%,transparent 55%),
+    linear-gradient(180deg,#cbb892,#eaddc8 30%,#f5efe4);
+}
+.app{max-width:1160px;margin:0 auto;padding:20px 22px 40px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.head h1{font-family:"Special Elite",monospace;font-size:34px;letter-spacing:.04em;color:var(--brown)}
+.head p{font-size:13px;color:var(--muted);margin-top:6px}
+.layout{display:grid;grid-template-columns:280px 1fr;gap:16px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+.weather{
+  background:linear-gradient(160deg,#5c4033,#8b7355);color:#f5efe4;border-radius:20px;padding:18px;
+  box-shadow:0 14px 36px rgba(92,64,51,.25);
+}
+.weather .loc{font-size:12px;opacity:.8;letter-spacing:.08em}
+.weather .temp{font-family:"Special Elite",monospace;font-size:56px;line-height:1;margin:8px 0 4px}
+.weather .desc{font-size:14px;margin-bottom:14px}
+.w-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.w-grid div{background:rgba(255,255,255,.1);border-radius:12px;padding:10px}
+.w-grid b{display:block;font-size:15px}.w-grid span{font-size:11px;opacity:.75}
+.controls{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+.controls label{font-size:12px;opacity:.85;display:block;margin-bottom:4px}
+.controls select,.controls input{
+  width:100%;border:none;border-radius:10px;padding:10px 12px;font:inherit;background:rgba(255,255,255,.92);color:var(--ink);
+}
+.gen{
+  border:none;border-radius:12px;padding:12px;font:inherit;font-weight:800;cursor:pointer;
+  background:#f5efe4;color:var(--brown);margin-top:4px;
+}
+.progress{
+  margin-top:14px;font-size:12px;opacity:.9;
+}
+.bar{height:8px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:#e8dcc4;border-radius:99px;width:0%;transition:.3s}
+.crates{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+@media(max-width:700px){.crates{grid-template-columns:1fr}}
+.crate{
+  background:var(--crate);border:2px solid #c4b49a;border-radius:16px;overflow:hidden;
+  box-shadow:0 10px 28px rgba(92,64,51,.08);
+}
+.crate-head{
+  background:linear-gradient(90deg,#a89070,#8b7355);color:#fff;padding:12px 14px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:"Special Elite",monospace;letter-spacing:.04em;
+}
+.crate-head span{font-size:12px;font-family:"Noto Sans SC",sans-serif;opacity:.9}
+.crate-body{padding:8px 10px 12px}
+.item{
+  display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px dashed #d6c8b0;cursor:pointer;
+}
+.item:last-child{border-bottom:none}
+.box{
+  width:22px;height:22px;border:2px solid var(--khaki);border-radius:6px;display:grid;place-items:center;
+  flex:none;font-size:13px;color:#fff;background:transparent;
+}
+.item.on .box{background:var(--brown);border-color:var(--brown)}
+.item.on .label{text-decoration:line-through;opacity:.55}
+.label{flex:1;font-size:14px;font-weight:600}
+.tag{font-size:11px;color:var(--muted);background:#efe6d6;padding:3px 8px;border-radius:999px}
+.toast{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
+  background:rgba(44,36,27,.92);color:#f5efe4;padding:10px 16px;border-radius:12px;font-size:13px;
+  opacity:0;pointer-events:none;transition:.25s;z-index:40;
+}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="head">
+    <div>
+      <h1>露营装备单</h1>
+      <p>按人数与天气生成装箱清单，勾选即打包</p>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="weather">
+      <div class="loc">CAMPSITE · 龙脊山谷</div>
+      <div class="temp" id="temp">18°</div>
+      <div class="desc" id="wdesc">多云 · 适宜露营</div>
+      <div class="w-grid">
+        <div><b id="wind">3 级</b><span>风力</span></div>
+        <div><b id="rain">10%</b><span>降水概率</span></div>
+        <div><b id="low">12°</b><span>夜间低温</span></div>
+        <div><b id="uv">中等</b><span>紫外线</span></div>
+      </div>
+      <div class="controls">
+        <div>
+          <label>出行人数</label>
+          <input type="number" id="people" min="1" max="12" value="3">
+        </div>
+        <div>
+          <label>天气情景</label>
+          <select id="weather">
+            <option value="clear">晴好干燥</option>
+            <option value="cool">凉爽多风</option>
+            <option value="rain">有雨转凉</option>
+            <option value="hot">炎热暴晒</option>
+          </select>
+        </div>
+        <button class="gen" id="gen">生成装备清单</button>
+      </div>
+      <div class="progress">
+        <div>打包进度 <b id="pct">0%</b></div>
+        <div class="bar"><i id="bar"></i></div>
+      </div>
+    </aside>
+    <section class="crates" id="crates"></section>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const WEATHER={
+  clear:{temp:22,desc:"晴好干燥 · 星空友好",wind:"2 级",rain:"5%",low:"14°",uv:"高"},
+  cool:{temp:16,desc:"凉爽多风 · 注意防风",wind:"4 级",rain:"15%",low:"9°",uv:"中等"},
+  rain:{temp:14,desc:"有雨转凉 · 防水优先",wind:"3 级",rain:"70%",low:"8°",uv:"低"},
+  hot:{temp:31,desc:"炎热暴晒 · 遮阳补水",wind:"2 级",rain:"0%",low:"23°",uv:"很强"}
+};
+const BASE={
+  睡眠:[{id:"tent",label:"帐篷 / 天幕",tag:"必备"},{id:"bag",label:"睡袋",tag:"按人"},{id:"mat",label:"防潮垫 / 充气垫",tag:"按人"},{id:"pillow",label:"充气枕",tag:"舒适"}],
+  炊事:[{id:"stove",label:"气罐炉头",tag:"必备"},{id:"pot",label:"套锅",tag:"共用"},{id:"cutlery",label:"餐具套装",tag:"按人"},{id:"water",label:"饮用水 / 滤水器",tag:"按人"}],
+  穿着:[{id:"shell",label:"冲锋衣",tag:"防风"},{id:"base",label:"速干内衣",tag:"按人"},{id:"shoe",label:"徒步鞋",tag:"按人"},{id:"hat",label:"遮阳帽",tag:"防晒"}],
+  安全:[{id:"light",label:"头灯",tag:"按人"},{id:"first",label:"急救包",tag:"必备"},{id:"power",label:"充电宝",tag:"电子"},{id:"map",label:"离线地图 / 对讲",tag:"导航"}]
+};
+const EXTRA={
+  cool:[{cat:"穿着",id:"fleece",label:"抓绒外套",tag:"保暖"},{cat:"睡眠",id:"liner",label:"睡袋内胆",tag:"加温"}],
+  rain:[{cat:"穿着",id:"rain",label:"雨衣 / 硬壳",tag:"防水"},{cat:"安全",id:"tarp",label:"地布加宽",tag:"防潮"}],
+  hot:[{cat:"穿着",id:"uv",label:"冰袖 / 防晒衣",tag:"防晒"},{cat:"炊事",id:"ice",label:"保温箱冰块",tag:"降温"}],
+  clear:[{cat:"安全",id:"chair",label:"折叠椅",tag:"舒适"}]
+};
+const KEY="ly-pack-v1";
+let checked=new Set(JSON.parse(localStorage.getItem(KEY)||"[]"));
+let items=[];
+
+function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1600)}
+function applyWeather(){
+  const w=WEATHER[document.getElementById("weather").value];
+  document.getElementById("temp").textContent=w.temp+"°";
+  document.getElementById("wdesc").textContent=w.desc;
+  document.getElementById("wind").textContent=w.wind;
+  document.getElementById("rain").textContent=w.rain;
+  document.getElementById("low").textContent=w.low;
+  document.getElementById("uv").textContent=w.uv;
+}
+function build(silent){
+  const people=+document.getElementById("people").value||1;
+  const weather=document.getElementById("weather").value;
+  const cats={};
+  Object.entries(BASE).forEach(([cat,list])=>{
+    cats[cat]=list.map(it=>{
+      let label=it.label;
+      if(it.tag==="按人") label+=` ×${people}`;
+      return {...it,label,cat};
+    });
+  });
+  (EXTRA[weather]||[]).forEach(it=>{
+    if(!cats[it.cat]) cats[it.cat]=[];
+    cats[it.cat].push({...it,label:it.tag==="按人"?it.label+` ×${people}`:it.label});
+  });
+  items=Object.entries(cats).flatMap(([cat,list])=>list.map(x=>({...x,cat})));
+  const ids=new Set(items.map(i=>i.id));
+  checked=new Set([...checked].filter(id=>ids.has(id)));
+  localStorage.setItem(KEY,JSON.stringify([...checked]));
+  render();
+  if(!silent) toast("已按 "+people+" 人 · "+WEATHER[weather].desc.split("·")[0].trim()+" 生成");
+}
+function progress(){
+  const total=items.length||1;
+  const done=[...checked].filter(id=>items.some(i=>i.id===id)).length;
+  const pct=Math.round(done/total*100);
+  document.getElementById("pct").textContent=pct+"%";
+  document.getElementById("bar").style.width=pct+"%";
+}
+function render(){
+  const order=["睡眠","炊事","穿着","安全"];
+  const by={};
+  items.forEach(it=>{(by[it.cat]=by[it.cat]||[]).push(it)});
+  document.getElementById("crates").innerHTML=order.filter(c=>by[c]).map(cat=>{
+    const list=by[cat];
+    const done=list.filter(i=>checked.has(i.id)).length;
+    return `<div class="crate">
+      <div class="crate-head"><div>${cat}箱</div><span>${done}/${list.length}</span></div>
+      <div class="crate-body">
+        ${list.map(i=>`<div class="item${checked.has(i.id)?" on":""}" data-id="${i.id}">
+          <div class="box">${checked.has(i.id)?"✓":""}</div>
+          <div class="label">${i.label}</div>
+          <div class="tag">${i.tag}</div>
+        </div>`).join("")}
+      </div>
+    </div>`;
+  }).join("");
+  progress();
+}
+document.getElementById("weather").onchange=applyWeather;
+document.getElementById("gen").onclick=()=>build(false);
+document.getElementById("crates").onclick=e=>{
+  const row=e.target.closest("[data-id]");if(!row)return;
+  const id=row.dataset.id;
+  if(checked.has(id)) checked.delete(id); else checked.add(id);
+  localStorage.setItem(KEY,JSON.stringify([...checked]));
+  render();
+};
+applyWeather();build(true);
+</script>
+</body>
+</html>

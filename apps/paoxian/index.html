@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>跑线推荐</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+:root{
+  --blue:#2563eb;--sky:#38bdf8;--ink:#0f172a;--muted:#64748b;--panel:#fff;--line:#e2e8f0;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:"Noto Sans SC",system-ui,sans-serif;color:var(--ink);
+  background:linear-gradient(180deg,#dbeafe 0%,#eff6ff 180px,#f8fafc 100%);
+}
+.app{max-width:1200px;margin:0 auto;padding:18px 20px 36px;display:grid;grid-template-rows:auto 1fr;gap:14px;min-height:100%}
+.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.brand h1{font-family:"Barlow Condensed",sans-serif;font-size:36px;font-weight:800;letter-spacing:.02em;color:#1d4ed8}
+.brand p{font-size:13px;color:var(--muted)}
+.pace-row{display:flex;gap:8px;flex-wrap:wrap}
+.pace{
+  border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;
+  font-size:13px;font-weight:800;color:var(--muted);cursor:pointer;
+}
+.pace.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.dash{display:grid;grid-template-columns:1.4fr .9fr;gap:14px;min-height:0}
+@media(max-width:900px){.dash{grid-template-columns:1fr}}
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:20px;
+  box-shadow:0 10px 30px rgba(37,99,235,.06);overflow:hidden;
+}
+.map-card{display:flex;flex-direction:column;min-height:520px}
+.map-head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.map-head h2{font-size:15px;font-weight:900}
+.map-head span{font-size:12px;color:var(--muted)}
+.map-svg{flex:1;background:
+  radial-gradient(circle at 20% 30%,rgba(56,189,248,.15),transparent 40%),
+  linear-gradient(160deg,#e0f2fe,#f8fafc);position:relative;min-height:360px}
+.map-svg svg{width:100%;height:100%;display:block}
+.stats{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line);
+}
+.stat{padding:12px;text-align:center;border-right:1px solid var(--line)}
+.stat:last-child{border-right:none}
+.stat b{display:block;font-family:"Barlow Condensed",sans-serif;font-size:26px;font-weight:800;color:var(--blue)}
+.stat span{font-size:11px;color:var(--muted)}
+.side{padding:16px;display:flex;flex-direction:column;gap:14px}
+.side h3{font-size:14px;font-weight:900}
+.elev{
+  height:90px;display:flex;align-items:flex-end;gap:4px;padding:8px;background:#f1f5f9;border-radius:12px;
+}
+.elev i{flex:1;border-radius:4px 4px 0 0;background:linear-gradient(180deg,var(--sky),var(--blue));opacity:.85;min-height:8px}
+.routes{display:flex;flex-direction:column;gap:8px;overflow:auto;max-height:220px}
+.route{
+  text-align:left;border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px;cursor:pointer;font:inherit;color:inherit;
+}
+.route.on{border-color:var(--blue);background:#eff6ff;box-shadow:inset 3px 0 0 var(--blue)}
+.route b{display:block;font-size:14px;font-weight:900;margin-bottom:4px}
+.route .m{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.fav-btn{
+  border:none;border-radius:12px;padding:12px;font:inherit;font-weight:800;cursor:pointer;
+  background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;
+}
+.fav-btn.saved{background:#fff;color:var(--blue);border:1px solid #bfdbfe}
+.favs{
+  border:1px solid var(--line);border-radius:16px;padding:12px;background:#f8fbff;
+  scroll-margin-top:12px;transition:box-shadow .25s;
+}
+.favs.focus{box-shadow:0 0 0 3px rgba(37,99,235,.2)}
+.favs .favs-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.favs .favs-h h3{margin:0}
+.favs .favs-h span{font-size:11px;color:var(--muted);font-weight:700}
+.fav-list{display:flex;flex-direction:column;gap:8px;max-height:220px;overflow:auto}
+.fav-item{
+  text-align:left;width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;
+  padding:10px 12px;cursor:pointer;font:inherit;color:inherit;
+}
+.fav-item:hover{border-color:#93c5fd}
+.fav-item.on{border-color:var(--blue);background:#eff6ff}
+.fav-item.hi{animation:favPulse .9s ease}
+@keyframes favPulse{0%{box-shadow:0 0 0 0 rgba(37,99,235,.35)}100%{box-shadow:0 0 0 8px transparent}}
+.fav-item b{display:block;font-size:13px;font-weight:900;margin-bottom:4px}
+.fav-item .m{font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+.fav-empty{font-size:12px;color:var(--muted);padding:10px 4px;text-align:center}
+.toast{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
+  background:rgba(15,23,42,.92);color:#fff;padding:10px 16px;border-radius:12px;font-size:13px;
+  opacity:0;pointer-events:none;transition:.25s;z-index:40;
+}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>跑线推荐</h1>
+      <p>按配速与路况挑选城市跑步路线</p>
+    </div>
+    <div class="pace-row" id="paces">
+      <button class="pace on" data-p="all">全部配速</button>
+      <button class="pace" data-p="轻松">轻松 6'30"+</button>
+      <button class="pace" data-p="稳态">稳态 5'30"-6'30"</button>
+      <button class="pace" data-p="节奏">节奏 5'00"以内</button>
+    </div>
+  </header>
+  <div class="dash">
+    <section class="card map-card">
+      <div class="map-head">
+        <h2 id="route-name">滨江夜跑道</h2>
+        <span id="route-tag">柏油平整 · 灯光充足</span>
+      </div>
+      <div class="map-svg" id="map">
+        <svg viewBox="0 0 640 360" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#2563eb"/>
+            </linearGradient>
+          </defs>
+          <rect width="640" height="360" fill="transparent"/>
+          <path id="road" d="M40 280 C120 260,140 200,220 190 S340 220,400 160 S520 80,600 100" fill="none" stroke="#cbd5e1" stroke-width="18" stroke-linecap="round"/>
+          <path id="poly" d="M40 280 C120 260,140 200,220 190 S340 220,400 160 S520 80,600 100" fill="none" stroke="url(#g)" stroke-width="6" stroke-linecap="round"/>
+          <circle id="start-dot" cx="40" cy="280" r="8" fill="#22c55e"/>
+          <circle id="end-dot" cx="600" cy="100" r="8" fill="#ef4444"/>
+          <text id="start-label" x="52" y="300" font-size="12" fill="#64748b">起点</text>
+          <text id="end-label" x="560" y="88" font-size="12" fill="#64748b">终点</text>
+        </svg>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="s-km">8.2</b><span>公里</span></div>
+        <div class="stat"><b id="s-pace">5'45"</b><span>建议配速</span></div>
+        <div class="stat"><b id="s-gain">46</b><span>爬升 m</span></div>
+        <div class="stat"><b id="s-time">47</b><span>预计分钟</span></div>
+      </div>
+    </section>
+    <aside class="card side">
+      <div>
+        <h3>海拔剖面</h3>
+        <div class="elev" id="elev"></div>
+      </div>
+      <div>
+        <h3>推荐路线</h3>
+        <div class="routes" id="routes"></div>
+      </div>
+      <button class="fav-btn" id="fav">收藏这条跑线</button>
+      <div class="favs" id="favs-panel">
+        <div class="favs-h">
+          <h3>我的收藏</h3>
+          <span id="fav-count">0 条</span>
+        </div>
+        <div class="fav-list" id="fav-list"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const ROUTES=[
+  {id:1,name:"滨江夜跑道",tag:"柏油平整 · 灯光充足",road:"柏油路",pace:"稳态",km:8.2,paceText:"5'45\"",gain:46,mins:47,elev:[20,22,28,35,40,38,42,46,44,40,36,30,28,26,24],path:"M40 280 C120 260,140 200,220 190 S340 220,400 160 S520 80,600 100"},
+  {id:2,name:"大学城环湖线",tag:"缓坡 · 人流适中",road:"混合步道",pace:"轻松",km:5.6,paceText:"6'40\"",gain:28,mins:38,elev:[10,12,14,18,22,26,24,20,18,16,14,12],path:"M50 200 C140 240,200 280,280 250 S420 160,520 180 S580 220,600 210"},
+  {id:3,name:"古城墙节奏圈",tag:"砖石混合 · 需注意脚下",road:"砖石路",pace:"节奏",km:10.0,paceText:"4'55\"",gain:72,mins:50,elev:[15,25,40,55,60,58,70,72,65,50,40,30,25],path:"M60 300 C100 180,180 120,260 140 S380 260,460 200 S560 80,590 120"},
+  {id:4,name:"奥体公园间歇道",tag:"塑胶跑道 · 适合配速训练",road:"塑胶跑道",pace:"节奏",km:6.0,paceText:"4'40\"",gain:12,mins:28,elev:[8,9,10,11,10,9,12,11,10,9,8],path:"M80 180 C160 160,240 200,320 180 S480 140,560 160"},
+  {id:5,name:"湿地公园轻松跑",tag:"木栈道 · 风景向",road:"木栈道",pace:"轻松",km:4.2,paceText:"7'00\"",gain:18,mins:30,elev:[5,8,12,16,18,15,12,10,8,6],path:"M70 260 C180 220,260 280,360 240 S500 180,580 200"}
+];
+const KEY="px-favs-v1";
+let favs=JSON.parse(localStorage.getItem(KEY)||"[]");
+let pace="all", active=ROUTES[0], highlightFav=null;
+
+function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1600)}
+function renderElev(arr){
+  const max=Math.max(...arr);
+  document.getElementById("elev").innerHTML=arr.map(v=>`<i style="height:${Math.max(8,(v/max)*100)}%"></i>`).join("");
+}
+function renderRoute(){
+  const r=active;
+  document.getElementById("route-name").textContent=r.name;
+  document.getElementById("route-tag").textContent=r.tag;
+  document.getElementById("s-km").textContent=r.km.toFixed(1);
+  document.getElementById("s-pace").textContent=r.paceText;
+  document.getElementById("s-gain").textContent=r.gain;
+  document.getElementById("s-time").textContent=r.mins;
+  document.getElementById("road").setAttribute("d",r.path);
+  document.getElementById("poly").setAttribute("d",r.path);
+  const start=r.path.match(/M([\d.]+)\s+([\d.]+)/);
+  const end=r.path.match(/([\d.]+)\s+([\d.]+)$/);
+  if(start){
+    document.getElementById("start-dot").setAttribute("cx",start[1]);
+    document.getElementById("start-dot").setAttribute("cy",start[2]);
+    document.getElementById("start-label").setAttribute("x",+start[1]+12);
+    document.getElementById("start-label").setAttribute("y",+start[2]+20);
+  }
+  if(end){
+    document.getElementById("end-dot").setAttribute("cx",end[1]);
+    document.getElementById("end-dot").setAttribute("cy",end[2]);
+    document.getElementById("end-label").setAttribute("x",Math.max(20,+end[1]-40));
+    document.getElementById("end-label").setAttribute("y",+end[2]-12);
+  }
+  renderElev(r.elev);
+  const saved=favs.includes(r.id);
+  const btn=document.getElementById("fav");
+  btn.textContent=saved?"已收藏 · 再点取消":"收藏这条跑线";
+  btn.classList.toggle("saved",saved);
+}
+function renderList(){
+  const list=ROUTES.filter(r=>pace==="all"||r.pace===pace);
+  document.getElementById("routes").innerHTML=list.map(r=>`
+    <button class="route${r.id===active.id?" on":""}" data-id="${r.id}">
+      <b>${r.name}</b>
+      <div class="m"><span>${r.km} km</span><span>${r.paceText}</span><span>${r.pace}</span><span>${r.road}</span></div>
+    </button>`).join("");
+}
+function renderFavs(){
+  document.getElementById("fav-count").textContent=favs.length+" 条";
+  const box=document.getElementById("fav-list");
+  if(!favs.length){box.innerHTML='<div class="fav-empty">还没有收藏，点上方按钮加入</div>';return}
+  box.innerHTML=favs.map(id=>{
+    const r=ROUTES.find(x=>x.id===id);if(!r)return"";
+    return `<button type="button" class="fav-item${r.id===active.id?" on":""}${id===highlightFav?" hi":""}" data-fav="${r.id}">
+      <b>${r.name}</b>
+      <div class="m"><span>配速 ${r.paceText}</span><span>${r.km} km</span><span>${r.road}</span><span>${r.pace}</span></div>
+    </button>`;
+  }).join("");
+}
+function focusFavs(id){
+  const panel=document.getElementById("favs-panel");
+  highlightFav=id;
+  panel.classList.add("focus");
+  renderFavs();
+  panel.scrollIntoView({behavior:"smooth",block:"nearest"});
+  clearTimeout(window.__favHi);window.__favHi=setTimeout(()=>{
+    highlightFav=null;panel.classList.remove("focus");renderFavs();
+  },1800);
+}
+function loadRoute(id){
+  const r=ROUTES.find(x=>x.id===id);if(!r)return;
+  active=r;render();
+}
+function render(){renderList();renderRoute();renderFavs()}
+document.getElementById("paces").onclick=e=>{
+  const b=e.target.closest("[data-p]");if(!b)return;
+  pace=b.dataset.p;
+  document.querySelectorAll(".pace").forEach(x=>x.classList.toggle("on",x===b));
+  const list=ROUTES.filter(r=>pace==="all"||r.pace===pace);
+  if(!list.find(r=>r.id===active.id)) active=list[0]||ROUTES[0];
+  render();
+};
+document.getElementById("routes").onclick=e=>{
+  const b=e.target.closest("[data-id]");if(!b)return;
+  loadRoute(+b.dataset.id);
+};
+document.getElementById("fav-list").onclick=e=>{
+  const b=e.target.closest("[data-fav]");if(!b)return;
+  loadRoute(+b.dataset.fav);
+  toast("已载入跑线 · "+active.name);
+};
+document.getElementById("fav").onclick=()=>{
+  if(favs.includes(active.id)){
+    favs=favs.filter(id=>id!==active.id);
+    localStorage.setItem(KEY,JSON.stringify(favs));
+    toast("已取消收藏");
+    render();
+  } else {
+    favs.unshift(active.id);
+    localStorage.setItem(KEY,JSON.stringify(favs));
+    toast("已加入我的收藏");
+    render();
+    focusFavs(active.id);
+  }
+};
+render();
+</script>
+</body>
+</html>

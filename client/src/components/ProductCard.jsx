@@ -74,17 +74,21 @@ export default function ProductCard({
               {rank}
             </span>
           )}
-          {showCategory &&
-            (product.categories?.length
-              ? product.categories
-              : product.category
-                ? [product.category]
-                : []
-            ).length > 0 && (
-              <div className="ph-product-card-categories">
-                {(product.categories?.length
+          {(showCategory ||
+            product.appPlatformLabel ||
+            product.appPlatform) && (
+            <div className="ph-product-card-categories">
+              {(product.appPlatformLabel || product.appPlatform) && (
+                <span className="ph-product-card-category ph-product-card-platform">
+                  {product.appPlatformLabel || product.appPlatform}
+                </span>
+              )}
+              {showCategory &&
+                (product.categories?.length
                   ? product.categories
-                  : [product.category]
+                  : product.category
+                    ? [product.category]
+                    : []
                 )
                   .slice(0, 2)
                   .map((cat) => (
@@ -92,8 +96,8 @@ export default function ProductCard({
                       {cat}
                     </span>
                   ))}
-              </div>
-            )}
+            </div>
+          )}
         </div>
 
         <div className="ph-product-card-body">

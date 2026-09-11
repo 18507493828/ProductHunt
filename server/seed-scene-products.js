@@ -36,13 +36,15 @@ const SCENE_COLOR = {
   outdoor: "#26A69A",
 };
 
-/** 每个场景 3 个样例应用（取该场景前 3 个话题） */
+/** 每个场景样例应用；落地页统一为同域部署路径 /apps/<slug>/ */
 const SEED_APPS = [
   {
     sceneId: "campus",
     apps: [
       {
         name: "书市雷达",
+        slug: "shushi-radar",
+        platform: "pc",
         tagline: "校园二手书就近撮合，下课就能当面交易",
         topic: "校园二手书买卖",
         tool: "华为码道",
@@ -52,6 +54,8 @@ const SEED_APPS = [
       },
       {
         name: "篮搭一下",
+        slug: "landa",
+        platform: "h5",
         tagline: "约球、凑人、订场地，一键找到同校球友",
         topic: "校园篮球搭子",
         tool: "WorkBuddy",
@@ -61,12 +65,25 @@ const SEED_APPS = [
       },
       {
         name: "招领雷达",
+        slug: "zhaoling-radar",
+        platform: "h5",
         tagline: "校园失物招领信息聚合，附近捡到的先看到",
         topic: "失物招领雷达",
         tool: "千问 Work",
         views: 740,
         shares: 18,
         votes: 25,
+      },
+      {
+        name: "食堂拼团王",
+        slug: "shitang-pintuan",
+        platform: "h5",
+        tagline: "校园食堂拼团下单，同楼同宿舍更快成团",
+        topic: "校园周边餐厅团购",
+        tool: "WorkBuddy",
+        views: 860,
+        shares: 19,
+        votes: 28,
       },
     ],
   },
@@ -75,6 +92,8 @@ const SEED_APPS = [
     apps: [
       {
         name: "饭搭子计划",
+        slug: "fandazi",
+        platform: "h5",
         tagline: "周末同城拼饭，按口味与距离智能匹配",
         topic: "周末饭搭子组局",
         tool: "WorkBuddy",
@@ -84,6 +103,8 @@ const SEED_APPS = [
       },
       {
         name: "本杀开黑台",
+        slug: "bensha",
+        platform: "h5",
         tagline: "剧本杀 / 狼人杀一键组局，缺人就来补",
         topic: "剧本杀狼人杀组局",
         tool: "Trae Work",
@@ -93,6 +114,8 @@ const SEED_APPS = [
       },
       {
         name: "遛宠圈",
+        slug: "liuchong",
+        platform: "h5",
         tagline: "同城遛宠搭子与路线分享，遛狗也能社交",
         topic: "宠物遛弯社交圈",
         tool: "华为码道",
@@ -107,6 +130,8 @@ const SEED_APPS = [
     apps: [
       {
         name: "旧物捐赠地图",
+        slug: "jiuwu-juanzeng",
+        platform: "pc",
         tagline: "附近捐赠点与上门回收一站查询",
         topic: "旧物捐赠地图",
         tool: "千问 Work",
@@ -116,6 +141,8 @@ const SEED_APPS = [
       },
       {
         name: "志愿时长本",
+        slug: "zhiyuan-shichang",
+        platform: "h5",
         tagline: "志愿活动签到与时长自动记账",
         topic: "志愿时长记账本",
         tool: "WorkBuddy",
@@ -125,6 +152,8 @@ const SEED_APPS = [
       },
       {
         name: "流浪助养台",
+        slug: "liulang-zhuyang",
+        platform: "pc",
         tagline: "流浪动物救助信息与临时寄养对接",
         topic: "流浪动物救助台",
         tool: "华为码道",
@@ -139,6 +168,8 @@ const SEED_APPS = [
     apps: [
       {
         name: "私教拼搭",
+        slug: "sijiao-pinda",
+        platform: "h5",
         tagline: "健身房私教课拼人更划算",
         topic: "健身房私教搭子",
         tool: "Trae Work",
@@ -148,6 +179,8 @@ const SEED_APPS = [
       },
       {
         name: "热量一眼过",
+        slug: "reliang",
+        platform: "h5",
         tagline: "食堂菜品拍照估热量，轻食选择更简单",
         topic: "食堂热量识别",
         tool: "华为码道",
@@ -157,6 +190,8 @@ const SEED_APPS = [
       },
       {
         name: "跑线推荐",
+        slug: "paoxian",
+        platform: "pc",
         tagline: "按配速与路况推荐城市跑步路线",
         topic: "跑步路线推荐",
         tool: "WorkBuddy",
@@ -171,6 +206,8 @@ const SEED_APPS = [
     apps: [
       {
         name: "徒步组队社",
+        slug: "tubo",
+        platform: "pc",
         tagline: "周末徒步路线与队友一键成团",
         topic: "周末徒步组队",
         tool: "WorkBuddy",
@@ -180,6 +217,8 @@ const SEED_APPS = [
       },
       {
         name: "露营装备单",
+        slug: "luying-zhuangbei",
+        platform: "pc",
         tagline: "按人数与天气生成露营装备清单",
         topic: "露营装备清单",
         tool: "千问 Work",
@@ -189,6 +228,8 @@ const SEED_APPS = [
       },
       {
         name: "骑行城市线",
+        slug: "qixing",
+        platform: "pc",
         tagline: "城市骑行路线与补给点推荐",
         topic: "城市骑行路线",
         tool: "华为码道",
@@ -199,6 +240,11 @@ const SEED_APPS = [
     ],
   },
 ];
+
+function appDeployUrl(slug) {
+  if (!slug) throw new Error("seed app missing slug");
+  return `/apps/${slug}/`;
+}
 
 function makeId(seed) {
   return createHash("md5").update(seed).digest("hex").slice(0, 12);
@@ -319,7 +365,7 @@ async function seedProducts() {
         name: app.name,
         tagline: app.tagline,
         description,
-        url: `https://example.com/apps/${scene.id}/${i + 1}`,
+        url: appDeployUrl(app.slug),
         categories: [category],
         category,
         topicId: topic.id,
@@ -343,6 +389,7 @@ async function seedProducts() {
         rankPinned: false,
         rankHidden: false,
         rankWeight: 0,
+        appPlatform: app.platform || "h5",
         updatedAt: submittedAt,
       });
       created += 1;

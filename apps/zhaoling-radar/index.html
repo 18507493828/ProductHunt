@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+<title>招领雷达 · 校园失物</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+SC:wght@400;500;600;700&display=swap');
+  :root {
+    --teal: #12c4b0; --cyan: #3de0ff; --deep: #062a2e; --ink: #0c2428;
+    --muted: #5a7a80; --card: rgba(255,255,255,.92);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: "Noto Sans SC", system-ui, sans-serif;
+    background: #03181c; color: var(--ink); min-height: 100vh;
+    display: flex; justify-content: center;
+  }
+  #phone {
+    width: 100%; max-width: 430px; min-height: 100vh;
+    background: radial-gradient(ellipse at 50% 18%, #0a3d42 0%, #041c20 55%, #021214 100%);
+    color: #e8f7f8; display: flex; flex-direction: column; position: relative; overflow: hidden;
+  }
+  .top {
+    padding: 16px 18px 8px; display: flex; align-items: flex-end; justify-content: space-between;
+  }
+  .top h1 {
+    font-family: "IBM Plex Mono", monospace; font-size: 20px; font-weight: 600;
+    letter-spacing: .04em; color: var(--cyan);
+  }
+  .top p { font-size: 11px; color: #7eb8be; margin-top: 2px; }
+  .scan-btn {
+    border: 1px solid rgba(61,224,255,.35); background: rgba(18,196,176,.15); color: var(--cyan);
+    font: inherit; font-size: 12px; font-weight: 700; padding: 8px 12px; border-radius: 999px; cursor: pointer;
+  }
+
+  .radar-wrap {
+    position: relative; width: min(360px, 92vw); aspect-ratio: 1; margin: 4px auto 8px;
+  }
+  .radar {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: radial-gradient(circle, rgba(18,196,176,.18) 0%, rgba(6,42,46,.4) 55%, transparent 70%);
+    overflow: hidden; box-shadow: inset 0 0 40px rgba(61,224,255,.12), 0 0 0 1px rgba(61,224,255,.15);
+  }
+  .ring {
+    position: absolute; border: 1px solid rgba(61,224,255,.22); border-radius: 50%;
+    left: 50%; top: 50%; transform: translate(-50%,-50%);
+  }
+  .ring:nth-child(1){ width: 28%; height: 28%; }
+  .ring:nth-child(2){ width: 52%; height: 52%; }
+  .ring:nth-child(3){ width: 76%; height: 76%; }
+  .ring:nth-child(4){ width: 96%; height: 96%; }
+  .sweep {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 0deg, rgba(61,224,255,.45) 40deg, transparent 70deg);
+    animation: spin 3.2s linear infinite; transform-origin: center;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .center-dot {
+    position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px;
+    background: var(--cyan); border-radius: 50%; box-shadow: 0 0 12px var(--cyan); z-index: 3;
+  }
+  .pin {
+    position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 15px; cursor: pointer; z-index: 4;
+    background: rgba(6,42,46,.85); border: 1.5px solid var(--teal);
+    box-shadow: 0 0 14px rgba(18,196,176,.45); transition: transform .2s;
+    animation: float 3s ease-in-out infinite;
+  }
+  .pin:hover, .pin.active { transform: scale(1.15); border-color: var(--cyan); }
+  .pin.claimed { opacity: .4; filter: grayscale(.6); }
+  @keyframes float {
+    0%,100% { translate: 0 0; }
+    50% { translate: 0 -5px; }
+  }
+  .range-label {
+    text-align: center; font-family: "IBM Plex Mono", monospace; font-size: 11px;
+    color: #6aa8ae; letter-spacing: .12em; margin-bottom: 10px;
+  }
+
+  .list-panel {
+    flex: 1; background: linear-gradient(180deg, rgba(232,247,248,.04), #f2fafb 40px);
+    border-radius: 22px 22px 0 0; padding: 16px 14px calc(20px + env(safe-area-inset-bottom));
+    color: var(--ink); overflow: auto; min-height: 0;
+  }
+  .list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
+  .list-head h2 { font-size: 15px; font-weight: 700; flex-shrink: 0; }
+  .tabs { display: flex; gap: 3px; background: #e2eef0; border-radius: 999px; padding: 3px; flex-wrap: nowrap; }
+  .tabs button {
+    border: none; background: transparent; padding: 6px 10px; border-radius: 999px;
+    font: inherit; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap;
+  }
+  .tabs button.on { background: #fff; color: #0a6b72; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+
+  .item {
+    display: grid; grid-template-columns: 48px 1fr auto; gap: 10px; align-items: center;
+    background: var(--card); border-radius: 14px; padding: 12px; margin-bottom: 8px;
+    border: 1px solid rgba(18,196,176,.12); cursor: pointer; transition: border .15s;
+  }
+  .item.active { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(18,196,176,.15); }
+  .item.claimed { opacity: .55; }
+  .item.mine-row { opacity: 1; filter: none; border-color: rgba(18,196,176,.28); }
+  .item.mine-row .meta-full { margin-top: 4px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .item .tag {
+    display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px;
+    background: #d4f6f2; color: #0a6b72; margin-left: 4px; vertical-align: middle;
+  }
+  .ico {
+    width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; font-size: 22px;
+    background: linear-gradient(145deg, #d4f6f2, #e8fcff);
+  }
+  .item h3 { font-size: 14px; font-weight: 700; }
+  .item p { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .dist {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; font-weight: 600; color: #0a8a8a;
+  }
+  .fab {
+    position: absolute; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom));
+    width: 52px; height: 52px; border-radius: 50%; border: none; cursor: pointer;
+    background: linear-gradient(145deg, var(--cyan), var(--teal)); color: var(--deep);
+    font-size: 24px; font-weight: 700; box-shadow: 0 8px 24px rgba(18,196,176,.45); z-index: 20;
+  }
+  .sheet {
+    position: absolute; inset: 0; background: rgba(2,18,20,.55); display: none; align-items: flex-end; z-index: 30;
+  }
+  .sheet.show { display: flex; }
+  .sheet-card {
+    width: 100%; background: #fff; color: var(--ink); border-radius: 18px 18px 0 0;
+    padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+  .sheet-card h3 { font-size: 17px; margin-bottom: 6px; }
+  .sheet-card .meta { font-size: 12px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+  .sheet-card .detail-grid {
+    background: #f2fafb; border-radius: 12px; padding: 12px; margin-bottom: 14px;
+    font-size: 13px; line-height: 1.7; color: var(--ink);
+  }
+  .sheet-card .detail-grid .k { color: var(--muted); font-size: 12px; }
+  .sheet-card .next-step {
+    background: rgba(18,196,176,.1); border: 1px solid rgba(18,196,176,.25);
+    border-radius: 12px; padding: 12px; margin-bottom: 14px; font-size: 13px; line-height: 1.5;
+  }
+  .sheet-card .next-step strong { color: #0a6b72; display: block; margin-bottom: 4px; font-size: 12px; }
+  .actions { display: flex; gap: 8px; }
+  .btn {
+    flex: 1; border: none; border-radius: 12px; padding: 12px; font: inherit; font-weight: 700; cursor: pointer;
+    background: linear-gradient(135deg, #12c4b0, #0a8a8a); color: #fff;
+  }
+  .btn.ghost { background: #e8f2f3; color: var(--ink); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .field input, .field select, .field textarea {
+    width: 100%; border: 1px solid #d5e4e6; border-radius: 10px; padding: 10px; font: inherit; font-size: 13px;
+  }
+  .blip {
+    position: absolute; width: 8px; height: 8px; border-radius: 50%; background: var(--cyan);
+    opacity: 0; animation: blip 3.2s linear infinite; pointer-events: none;
+  }
+  @keyframes blip {
+    0% { opacity: 0; transform: scale(.5); }
+    15% { opacity: 1; }
+    40% { opacity: 0; transform: scale(2); }
+    100% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div id="phone">
+  <div class="top">
+    <div>
+      <h1>招领雷达</h1>
+      <p>附近失物实时扫描</p>
+    </div>
+    <button class="scan-btn" id="rescan">重新扫描</button>
+  </div>
+
+  <div class="radar-wrap" id="radarWrap">
+    <div class="radar" id="radar">
+      <div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div>
+      <div class="sweep"></div>
+      <div class="center-dot"></div>
+      <div id="pins"></div>
+    </div>
+  </div>
+  <div class="range-label" id="rangeLabel">扫描半径 · 800m</div>
+
+  <div class="list-panel">
+    <div class="list-head">
+      <h2>附近信号</h2>
+      <div class="tabs" id="tabs">
+        <button class="on" data-f="all">全部</button>
+        <button data-f="lost">寻物</button>
+        <button data-f="found">招领</button>
+        <button data-f="mine">我的</button>
+      </div>
+    </div>
+    <div id="list"></div>
+  </div>
+  <button class="fab" id="fab" title="发布">＋</button>
+
+  <div class="sheet" id="detail">
+    <div class="sheet-card" id="detailCard"></div>
+  </div>
+  <div class="sheet" id="handoff">
+    <div class="sheet-card" id="handoffCard"></div>
+  </div>
+  <div class="sheet" id="publish">
+    <div class="sheet-card">
+      <h3>发布信号</h3>
+      <div class="field"><label>类型</label>
+        <select id="pType"><option value="found">我捡到了</option><option value="lost">我丢了</option></select>
+      </div>
+      <div class="field"><label>物品</label><input id="pName" placeholder="如：校园卡 / 黑色耳机"></div>
+      <div class="field"><label>地点</label><input id="pPlace" placeholder="如：二教 3 楼楼梯口"></div>
+      <div class="field"><label>备注</label><textarea id="pNote" rows="2" placeholder="特征、联系方式…"></textarea></div>
+      <div class="actions">
+        <button class="btn ghost" id="cancelPub">取消</button>
+        <button class="btn" id="okPub">发射到雷达</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const ICONS = { "校园卡":"🪪", "钥匙":"🔑", "耳机":"🎧", "雨伞":"☂️", "水杯":"🥤", "充电宝":"🔋", "眼镜":"👓", "书包":"🎒", "默认":"📦" };
+const POS = [
+  {r:28, a:40}, {r:38, a:120}, {r:32, a:210}, {r:42, a:300},
+  {r:22, a:80}, {r:36, a:160}, {r:30, a:250}, {r:40, a:20}
+];
+const LS = "zhaoling-radar-v2";
+let items = JSON.parse(localStorage.getItem(LS) || "null") || [
+  { id:"i1", type:"found", name:"校园卡", place:"图书馆东门闸机旁", note:"姓名遮挡，学号尾号 28", dist:120, claimed:false },
+  { id:"i2", type:"lost", name:"黑色索尼耳机", place:"南食堂二楼", note:"左耳仓有贴纸", dist:260, claimed:false },
+  { id:"i3", type:"found", name:"一串钥匙", place:"二教 3 楼男厕门口", note:"带蓝色卡通挂件", dist:340, claimed:false },
+  { id:"i4", type:"found", name:"透明水杯", place:"田径场看台", note:"贴了「材料 21」", dist:480, claimed:false },
+  { id:"i5", type:"lost", name:"银色充电宝", place:"西区快递站", note:"小米 20000，外壳有刮痕", dist:610, claimed:false },
+  { id:"i6", type:"found", name:"黑框眼镜", place:"体育馆更衣室", note:"度数不详", dist:190, claimed:false },
+];
+let filter = "all", selected = null;
+
+const $=id=>document.getElementById(id);
+const save=()=>localStorage.setItem(LS, JSON.stringify(items));
+const iconOf = name => {
+  for(const k of Object.keys(ICONS)){ if(name.includes(k.replace("黑色索尼","").replace("银色","")) || name.includes(k)) return ICONS[k]; }
+  if(name.includes("耳机")) return ICONS["耳机"];
+  if(name.includes("卡")) return ICONS["校园卡"];
+  if(name.includes("钥匙")) return ICONS["钥匙"];
+  if(name.includes("伞")) return ICONS["雨伞"];
+  if(name.includes("杯")) return ICONS["水杯"];
+  if(name.includes("充电")) return ICONS["充电宝"];
+  if(name.includes("眼镜")) return ICONS["眼镜"];
+  return ICONS["默认"];
+};
+
+function formatTime(iso){
+  if(!iso) return "—";
+  try{
+    const d=new Date(iso);
+    if(Number.isNaN(d.getTime())) return iso;
+    const pad=n=>String(n).padStart(2,"0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }catch{ return iso; }
+}
+
+function nextStepFor(it){
+  const place=(it.place||"").replace(/闸机旁|门口|看台|更衣室/g,"").trim() || it.place;
+  if(it.type==="found") return `到${place}核验物品并完成交接`;
+  return `到${place}附近与拾获人当面核验`;
+}
+
+function polar(rPct, deg){
+  const rad = (deg-90)*Math.PI/180;
+  return { left: 50 + rPct*Math.cos(rad) + "%", top: 50 + rPct*Math.sin(rad) + "%" };
+}
+
+function isMine(it){
+  return !!it.mine || (it.claimed && it.claimedBy==="我");
+}
+
+function filtered(){
+  let list;
+  if(filter==="mine") list = items.filter(isMine);
+  else list = items.filter(it => filter==="all" || it.type===filter);
+  return list.sort((a,b)=>a.dist-b.dist);
+}
+
+function renderPins(){
+  // Radar always shows nearby signals (not limited to 「我的」) so UX stays intact
+  const list = (filter==="mine" ? items.slice().sort((a,b)=>a.dist-b.dist) : filtered());
+  $("pins").innerHTML = list.map((it,i)=>{
+    const p = POS[i % POS.length];
+    const pos = polar(p.r, p.a + (i*17)%40);
+    return `<button class="pin ${selected===it.id?'active':''} ${it.claimed?'claimed':''}" data-id="${it.id}"
+      style="left:${pos.left};top:${pos.top};animation-delay:${i*.2}s">${iconOf(it.name)}</button>`;
+  }).join("");
+  $("pins").onclick = e => {
+    const pin = e.target.closest("[data-id]");
+    if(!pin) return;
+    selected = pin.dataset.id;
+    openDetail(selected);
+    render();
+  };
+}
+
+function renderList(){
+  const list = filtered();
+  const mineMode = filter==="mine";
+  $("list").innerHTML = list.map(it=>{
+    if(mineMode){
+      const role = it.mine ? "我发布" : "我对接到";
+      const claimLine = it.claimed
+        ? `对接人：${it.claimedBy||"我"} · ${formatTime(it.claimedAt)}`
+        : "待对接";
+      return `<div class="item mine-row ${selected===it.id?'active':''}" data-id="${it.id}">
+        <div class="ico">${iconOf(it.name)}</div>
+        <div>
+          <h3>${it.type==="found"?"招领":"寻物"} · ${it.name}<span class="tag">${role}</span></h3>
+          <p>${it.place}</p>
+          <div class="meta-full">${it.note||"无备注"}<br>${claimLine}<br>距离约 ${it.dist}m</div>
+        </div>
+        <div class="dist">${it.dist}m</div>
+      </div>`;
+    }
+    return `<div class="item ${selected===it.id?'active':''} ${it.claimed?'claimed':''}" data-id="${it.id}">
+      <div class="ico">${iconOf(it.name)}</div>
+      <div>
+        <h3>${it.type==="found"?"招领":"寻物"} · ${it.name}</h3>
+        <p>${it.place}${it.claimed?" · 已对接":""}</p>
+      </div>
+      <div class="dist">${it.dist}m</div>
+    </div>`;
+  }).join("") || `<p style="text-align:center;color:var(--muted);padding:24px;font-size:13px">${mineMode?"还没有我对接到或发布的信号":"雷达范围内暂无信号"}</p>`;
+  $("list").onclick = e => {
+    const row = e.target.closest("[data-id]");
+    if(!row) return;
+    selected = row.dataset.id;
+    const it = items.find(x=>x.id===selected);
+    if(mineMode && it && it.claimed && it.claimedBy==="我") openHandoff(selected);
+    else openDetail(selected);
+    render();
+  };
+}
+
+function openDetail(id){
+  const it = items.find(x=>x.id===id); if(!it) return;
+  $("handoff").classList.remove("show");
+  $("detailCard").innerHTML = `
+    <h3>${iconOf(it.name)} ${it.name}</h3>
+    <div class="meta">${it.type==="found"?"捡到地点":"丢失地点"}：${it.place}<br>距离约 ${it.dist}m<br>${it.note||""}${it.claimed?`<br>已对接 · ${it.claimedBy||""} · ${formatTime(it.claimedAt)}`:""}</div>
+    <div class="actions">
+      <button class="btn ghost" id="closeDetail">关闭</button>
+      <button class="btn" id="claimBtn" ${it.claimed?"disabled":""}>${it.claimed?"已标记对接":"我是失主 / 捡到人"}</button>
+    </div>`;
+  $("detail").classList.add("show");
+  $("closeDetail").onclick = () => $("detail").classList.remove("show");
+  $("claimBtn").onclick = () => {
+    if(it.claimed) return;
+    it.claimed = true;
+    it.claimedAt = new Date().toISOString();
+    it.claimedBy = "我";
+    save();
+    $("detail").classList.remove("show");
+    render();
+    openHandoff(it.id);
+  };
+}
+
+function openHandoff(id){
+  const it = items.find(x=>x.id===id); if(!it) return;
+  selected = it.id;
+  $("detail").classList.remove("show");
+  $("handoffCard").innerHTML = `
+    <h3>对接详情</h3>
+    <div class="detail-grid">
+      <div><span class="k">物品</span>　${iconOf(it.name)} ${it.name}</div>
+      <div><span class="k">类型</span>　${it.type==="found"?"招领":"寻物"}</div>
+      <div><span class="k">地点</span>　${it.place}</div>
+      <div><span class="k">距离</span>　约 ${it.dist}m</div>
+      <div><span class="k">备注</span>　${it.note||"无"}</div>
+      <div><span class="k">对接时间</span>　${formatTime(it.claimedAt)}</div>
+      <div><span class="k">对接人</span>　${it.claimedBy||"我"}</div>
+    </div>
+    <div class="next-step">
+      <strong>建议下一步</strong>
+      ${nextStepFor(it)}
+    </div>
+    <div class="actions">
+      <button class="btn ghost" id="closeHandoff">关闭</button>
+      <button class="btn" id="viewRadar">查看雷达位置</button>
+    </div>`;
+  $("handoff").classList.add("show");
+  $("closeHandoff").onclick = () => $("handoff").classList.remove("show");
+  $("viewRadar").onclick = () => {
+    $("handoff").classList.remove("show");
+    selected = it.id;
+    render();
+    $("radarWrap").scrollIntoView({behavior:"smooth",block:"center"});
+  };
+}
+
+function render(){
+  const count = filter==="mine" ? filtered().length : filtered().length;
+  const scope = filter==="mine" ? "我的记录" : "扫描半径";
+  const maxDist = Math.max(...items.map(i=>i.dist),800);
+  $("rangeLabel").textContent = filter==="mine"
+    ? `${scope} · ${count} 条`
+    : `扫描半径 · ${maxDist}m · ${count} 个信号`;
+  renderPins(); renderList();
+}
+
+$("tabs").onclick = e => {
+  const b = e.target.closest("[data-f]"); if(!b) return;
+  filter = b.dataset.f;
+  [...$("tabs").children].forEach(x=>x.classList.toggle("on", x===b));
+  render();
+};
+$("fab").onclick = () => $("publish").classList.add("show");
+$("cancelPub").onclick = () => $("publish").classList.remove("show");
+$("okPub").onclick = () => {
+  const name = $("pName").value.trim();
+  if(!name){ $("pName").focus(); return; }
+  items.unshift({
+    id:"n"+Date.now(), type:$("pType").value, name, place:$("pPlace").value||"本校某处",
+    note:$("pNote").value, dist: 50+Math.floor(Math.random()*500), claimed:false, mine:true
+  });
+  save(); $("publish").classList.remove("show");
+  $("pName").value=""; $("pPlace").value=""; $("pNote").value="";
+  filter = "mine";
+  [...$("tabs").children].forEach(x=>x.classList.toggle("on", x.dataset.f==="mine"));
+  render();
+};
+$("rescan").onclick = () => {
+  const blip = document.createElement("div");
+  blip.className = "blip";
+  blip.style.left = "50%"; blip.style.top = "50%";
+  $("radar").appendChild(blip);
+  setTimeout(()=>blip.remove(),3200);
+  items.forEach(it => { if(!it.claimed) it.dist = Math.max(40, it.dist + Math.floor(Math.random()*80-40)); });
+  save(); render();
+};
+$("detail").onclick = e => { if(e.target===$("detail")) e.target.classList.remove("show"); };
+$("handoff").onclick = e => { if(e.target===$("handoff")) e.target.classList.remove("show"); };
+$("publish").onclick = e => { if(e.target===$("publish")) e.target.classList.remove("show"); };
+
+render();
+</script>
+</body>
+</html>

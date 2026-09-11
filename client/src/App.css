@@ -1716,6 +1716,8 @@ a.ph-logo {
   pointer-events: none;
 }
 .ph-product-card-category {
+  display: inline-flex;
+  align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 11px;
@@ -1724,6 +1726,15 @@ a.ph-logo {
   background: rgba(10, 14, 26, 0.65);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.ph-product-card-platform {
+  background: rgba(98, 92, 252, 0.85);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.ph-platform-badge {
+  background: rgba(98, 92, 252, 0.12) !important;
+  color: var(--madao-violet, #625cfc) !important;
+  border: 1px solid rgba(98, 92, 252, 0.22);
 }
 
 .ph-card-vote {

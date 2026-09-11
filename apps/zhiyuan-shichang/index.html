@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>志愿时长本</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap');
+:root{
+  --teal:#0d9488;--teal-deep:#0f766e;--ink:#1e3a36;--line:#c5d5d1;
+  --paper:#f7f3e8;--ruled:#d7e4e0;--stamp:#c45c4a;--amber:#b45309;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:"Noto Serif SC",serif;color:var(--ink);
+  background:linear-gradient(160deg,#9ec9c3,#d5ebe7 40%,#e8f0ee);
+  display:flex;justify-content:center;
+}
+#app{width:100%;max-width:430px;min-height:100vh;padding:18px 14px 100px;position:relative}
+.cover{
+  background:linear-gradient(145deg,#0f766e,#14b8a6);
+  color:#ecfeff;border-radius:18px 18px 8px 8px;padding:22px 20px 18px;
+  box-shadow:0 12px 30px rgba(15,118,110,.28);position:relative;overflow:hidden;
+}
+.cover::after{
+  content:"VOLUNTEER";position:absolute;right:-8px;bottom:-8px;font-size:42px;font-weight:700;
+  opacity:.12;letter-spacing:.08em;font-family:system-ui,sans-serif;
+}
+.cover .seal{
+  position:absolute;right:16px;top:16px;width:54px;height:54px;border:2px solid rgba(255,255,255,.55);
+  border-radius:50%;display:grid;place-items:center;transform:rotate(12deg);font-size:11px;font-weight:700;
+  letter-spacing:.06em;opacity:.9;
+}
+.cover h1{font-family:"Ma Shan Zheng",cursive;font-size:36px;font-weight:400;line-height:1.1}
+.cover p{font-size:13px;opacity:.9;margin-top:6px}
+.hours-big{margin-top:16px;display:flex;align-items:baseline;gap:6px}
+.hours-big b{font-size:48px;font-weight:700;letter-spacing:-1px;font-family:system-ui,sans-serif}
+.hours-big span{font-size:14px;opacity:.85}
+.pending{
+  margin-top:12px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);
+  border-radius:14px;padding:12px 14px;scroll-margin-top:8px;
+}
+.pending.focus{box-shadow:0 0 0 2px rgba(255,255,255,.45)}
+.pending h2{font-size:13px;font-weight:700;margin-bottom:8px;opacity:.95;display:flex;justify-content:space-between}
+.pending h2 em{font-style:normal;font-size:11px;opacity:.8;font-family:system-ui,sans-serif}
+.pending-empty{font-size:12px;opacity:.75;line-height:1.5}
+.pend-item{
+  text-align:left;width:100%;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.12);
+  color:#ecfeff;border-radius:12px;padding:10px 12px;margin-bottom:8px;font:inherit;cursor:pointer;
+}
+.pend-item:last-child{margin-bottom:0}
+.pend-item.hi{animation:pendPulse .9s ease}
+@keyframes pendPulse{0%{background:rgba(255,255,255,.22)}100%{background:rgba(0,0,0,.12)}}
+.pend-item b{display:block;font-size:14px;font-weight:700}
+.pend-item .m{font-size:11px;opacity:.85;margin-top:3px;font-family:system-ui,sans-serif;line-height:1.45}
+.pend-item .actions{display:flex;gap:6px;margin-top:8px}
+.pend-item .actions button{
+  flex:1;border:none;border-radius:8px;padding:7px 8px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+}
+.pend-item .actions .check{background:#fff;color:var(--teal-deep)}
+.pend-item .actions .drop{background:transparent;color:#ecfeff;border:1px solid rgba(255,255,255,.35)}
+.section-label{
+  margin:14px 4px 8px;font-size:13px;font-weight:700;color:#3d5c56;
+  display:flex;justify-content:space-between;align-items:baseline;
+}
+.section-label span{font-size:11px;color:#7a908b;font-family:system-ui,sans-serif;font-weight:600}
+.notebook{
+  background:var(--paper);
+  background-image:repeating-linear-gradient(transparent,transparent 31px,var(--ruled) 31px,var(--ruled) 32px);
+  border-radius:0 0 16px 16px;border:1px solid #e4dcc8;
+  box-shadow:0 16px 40px rgba(30,58,54,.12);padding:28px 18px 18px 42px;position:relative;min-height:280px;
+}
+.notebook::before{
+  content:"";position:absolute;left:28px;top:0;bottom:0;width:2px;background:#e8a0a0;opacity:.7;
+}
+.entry{
+  position:relative;padding:4px 0 12px;min-height:64px;animation:inkIn .35s ease;
+}
+@keyframes inkIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.entry .date{font-size:11px;color:#7a908b;font-family:system-ui,sans-serif;margin-bottom:2px}
+.entry .title{font-size:16px;font-weight:700;line-height:32px}
+.entry .note{font-size:13px;color:#4d6661;line-height:32px}
+.entry .stamp{
+  position:absolute;right:0;top:8px;width:52px;height:52px;border:2px solid var(--stamp);color:var(--stamp);
+  border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:700;transform:rotate(-18deg);
+  opacity:.85;letter-spacing:.04em;background:rgba(196,92,74,.04);
+}
+.entry .hours-tag{
+  display:inline-block;font-family:system-ui,sans-serif;font-size:12px;font-weight:700;
+  color:var(--teal-deep);margin-left:6px;
+}
+.empty-hint{color:#8aa19c;font-size:14px;padding:40px 8px;text-align:center;line-height:1.8}
+.dock{
+  position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:min(430px,100%);
+  padding:12px 14px calc(14px + env(safe-area-inset-bottom));
+  background:rgba(247,243,232,.92);backdrop-filter:blur(12px);border-top:1px solid #e4dcc8;
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+}
+.dock button{
+  border:none;border-radius:14px;padding:14px 12px;font:inherit;font-weight:700;cursor:pointer;font-size:14px;
+}
+.dock .primary{background:var(--teal);color:#fff}
+.dock .secondary{background:#fff;color:var(--teal-deep);border:1px solid #b7d4cf}
+.sheet{
+  position:fixed;inset:0;background:rgba(15,40,36,.45);z-index:40;display:none;align-items:flex-end;justify-content:center;
+}
+.sheet.open{display:flex}
+.sheet-card{
+  width:min(430px,100%);background:var(--paper);border-radius:20px 20px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom));
+  box-shadow:0 -10px 40px rgba(0,0,0,.15);
+}
+.sheet-card h3{font-size:18px;margin-bottom:6px}
+.sheet-card .hint{font-size:12px;color:#6b817c;margin-bottom:12px;line-height:1.5}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:12px;color:#6b817c;margin-bottom:4px}
+.field input,.field select{
+  width:100%;border:1px solid #d5cbb4;border-radius:12px;padding:11px 12px;font:inherit;background:#fffef8;outline:none;
+}
+.acts{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;max-height:50vh;overflow:auto}
+.act{
+  text-align:left;border:1px solid #d5cbb4;background:#fffef8;border-radius:12px;padding:12px;cursor:pointer;font:inherit;
+}
+.act.signed{opacity:.55;pointer-events:none}
+.act b{display:block;font-size:14px}.act span{font-size:12px;color:#6b817c}
+.act .tag{display:inline-block;margin-top:6px;font-size:11px;font-weight:700;color:var(--amber);font-family:system-ui,sans-serif}
+.sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.sheet-actions button{border:none;border-radius:12px;padding:12px;font:inherit;font-weight:700;cursor:pointer}
+.sheet-actions .ok{background:var(--teal);color:#fff}
+.sheet-actions .cancel{background:#ebe4d4;color:var(--ink)}
+.toast{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
+  background:rgba(30,58,54,.92);color:#fff;padding:10px 14px;border-radius:12px;font-size:13px;
+  opacity:0;pointer-events:none;transition:.25s;z-index:60;font-family:system-ui,sans-serif;
+}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="cover">
+    <div class="seal">公益<br>认证</div>
+    <h1>志愿时长本</h1>
+    <p>报名进待参加 · 签到才记入时长</p>
+    <div class="hours-big"><b id="total">0.0</b><span>累计小时</span></div>
+    <section class="pending" id="pending-box">
+      <h2>待参加<em id="pending-n">0 场</em></h2>
+      <div id="pending-list"></div>
+    </section>
+  </header>
+  <div class="section-label">时长日记本<span>签到后盖章入账</span></div>
+  <main class="notebook" id="journal"></main>
+</div>
+<div class="dock">
+  <button class="secondary" id="btn-acts">可报名活动</button>
+  <button class="primary" id="btn-check">今日签到</button>
+</div>
+<div class="sheet" id="sheet-check">
+  <div class="sheet-card">
+    <h3>写下今天的服务</h3>
+    <p class="hint">签到会直接写入日记本并累计小时，与「报名」分开。</p>
+    <div class="field"><label>活动名称</label><input id="name" placeholder="例：社区环保日"></div>
+    <div class="field"><label>时长（小时）</label><input id="hours" type="number" step="0.5" min="0.5" value="2"></div>
+    <div class="field"><label>一句话感想</label><input id="feel" placeholder="今天帮助了三位邻居"></div>
+    <div class="sheet-actions">
+      <button class="cancel" data-close>取消</button>
+      <button class="ok" id="save-check">盖章入账</button>
+    </div>
+  </div>
+</div>
+<div class="sheet" id="sheet-acts">
+  <div class="sheet-card">
+    <h3>本周可报名</h3>
+    <p class="hint">点选活动 = 报名，进入上方「待参加」；到场后再签到记时长。</p>
+    <div class="acts" id="acts"></div>
+    <div class="sheet-actions"><button class="cancel" data-close style="grid-column:1/-1">关闭</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const LOG_KEY="zy-notebook-v3-logs";
+const PEND_KEY="zy-notebook-v3-pending";
+const ACTS=[
+  {id:"a1",name:"图书馆导览志愿",time:"本周六 09:00-12:00",hours:3,feel:"带读者熟悉馆藏分区"},
+  {id:"a2",name:"流浪猫喂养",time:"每日晚间 19:00",hours:1,feel:"清理食盆并补充猫粮"},
+  {id:"a3",name:"马拉松补给点",time:"下周日 07:00-11:00",hours:4,feel:"为选手递水与能量胶"},
+  {id:"a4",name:"敬老院陪伴阅读",time:"周四下午 14:00-16:00",hours:2,feel:"朗读报纸与聊天"}
+];
+let logs=JSON.parse(localStorage.getItem(LOG_KEY)||"[]");
+let pending=JSON.parse(localStorage.getItem(PEND_KEY)||"[]");
+let highlightPend=null;
+
+function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1600)}
+function saveLogs(){localStorage.setItem(LOG_KEY,JSON.stringify(logs.slice(0,40)))}
+function savePending(){localStorage.setItem(PEND_KEY,JSON.stringify(pending.slice(0,20)))}
+function nowStr(){return new Date().toLocaleString("zh-CN",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})}
+function addLog(name,hours,feel){
+  logs.unshift({name,hours:+hours,feel:feel||"服务完成",time:nowStr()});
+  saveLogs();
+}
+function focusPending(id){
+  highlightPend=id;
+  const box=document.getElementById("pending-box");
+  box.classList.add("focus");
+  renderPending();
+  box.scrollIntoView({behavior:"smooth",block:"nearest"});
+  clearTimeout(window.__pendHi);window.__pendHi=setTimeout(()=>{
+    highlightPend=null;box.classList.remove("focus");renderPending();
+  },1800);
+}
+function renderPending(){
+  document.getElementById("pending-n").textContent=pending.length+" 场";
+  const box=document.getElementById("pending-list");
+  if(!pending.length){
+    box.innerHTML='<div class="pending-empty">暂无报名。点「可报名活动」加入待参加。</div>';
+    return;
+  }
+  box.innerHTML=pending.map(p=>`
+    <div class="pend-item${p.id===highlightPend?" hi":""}" data-pend="${p.id}">
+      <b>${p.name}</b>
+      <div class="m">${p.time}<br>预计 ${p.hours} 小时</div>
+      <div class="actions">
+        <button type="button" class="check" data-check="${p.id}">签到入账</button>
+        <button type="button" class="drop" data-drop="${p.id}">取消报名</button>
+      </div>
+    </div>`).join("");
+}
+function renderJournal(){
+  const total=logs.reduce((s,l)=>s+(+l.hours||0),0);
+  document.getElementById("total").textContent=total.toFixed(1);
+  const box=document.getElementById("journal");
+  if(!logs.length){box.innerHTML='<div class="empty-hint">本子还是空白的<br>签到或从「待参加」完成服务后会出现在这里</div>';return}
+  box.innerHTML=logs.map(l=>`
+    <article class="entry">
+      <div class="date">${l.time}</div>
+      <div class="title">${l.name}<span class="hours-tag">+${l.hours}h</span></div>
+      <div class="note">${l.feel}</div>
+      <div class="stamp">已认证<br>${l.hours}H</div>
+    </article>`).join("");
+}
+function renderActs(){
+  const signed=new Set(pending.map(p=>p.actId));
+  document.getElementById("acts").innerHTML=ACTS.map(a=>{
+    const done=signed.has(a.id);
+    return `<button class="act${done?" signed":""}" data-act="${a.id}">
+      <b>${a.name}</b>
+      <span>${a.time} · 预计 ${a.hours} 小时</span>
+      <div class="tag">${done?"已报名 · 见待参加":"点按报名"}</div>
+    </button>`;
+  }).join("");
+}
+function render(){renderPending();renderJournal();renderActs()}
+
+document.getElementById("acts").onclick=e=>{
+  const b=e.target.closest("[data-act]");if(!b)return;
+  const a=ACTS.find(x=>x.id===b.dataset.act);if(!a)return;
+  if(pending.some(p=>p.actId===a.id)){toast("已在待参加列表");return}
+  const id="p"+Date.now();
+  pending.unshift({id,actId:a.id,name:a.name,time:a.time,hours:a.hours,feel:a.feel});
+  savePending();
+  document.getElementById("sheet-acts").classList.remove("open");
+  toast("报名成功 · 已加入待参加");
+  render();
+  focusPending(id);
+};
+document.getElementById("pending-list").onclick=e=>{
+  const check=e.target.closest("[data-check]");
+  const drop=e.target.closest("[data-drop]");
+  if(check){
+    const p=pending.find(x=>x.id===check.dataset.check);if(!p)return;
+    addLog(p.name,p.hours,p.feel);
+    pending=pending.filter(x=>x.id!==p.id);
+    savePending();
+    toast("已签到 · 时长写入日记本");
+    render();
+    document.getElementById("journal").scrollIntoView({behavior:"smooth",block:"nearest"});
+    return;
+  }
+  if(drop){
+    pending=pending.filter(x=>x.id!==drop.dataset.drop);
+    savePending();
+    toast("已取消报名");
+    render();
+  }
+};
+document.getElementById("btn-check").onclick=()=>document.getElementById("sheet-check").classList.add("open");
+document.getElementById("btn-acts").onclick=()=>{renderActs();document.getElementById("sheet-acts").classList.add("open")};
+document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>b.closest(".sheet").classList.remove("open"));
+document.querySelectorAll(".sheet").forEach(s=>s.addEventListener("click",e=>{if(e.target===s)s.classList.remove("open")}));
+document.getElementById("save-check").onclick=()=>{
+  const name=document.getElementById("name").value.trim();
+  if(!name)return toast("请填写活动名称");
+  addLog(name,document.getElementById("hours").value,document.getElementById("feel").value.trim());
+  document.getElementById("sheet-check").classList.remove("open");
+  document.getElementById("name").value="";document.getElementById("feel").value="";
+  toast("已盖章记入时长本");
+  render();
+  document.getElementById("journal").scrollIntoView({behavior:"smooth",block:"nearest"});
+};
+render();
+</script>
+</body>
+</html>

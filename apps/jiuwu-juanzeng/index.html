@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>旧物捐赠地图</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+:root{
+  --green:#2e7d32;--leaf:#43a047;--mint:#e8f5e9;--ink:#1b2e1c;--muted:#5a6b5c;
+  --paper:#f7fbf7;--panel:#fff;--line:rgba(46,125,50,.12);--amber:#ef6c00;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:"Noto Sans SC",system-ui,sans-serif;color:var(--ink);
+  background:radial-gradient(1200px 600px at 10% -10%,#c8e6c9 0%,transparent 55%),
+             radial-gradient(900px 500px at 100% 0%,#a5d6a7 0%,transparent 50%),
+             #edf5ee;
+}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr;max-width:1280px;margin:0 auto;padding:16px 20px 20px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{
+  width:42px;height:42px;border-radius:14px;
+  background:linear-gradient(145deg,var(--leaf),var(--green));
+  display:grid;place-items:center;color:#fff;font-weight:900;font-size:18px;
+  box-shadow:0 8px 20px rgba(46,125,50,.28);
+}
+.brand h1{font-size:20px;font-weight:900;letter-spacing:.02em}
+.brand p{font-size:12px;color:var(--muted);margin-top:2px}
+.eco-pill{font-size:12px;font-weight:700;color:var(--green);background:var(--mint);padding:8px 14px;border-radius:999px}
+.workspace{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;min-height:0}
+@media(max-width:960px){.workspace{grid-template-columns:1fr}}
+.panel{
+  background:var(--panel);border:1px solid var(--line);border-radius:20px;
+  box-shadow:0 12px 40px rgba(27,46,28,.06);overflow:hidden;min-height:0;
+  display:flex;flex-direction:column;
+}
+.map-panel{position:relative}
+.map-head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.map-head h2{font-size:15px;font-weight:800}
+.map-head span{font-size:12px;color:var(--muted)}
+.map-canvas{
+  flex:1;position:relative;min-height:520px;
+  background:
+    linear-gradient(90deg,rgba(46,125,50,.04) 1px,transparent 1px) 0 0/48px 48px,
+    linear-gradient(rgba(46,125,50,.04) 1px,transparent 1px) 0 0/48px 48px,
+    linear-gradient(160deg,#dff3e1,#f4faf4 45%,#e3f2e5);
+}
+.block{position:absolute;background:rgba(46,125,50,.07);border:1px solid rgba(46,125,50,.1);border-radius:8px}
+.road{position:absolute;background:rgba(255,255,255,.75);border-radius:4px;box-shadow:0 0 0 1px rgba(46,125,50,.06)}
+.park{position:absolute;background:rgba(67,160,71,.18);border-radius:40% 60% 55% 45%;}
+.river{position:absolute;background:linear-gradient(90deg,#b3e5fc,#81d4fa);opacity:.55;border-radius:20px;transform:rotate(-8deg)}
+.pin{
+  position:absolute;width:28px;height:28px;margin-left:-14px;margin-top:-28px;
+  border:none;background:transparent;cursor:pointer;z-index:2;
+}
+.pin::before{
+  content:"";display:block;width:22px;height:22px;margin:0 auto;
+  border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+  background:linear-gradient(135deg,var(--leaf),var(--green));
+  box-shadow:0 6px 14px rgba(46,125,50,.35);
+}
+.pin::after{content:"";display:block;width:8px;height:8px;margin:-15px auto 0;border-radius:50%;background:#fff;position:relative;z-index:1}
+.pin.active::before{background:linear-gradient(135deg,#ffb74d,#ef6c00);transform:rotate(-45deg) scale(1.12)}
+.pin .tip{
+  position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);
+  white-space:nowrap;background:#1b2e1c;color:#fff;font-size:11px;padding:4px 8px;border-radius:8px;
+  opacity:0;pointer-events:none;transition:.15s;
+}
+.pin:hover .tip,.pin.active .tip{opacity:1}
+.legend{position:absolute;left:14px;bottom:14px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:12px;display:flex;gap:12px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.legend .a{background:var(--leaf)}.legend .b{background:#ef6c00}
+.side{padding:0;overflow:auto}
+.detail{padding:20px 22px 10px}
+.detail .type{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--green);background:var(--mint);padding:5px 10px;border-radius:999px;margin-bottom:10px}
+.detail h3{font-size:22px;font-weight:900;margin-bottom:6px}
+.detail .addr{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.fact{background:var(--mint);border-radius:12px;padding:10px 12px}
+.fact b{display:block;font-size:14px;font-weight:800}.fact span{font-size:11px;color:var(--muted)}
+.form-box{border-top:1px dashed var(--line);padding:16px 22px 22px;background:linear-gradient(180deg,#fbfff0 0%,#fff 40%)}
+.form-box h4{font-size:14px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.form-box h4::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--leaf)}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:500}
+.field input,.field select,.field textarea{
+  width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;background:#fff;outline:none;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--leaf);box-shadow:0 0 0 3px rgba(67,160,71,.15)}
+.btn{
+  width:100%;border:none;border-radius:14px;padding:12px 16px;font:inherit;font-weight:800;cursor:pointer;
+  background:linear-gradient(135deg,var(--leaf),var(--green));color:#fff;
+  box-shadow:0 8px 20px rgba(46,125,50,.25);
+}
+.btn:hover{filter:brightness(1.05)}
+.btn.ghost{background:#fff;color:var(--green);border:1px solid rgba(46,125,50,.25);box-shadow:none;margin-top:8px}
+.records{
+  margin-top:16px;border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  background:#fff;scroll-margin-top:12px;
+}
+.records.open{box-shadow:0 0 0 3px rgba(67,160,71,.18)}
+.records-head{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+  padding:12px 14px;background:var(--mint);cursor:pointer;user-select:none;
+}
+.records-head h5{font-size:13px;font-weight:800;color:var(--green)}
+.records-head .meta{font-size:11px;color:var(--muted)}
+.records-body{display:none;padding:8px;max-height:280px;overflow:auto}
+.records.expanded .records-body{display:block}
+.log-row{
+  display:grid;grid-template-columns:1fr auto;gap:6px 10px;text-align:left;width:100%;
+  border:1px solid transparent;background:#fafdfb;border-radius:12px;padding:10px 12px;
+  margin-bottom:6px;cursor:pointer;font:inherit;color:inherit;
+}
+.log-row:last-child{margin-bottom:0}
+.log-row:hover{border-color:rgba(46,125,50,.2)}
+.log-row.hi{border-color:rgba(67,160,71,.55);background:#eef9ef;animation:pulseHi .9s ease}
+.log-row.on{border-color:var(--leaf);background:#e8f5e9}
+@keyframes pulseHi{0%{box-shadow:0 0 0 0 rgba(67,160,71,.35)}100%{box-shadow:0 0 0 8px transparent}}
+.log-row .kind{
+  font-size:11px;font-weight:800;color:var(--green);background:var(--mint);
+  padding:2px 8px;border-radius:999px;justify-self:start;
+}
+.log-row .kind.door{color:var(--amber);background:#fff3e0}
+.log-row b{display:block;font-size:13px;font-weight:800;margin-top:4px}
+.log-row .sub{font-size:11px;color:var(--muted);line-height:1.45;margin-top:2px}
+.log-row .status{font-size:11px;font-weight:800;color:var(--leaf);align-self:center}
+.log-empty{font-size:12px;color:var(--muted);padding:14px 10px;text-align:center}
+.log-detail{
+  display:none;margin-top:8px;padding:12px 14px;border-top:1px dashed var(--line);
+  background:linear-gradient(180deg,#f7fbf7,#fff);font-size:12px;line-height:1.65;color:var(--muted);
+}
+.records.detail-open .log-detail{display:block}
+.log-detail h6{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:6px}
+.log-detail .row{display:flex;justify-content:space-between;gap:10px;padding:3px 0}
+.log-detail .row span:last-child{color:var(--ink);font-weight:600;text-align:right}
+.toast{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
+  background:rgba(27,46,28,.92);color:#fff;padding:10px 16px;border-radius:12px;font-size:13px;
+  opacity:0;pointer-events:none;transition:.25s;z-index:50;
+}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark">绿</div>
+      <div>
+        <h1>旧物捐赠地图</h1>
+        <p>附近捐赠点 · 上门回收一站查询</p>
+      </div>
+    </div>
+    <div class="eco-pill">本周已减少 1.2 吨废弃物（演示）</div>
+  </header>
+  <div class="workspace">
+    <section class="panel map-panel">
+      <div class="map-head">
+        <h2>城南公益地图</h2>
+        <span id="pin-count">6 个捐赠点</span>
+      </div>
+      <div class="map-canvas" id="map">
+        <div class="river" style="left:8%;top:42%;width:86%;height:28px"></div>
+        <div class="park" style="left:62%;top:12%;width:120px;height:90px"></div>
+        <div class="park" style="left:12%;top:68%;width:100px;height:70px"></div>
+        <div class="block" style="left:18%;top:18%;width:110px;height:70px"></div>
+        <div class="block" style="left:48%;top:55%;width:140px;height:80px"></div>
+        <div class="block" style="left:72%;top:28%;width:90px;height:100px"></div>
+        <div class="road" style="left:10%;top:36%;width:80%;height:10px"></div>
+        <div class="road" style="left:40%;top:12%;width:10px;height:70%"></div>
+        <div class="road" style="left:20%;top:62%;width:55%;height:8px"></div>
+        <div class="legend"><span><i class="a"></i>到店捐赠</span><span><i class="b"></i>可选中</span></div>
+      </div>
+    </section>
+    <aside class="panel side">
+      <div class="detail" id="detail"></div>
+      <div class="form-box">
+        <h4>预约上门回收</h4>
+        <div class="field"><label>物品类型</label>
+          <select id="item-type"><option>衣物鞋帽</option><option>书籍教材</option><option>小型家电</option><option>家具杂物</option></select>
+        </div>
+        <div class="field"><label>取件地址</label><input id="addr" placeholder="例：翠湖花园 3 栋 1202"></div>
+        <div class="field"><label>期望时间</label><input id="when" placeholder="明天 10:00-12:00"></div>
+        <div class="field"><label>备注</label><textarea id="note" rows="2" placeholder="是否需要搬运协助"></textarea></div>
+        <button class="btn" id="book-btn">提交上门预约</button>
+        <button class="btn ghost" id="nav-btn">导航前往该点（演示）</button>
+        <div class="records expanded" id="records">
+          <div class="records-head" id="records-toggle">
+            <h5>我的记录 · 记录明细</h5>
+            <span class="meta" id="records-meta">0 条</span>
+          </div>
+          <div class="records-body">
+            <div id="logs"></div>
+            <div class="log-detail" id="log-detail"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const POINTS=[
+  {id:1,name:"翠湖社区旧物驿站",type:"衣物/书籍",addr:"翠湖路 88 号社区服务中心一层",open:"09:00-18:00",dist:"420m",accept:"衣物、书籍、玩具",door:false,x:28,y:28},
+  {id:2,name:"绿行回收车 · 东站",type:"家电/家具",addr:"东站南广场临时停靠区",open:"预约上门",dist:"1.2km",accept:"家电、家具、大件",door:true,x:72,y:34},
+  {id:3,name:"高校公益捐赠柜",type:"衣物",addr:"理工大南门学生活动中心",open:"全天",dist:"800m",accept:"衣物、书包",door:false,x:55,y:58},
+  {id:4,name:"蓝鲸上门回收站",type:"综合",addr:"全市覆盖 · 当日可约",open:"08:00-20:00",dist:"全市",accept:"综合旧物",door:true,x:22,y:72},
+  {id:5,name:"图书馆闲置书架",type:"书籍",addr:"市图二楼读者服务区",open:"10:00-17:00",dist:"1.5km",accept:"书籍教材",door:false,x:78,y:68},
+  {id:6,name:"河岸环保驿站",type:"衣物/杂物",addr:"滨江步道 B 段休息亭",open:"周末 10:00-16:00",dist:"960m",accept:"衣物、日用品",door:false,x:44,y:44}
+];
+const KEY="jw-donation-logs-v3";
+let logs=JSON.parse(localStorage.getItem(KEY)||"[]");
+let active=POINTS[0];
+let selectedLogId=null;
+let highlightId=null;
+
+function toast(msg){
+  const el=document.getElementById("toast");
+  el.textContent=msg;el.classList.add("show");
+  clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1800);
+}
+function saveLogs(){localStorage.setItem(KEY,JSON.stringify(logs.slice(0,20)));}
+function nowStr(){return new Date().toLocaleString("zh-CN",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});}
+function focusRecords(newId){
+  const box=document.getElementById("records");
+  box.classList.add("expanded","open");
+  highlightId=newId;
+  selectedLogId=newId;
+  renderLogs();
+  box.scrollIntoView({behavior:"smooth",block:"nearest"});
+  clearTimeout(window.__hi);window.__hi=setTimeout(()=>{
+    highlightId=null;
+    box.classList.remove("open");
+    renderLogs();
+  },2200);
+}
+function renderPins(){
+  const map=document.getElementById("map");
+  map.querySelectorAll(".pin").forEach(n=>n.remove());
+  POINTS.forEach(p=>{
+    const b=document.createElement("button");
+    b.className="pin"+(p.id===active.id?" active":"");
+    b.style.left=p.x+"%";b.style.top=p.y+"%";
+    b.innerHTML=`<span class="tip">${p.name}</span>`;
+    b.onclick=()=>{active=p;render();};
+    map.appendChild(b);
+  });
+}
+function renderDetail(){
+  const p=active;
+  document.getElementById("detail").innerHTML=`
+    <div class="type">${p.type}${p.door?" · 可上门":" · 到店"}</div>
+    <h3>${p.name}</h3>
+    <p class="addr">${p.addr}<br>开放：${p.open} · 距离约 ${p.dist}</p>
+    <div class="facts">
+      <div class="fact"><b>${p.accept}</b><span>可接收品类</span></div>
+      <div class="fact"><b>${p.door?"支持上门":"仅到店"}</b><span>回收方式</span></div>
+    </div>`;
+}
+function renderLogDetail(){
+  const box=document.getElementById("records");
+  const detail=document.getElementById("log-detail");
+  const l=logs.find(x=>x.id===selectedLogId);
+  if(!l){box.classList.remove("detail-open");detail.innerHTML="";return}
+  box.classList.add("detail-open");
+  detail.innerHTML=`
+    <h6>记录详情</h6>
+    <div class="row"><span>类型</span><span>${l.kind}</span></div>
+    <div class="row"><span>地点 / 地址</span><span>${l.place}</span></div>
+    <div class="row"><span>时间</span><span>${l.time}</span></div>
+    <div class="row"><span>状态</span><span>${l.status}</span></div>
+    <div class="row"><span>内容</span><span>${l.detail}</span></div>
+    ${l.pinName?`<div class="row"><span>关联捐赠点</span><span>${l.pinName}</span></div>`:""}
+    ${l.note?`<div class="row"><span>备注</span><span>${l.note}</span></div>`:""}`;
+}
+function renderLogs(){
+  document.getElementById("records-meta").textContent=logs.length+" 条";
+  const box=document.getElementById("logs");
+  if(!logs.length){
+    box.innerHTML='<div class="log-empty">暂无记录，预约或导航后会出现在这里</div>';
+    selectedLogId=null;
+    renderLogDetail();
+    return;
+  }
+  box.innerHTML=logs.map(l=>`
+    <button type="button" class="log-row${l.id===selectedLogId?" on":""}${l.id===highlightId?" hi":""}" data-id="${l.id}">
+      <div>
+        <span class="kind${l.kind==="上门预约"?" door":""}">${l.kind}</span>
+        <b>${l.place}</b>
+        <div class="sub">${l.time}</div>
+      </div>
+      <span class="status">${l.status}</span>
+    </button>`).join("");
+  renderLogDetail();
+}
+function render(){renderPins();renderDetail();renderLogs();}
+
+document.getElementById("records-toggle").onclick=()=>{
+  document.getElementById("records").classList.toggle("expanded");
+};
+document.getElementById("logs").onclick=e=>{
+  const row=e.target.closest("[data-id]");if(!row)return;
+  selectedLogId=+row.dataset.id;
+  document.getElementById("records").classList.add("expanded");
+  renderLogs();
+};
+document.getElementById("book-btn").onclick=()=>{
+  const addr=document.getElementById("addr").value.trim();
+  if(!addr) return toast("请填写取件地址");
+  const type=document.getElementById("item-type").value;
+  const when=document.getElementById("when").value.trim()||"待确认";
+  const note=document.getElementById("note").value.trim();
+  const id=Date.now();
+  logs.unshift({
+    id,kind:"上门预约",place:addr,time:when+" · "+nowStr(),status:"已提交",
+    detail:`预约回收「${type}」`,pinName:active.name,note:note||""
+  });
+  saveLogs();toast("上门预约已提交");
+  document.getElementById("addr").value="";document.getElementById("note").value="";
+  focusRecords(id);
+};
+document.getElementById("nav-btn").onclick=()=>{
+  const id=Date.now();
+  logs.unshift({
+    id,kind:"导航前往",place:active.name,time:nowStr(),status:"导航中",
+    detail:`前往捐赠点「${active.name}」`,pinName:active.name,note:active.addr
+  });
+  saveLogs();toast("已记录，模拟打开导航");
+  focusRecords(id);
+};
+render();
+</script>
+</body>
+</html>
