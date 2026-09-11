@@ -19,6 +19,8 @@ module.exports = {
         MYSQL_USER: "vibeBuilding",
         MYSQL_PASSWORD: "csdn@@1234!",
         MYSQL_DATABASE: "vibebuilding",
+        // 启动时自动 upsert 样例应用名称 + /apps/ 落地页；若要清空远程旧产品再写入：SEED_SCENES_REPLACE=1
+        SEED_SCENES_REPLACE: "0",
       },
     },
   ],

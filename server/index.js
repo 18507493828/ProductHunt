@@ -48,6 +48,8 @@ import {
 } from "./auth.js";
 import { initDb, query as dbQuery } from "./db.js";
 import { migrateJsonToMysql } from "./migrate-json-to-mysql.js";
+import { syncAppLandings } from "./syncAppLandings.js";
+import { ensureSceneProducts } from "./ensureSceneProducts.js";
 import {
   writeProduct,
   listProducts,
@@ -230,6 +232,13 @@ try {
   await initCategories();
   await initTopics();
   await initTopicPosts();
+  try {
+    // 对齐样例应用的名称、落地页 /apps/...、形态（不覆盖投票；全量覆盖设 SEED_SCENES_REPLACE=1）
+    await ensureSceneProducts();
+    await syncAppLandings({ force: true });
+  } catch (err) {
+    console.warn("[ensure-scenes] skipped:", err.message || err);
+  }
   console.log("[server] all init tasks completed");
 } catch (err) {
   dbLastError = err.message || String(err);

@@ -7,7 +7,11 @@
     "migrate:json": "node migrate-json-to-mysql.js",
     "migrate:json:force": "node migrate-json-to-mysql.js --force",
     "seed:scenes": "node seed-scene-products.js",
-    "generate:apps": "node ../scripts/generate-real-apps.mjs"
+    "ensure:scenes": "node --input-type=module -e \"import { initDb, pool } from './db.js'; import { ensureSceneProducts } from './ensureSceneProducts.js'; await initDb(); await ensureSceneProducts(); await pool.end();\"",
+    "generate:apps": "node ../scripts/generate-real-apps.mjs",
+    "sync:landings": "node ../scripts/sync-products.mjs patch-urls",
+    "export:products": "node ../scripts/sync-products.mjs export",
+    "import:products": "node ../scripts/sync-products.mjs import"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
