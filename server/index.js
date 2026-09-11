@@ -196,22 +196,43 @@ const DEFAULT_NAVS = [
   },
 ];
 
-await initDb();
-// 把历史 server/storage JSON / 磁盘图片导入 MySQL（库中已有的默认保留；缺的补齐）
+let dbReady = false;
+
+// Init DB first, then start server
 try {
-  await migrateJsonToMysql({
-    force: process.env.MIGRATE_JSON_FORCE === "1",
-  });
+  await initDb();
+  dbReady = true;
+  console.log("[db] initialized successfully");
+  // 把历史 server/storage JSON / 磁盘图片导入 MySQL（库中已有的默认保留；缺的补齐）
+  try {
+    await migrateJsonToMysql({
+      force: process.env.MIGRATE_JSON_FORCE === "1",
+    });
+  } catch (err) {
+    console.warn("[migrate] skipped:", err.message || err);
+  }
+  await initAuth();
+  await initBanners();
+  await initNavs();
+  await initCampaigns();
+  await initCategories();
+  await initTopics();
+  await initTopicPosts();
+  console.log("[server] all init tasks completed");
 } catch (err) {
-  console.warn("[migrate] skipped:", err.message || err);
+  console.error("[db] init failed:", err.message || err);
+  // Start server anyway so container stays up; retry DB after 10s
+  setTimeout(async () => {
+    try {
+      await initDb();
+      dbReady = true;
+      await initAuth();
+      console.log("[db] initialized on retry");
+    } catch (retryErr) {
+      console.error("[db] retry also failed:", retryErr.message || retryErr);
+    }
+  }, 10000);
 }
-await initAuth();
-await initBanners();
-await initNavs();
-await initCampaigns();
-await initCategories();
-await initTopics();
-await initTopicPosts();
 // 兼容历史磁盘图片；新上传一律进 MySQL uploads 表
 await fs.mkdir(UPLOADS_DIR, { recursive: true }).catch(() => {});
 
@@ -982,6 +1003,9 @@ function sortProducts(products) {
 
 app.get("/api/health", async (_req, res) => {
   try {
+    if (!dbReady) {
+      return res.status(503).json({ ok: false, db: "initializing", database: process.env.MYSQL_DATABASE || "unknown" });
+    }
     await dbQuery("SELECT 1 AS ok");
     res.json({
       ok: true,
@@ -989,8 +1013,21 @@ app.get("/api/health", async (_req, res) => {
       database: process.env.MYSQL_DATABASE || "vibebuilding",
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: err.message, code: err.code });
   }
+});
+
+app.get("/api/debug", async (_req, res) => {
+  res.json({
+    dbReady,
+    env: {
+      MYSQL_HOST: process.env.MYSQL_HOST,
+      MYSQL_PORT: process.env.MYSQL_PORT,
+      MYSQL_USER: process.env.MYSQL_USER,
+      MYSQL_DATABASE: process.env.MYSQL_DATABASE,
+      hasPassword: !!process.env.MYSQL_PASSWORD,
+    },
+  });
 });
 
 app.post("/api/auth/register", async (req, res) => {

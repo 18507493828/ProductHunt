@@ -1,0 +1,8 @@
+{
+  "version": "2.0",
+  "envId": "lidiwen-d2g55yl8z8d99807f",
+  "$schema": "https://framework-1258016615.tcloudbaseapp.com/schema/latest.json",
+  "cloudrun": {
+    "name": "vibe-building"
+  }
+}

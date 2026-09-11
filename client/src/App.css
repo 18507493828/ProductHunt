@@ -51,6 +51,10 @@
   --ph-purple-text: #5b21b6;
   --ph-nav-height: 56px;
   --ph-panel-height: calc(100vh - var(--ph-nav-height) - 24px);
+  --ph-content-max: 1080px;
+  --ph-content-max-wide: 1320px;
+  --ph-content-pad: clamp(20px, 3vw, 40px);
+  --ph-content-pad-wide: clamp(16px, 2vw, 28px);
   --ph-radius: 8px;
   --ph-radius-lg: 12px;
   --ph-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
@@ -121,12 +125,14 @@ main { flex: 1; }
 
 .ph-nav-inner {
   max-width: none;
-  margin: 0 auto;
-  padding: 0 80px;
+  margin: 0;
+  padding: 0 var(--ph-content-pad);
   height: var(--ph-nav-height);
   display: flex;
   align-items: center;
   gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .ph-logo {
@@ -844,9 +850,17 @@ a.ph-logo {
 }
 
 .ph-section-inner {
-  max-width: none;
+  max-width: var(--ph-content-max);
   margin: 0 auto;
-  padding: 0 80px;
+  padding: 0 var(--ph-content-pad);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 应用广场等内容更宽：按「4 列卡片 + 侧栏」定宽，两侧留白更少 */
+.ph-section-inner--wide {
+  max-width: var(--ph-content-max-wide);
+  padding: 0 var(--ph-content-pad-wide);
 }
 
 .ph-section-title {
@@ -886,12 +900,12 @@ a.ph-logo {
 
 .ph-all-section {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 20px;
   align-items: start;
   margin-top: 24px;
   width: 100%;
-  max-width: 1700px;
+  max-width: none;
   margin-left: auto;
   margin-right: auto;
   justify-content: center;
@@ -1035,7 +1049,7 @@ a.ph-logo {
   background: var(--ph-surface);
   border: 1px solid var(--ph-border);
   border-radius: 8px;
-  max-width: 1700px;
+  max-width: none;
   margin-left: auto;
   margin-right: auto;
 }
@@ -1571,19 +1585,23 @@ a.ph-logo {
 
 .ph-product-grid-all {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
+}
+
+.ph-all-section .ph-product-grid-all {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .ph-product-grid {
   display: grid;
-  gap: 16px;
+  gap: 20px;
 }
 
 .ph-product-grid-compact {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
 }
 
 .ph-product-card {
@@ -5113,6 +5131,7 @@ a.ph-logo {
 
 @media (max-width: 960px) {
   .ph-product-grid-all { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ph-all-section .ph-product-grid-all { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ph-all-section { grid-template-columns: 1fr; }
   .ph-all-box {
     height: auto;
@@ -5209,7 +5228,8 @@ a.ph-logo {
   .ph-item { flex-wrap: wrap; }
   .ph-item-link { align-self: flex-start; margin-left: 62px; }
   .ph-nav-inner,
-  .ph-section-inner { padding: 0 16px; }
+  .ph-section-inner { padding: 0 max(16px, var(--ph-content-pad)); }
+  .ph-section-inner--wide { padding: 0 max(16px, var(--ph-content-pad-wide)); }
   .ph-all-section { margin-top: 32px; }
   .admin-header { flex-direction: column; padding: 24px 16px 0; }
   .admin-container { padding: 16px 16px 0; }
@@ -8415,17 +8435,23 @@ a.ph-logo {
   padding: 4px 8px;
   font-size: 11px;
 }
-@media (max-width: 1100px) {
-  .ph-product-grid-compact { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .ph-my-masonry { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) {
+  .ph-product-grid-compact,
+  .ph-my-masonry,
+  .ph-product-grid-all {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ph-all-section .ph-product-grid-all {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
-@media (max-width: 960px) {
-  .ph-product-grid-compact { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .ph-my-masonry { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 640px) {
-  .ph-product-grid-compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ph-my-masonry { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 520px) {
+  .ph-product-grid-compact,
+  .ph-my-masonry,
+  .ph-product-grid-all,
+  .ph-all-section .ph-product-grid-all {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ===== 码道浅色主题覆盖：紫白底上的深色字/白卡片 ===== */

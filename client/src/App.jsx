@@ -1325,7 +1325,7 @@ export default function App() {
           />
         }
         square={
-          <div className="ph-section-inner">
+          <div className="ph-section-inner ph-section-inner--wide">
             <div className="ph-square-head">
               <div>
                 <h1 className="ph-section-title">应用广场</h1>
