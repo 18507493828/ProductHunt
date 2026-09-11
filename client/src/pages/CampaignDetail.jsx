@@ -222,9 +222,6 @@ export default function CampaignDetail() {
           <Link to="/" className="ph-logo ph-detail-logo">
             <BrandLogo />
           </Link>
-          <Link to="/#resource-list" className="ph-campaign-detail-nav-back">
-            ← 返回活动专区
-          </Link>
         </div>
       </header>
 
@@ -251,14 +248,18 @@ export default function CampaignDetail() {
                   className="ph-campaign-detail-hero-cover"
                   style={coverStyle}
                 >
-                  {campaign?.coverImage && (
+                  {campaign?.coverImage ? (
                     <CachedImage
                       src={campaign.coverImage}
-                      alt=""
+                      alt={title}
                       className="ph-campaign-detail-hero-img"
                     />
+                  ) : (
+                    <span className="ph-campaign-detail-hero-fallback">{title}</span>
                   )}
-                  <div className="ph-campaign-detail-hero-copy">
+                </div>
+                <div className="ph-campaign-detail-meta">
+                  <div>
                     <p className="ph-campaign-detail-kicker">活动详情</p>
                     <h1 className="ph-campaign-detail-title">{title}</h1>
                     <p className="ph-campaign-detail-desc">
@@ -270,19 +271,19 @@ export default function CampaignDetail() {
                       <span>{campaign.participantCount ?? 0} 位创作者</span>
                       <span>{campaign.voteCount ?? 0} 评分</span>
                     </div>
-                    <div className="ph-campaign-detail-hero-actions">
-                      <button
-                        type="button"
-                        className="ph-btn-primary"
-                        onClick={handleParticipate}
-                      >
-                        <Sparkles size={16} aria-hidden="true" />
-                        一键参与发布
-                      </button>
-                      <a href="#campaign-works" className="ph-btn-secondary">
-                        查看作品集
-                      </a>
-                    </div>
+                  </div>
+                  <div className="ph-campaign-detail-hero-actions">
+                    <button
+                      type="button"
+                      className="ph-btn-primary"
+                      onClick={handleParticipate}
+                    >
+                      <Sparkles size={16} aria-hidden="true" />
+                      一键参与发布
+                    </button>
+                    <a href="#campaign-works" className="ph-btn-secondary">
+                      查看作品集
+                    </a>
                   </div>
                 </div>
               </section>
