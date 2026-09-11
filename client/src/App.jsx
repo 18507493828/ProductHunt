@@ -1267,7 +1267,7 @@ export default function App() {
 
       <header className="ph-nav">
         <div className="ph-nav-inner">
-          <div className="ph-logo" aria-label="码上创 CodeCraft">
+          <div className="ph-logo" aria-label="码上创 vibe building">
             <BrandLogo />
           </div>
 
@@ -1607,7 +1607,7 @@ export default function App() {
           <div className="ph-footer-brand">
             <BrandLogo small showText={false} />
             <span className="ph-footer-text">
-              码上创 CodeCraft · 构建 · 发布 · 霸榜
+              码上创 vibe building · 构建 · 发布 · 霸榜
             </span>
           </div>
         </div>

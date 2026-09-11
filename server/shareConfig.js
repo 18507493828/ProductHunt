@@ -34,7 +34,7 @@ export const SHARE_PLATFORMS = [
     defaultNote: "站内渠道 · 权重加成 ×2",
     defaultRefluxWeight: 2.0,
     defaultTemplate:
-      "【应用推荐】{name}\n\n一句话：{tagline}\n\n我在码上创 CodeCraft 应用广场体验了这个作品，适合开发者关注与二次创作。\n体验链接：{url}\n{tags}",
+      "【应用推荐】{name}\n\n一句话：{tagline}\n\n我在码上创 vibe building 应用广场体验了这个作品，适合开发者关注与二次创作。\n体验链接：{url}\n{tags}",
   },
   {
     id: "weibo",

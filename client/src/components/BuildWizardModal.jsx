@@ -93,7 +93,7 @@ export default function BuildWizardModal({
         <div className="modal-header">
           <div>
             <p className="ph-build-eyebrow">我要构建</p>
-            <h2 id="build-wizard-title">选择场景 → 选择场景话题 → 选择构建工具</h2>
+            <h2 id="build-wizard-title">选择场景 → 选择场景话题 → 选择构建工具 → 生成任务书并构建</h2>
           </div>
           <button type="button" className="modal-close" onClick={onClose} aria-label="关闭">
             <X size={18} />

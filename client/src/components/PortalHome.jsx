@@ -15,8 +15,8 @@ const PILLARS = [
     id: "build",
     icon: Sparkles,
     title: "我要构建",
-    desc: "选场景 → 选话题 → 选工具，3 步生成任务书，10 分钟拥有你的 AI 应用。",
-    preview: "场景 · 话题 · 工具 · 华为码道 ¥9.9 激励",
+    desc: "选场景 → 选话题 → 选工具 → 生成任务书，4 步构建，10 分钟拥有你的 AI 应用。",
+    preview: "场景 · 话题 · 工具 · 任务书 · 华为码道 ¥9.9 激励",
   },
   {
     id: "publish",
@@ -134,7 +134,8 @@ export default function PortalHome({
               <span className="ph-page-title-accent">发布 · 霸榜 · 赢激励</span>
             </h1>
             <p className="ph-page-desc">
-              选场景、选话题、选工具，10 分钟拥有自己的应用；一键发布到应用广场，全网推广冲榜赢现金。
+              全国首个社区驱动、面向泛用户开发应用的作品平台。不用从零搭建，选好场景与工具，10
+              分钟做出你的应用；一键发布应用广场，全网推广冲榜赢现金。
             </p>
             <div className="ph-page-header-actions">
               <div className="ph-page-header-cta">

@@ -84,7 +84,7 @@ export default function AdminLayout() {
           <main className="admin-main">
             <header className="admin-main-header">
               <div className="admin-main-title">
-                <span className="admin-brand-name">码上创 CodeCraft</span>
+                <span className="admin-brand-name">码上创 vibe building</span>
                 <span className="admin-brand-divider">·</span>
                 <h1>{title}</h1>
               </div>

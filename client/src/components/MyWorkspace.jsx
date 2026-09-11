@@ -97,7 +97,7 @@ export default function MyWorkspace({
             <Sparkles size={20} />
           </span>
           <strong>我要构建</strong>
-          <span>选场景 → 选话题 → 选工具，3 步生成任务书，10 分钟构建应用。</span>
+          <span>选场景 → 选话题 → 选工具 → 生成任务书，4 步构建应用。</span>
         </button>
         <button type="button" className="ph-my-pillar" onClick={() => onPublish?.()}>
           <span className="ph-my-pillar-icon">

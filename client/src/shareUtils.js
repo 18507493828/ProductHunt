@@ -34,7 +34,7 @@ function buildHashtags(categories, extras = []) {
     ...extras,
     ...categories.map(hashtagFromLabel),
     "码上创",
-    "CodeCraft",
+    "vibe building",
     "独立开发",
   ]
     .map((t) => String(t || "").trim())

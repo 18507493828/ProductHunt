@@ -7411,7 +7411,7 @@ a.ph-logo {
   }
 }
 
-/* ===== 码上创 CodeCraft 门户 / 构建 / 我的 ===== */
+/* ===== 码上创 vibe building 门户 / 构建 / 我的 ===== */
 .ph-portal-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -7660,6 +7660,10 @@ a.ph-logo {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
+}
+.ph-my-kpi-grid > div {
+  text-align: center;
+  min-width: 0;
 }
 .ph-my-kpi-grid strong { display: block; font-size: 20px; }
 .ph-my-kpi-grid span { color: var(--ph-muted, #9aa3b5); font-size: 12px; }

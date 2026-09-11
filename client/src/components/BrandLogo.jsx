@@ -11,7 +11,7 @@ export default function BrandLogo({ small = false, showText = true }) {
         <span className="ph-logo-stack">
           <span className="ph-logo-text">
             码上创
-            <span className="ph-logo-text-en">CodeCraft</span>
+            <span className="ph-logo-text-en">vibe building</span>
           </span>
           <span className="ph-logo-sub">CSDN 开发者应用共创平台</span>
         </span>
