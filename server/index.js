@@ -197,6 +197,7 @@ const DEFAULT_NAVS = [
 ];
 
 let dbReady = false;
+let dbLastError = "";
 
 // Init DB first, then start server
 try {
@@ -220,16 +221,19 @@ try {
   await initTopicPosts();
   console.log("[server] all init tasks completed");
 } catch (err) {
-  console.error("[db] init failed:", err.message || err);
+  dbLastError = err.message || String(err);
+  console.error("[db] init failed:", dbLastError);
   // Start server anyway so container stays up; retry DB after 10s
   setTimeout(async () => {
     try {
       await initDb();
       dbReady = true;
+      dbLastError = "";
       await initAuth();
       console.log("[db] initialized on retry");
     } catch (retryErr) {
-      console.error("[db] retry also failed:", retryErr.message || retryErr);
+      dbLastError = retryErr.message || String(retryErr);
+      console.error("[db] retry also failed:", dbLastError);
     }
   }, 10000);
 }
@@ -1020,6 +1024,7 @@ app.get("/api/health", async (_req, res) => {
 app.get("/api/debug", async (_req, res) => {
   res.json({
     dbReady,
+    dbLastError,
     env: {
       MYSQL_HOST: process.env.MYSQL_HOST,
       MYSQL_PORT: process.env.MYSQL_PORT,
