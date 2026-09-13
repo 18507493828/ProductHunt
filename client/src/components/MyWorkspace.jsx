@@ -1,12 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  BarChart3,
+  Eye,
+  Flame,
   Rocket,
+  Share2,
   Sparkles,
+  ThumbsUp,
   Trophy,
 } from "lucide-react";
-import { loadBuildDrafts, removeBuildDraft } from "../buildConfig";
+import {
+  heatScore,
+  loadBuildDrafts,
+  removeBuildDraft,
+} from "../buildConfig";
+import { getAppPlatformLabel } from "../appPlatforms";
 import MyProductsList from "./MyProductsList";
+import MyTrendChart from "./MyTrendChart";
+
+function fmt(n) {
+  return Number(n || 0).toLocaleString("zh-CN");
+}
+
+function platformOf(product) {
+  return (
+    product?.appPlatformLabel ||
+    getAppPlatformLabel(product?.appPlatform) ||
+    product?.appPlatform ||
+    "—"
+  );
+}
 
 export default function MyWorkspace({
   user,
@@ -27,28 +49,61 @@ export default function MyWorkspace({
     setDrafts(loadBuildDrafts(user?.username));
   }, [user?.username, draftRefreshKey]);
 
-  const approved = useMemo(
-    () => (products || []).filter((p) => (p.status || "approved") === "approved"),
-    [products],
-  );
-
-  const kpi = useMemo(() => {
+  const board = useMemo(() => {
     const list = products || [];
-    const views = list.reduce((s, p) => s + (p.viewCount || 0), 0);
-    const votes = list.reduce((s, p) => s + (p.voteCount || 0), 0);
-    const trials = Math.round(views * 0.2);
-    const incentive = drafts.reduce((s, d) => s + (d.sponsored ? d.incentive || 0 : 0), 0);
+    const approved = list.filter((p) => (p.status || "approved") === "approved");
+    const pending = list.filter((p) => p.status === "pending");
+    const rejected = list.filter((p) => p.status === "rejected");
+    const offline = list.filter((p) => p.status === "offline");
+
+    const views = list.reduce((s, p) => s + (Number(p.viewCount) || 0), 0);
+    const votes = list.reduce((s, p) => s + (Number(p.voteCount) || 0), 0);
+    const shares = list.reduce((s, p) => s + (Number(p.shareCount) || 0), 0);
+    const heat = list.reduce((s, p) => s + heatScore(p), 0);
+    const incentive = drafts.reduce(
+      (s, d) => s + (d.sponsored ? Number(d.incentive) || 0 : 0),
+      0,
+    );
+
+    const ranked = [...list]
+      .map((p) => ({
+        product: p,
+        heat: heatScore(p),
+        views: Number(p.viewCount) || 0,
+        votes: Number(p.voteCount) || 0,
+        shares: Number(p.shareCount) || 0,
+        platform: platformOf(p),
+        tool: p.buildTool || p.toolName || "",
+        scene: p.scene || p.sceneName || "",
+        status: p.status || "approved",
+      }))
+      .sort((a, b) => b.heat - a.heat);
+
+    const maxHeat = Math.max(...ranked.map((r) => r.heat), 1);
+
+    const platforms = ranked.reduce((acc, row) => {
+      const key = row.platform || "其他";
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
     return {
-      views,
-      trials,
-      votes,
-      weekRank: approved.length ? Math.min(approved.length, 12) : "—",
-      incentive,
-      pending: list.filter((p) => p.status === "pending").length,
       approved: approved.length,
+      pending: pending.length,
+      rejected: rejected.length,
+      offline: offline.length,
       drafts: drafts.length,
+      views,
+      votes,
+      shares,
+      heat,
+      incentive,
+      ranked,
+      maxHeat,
+      platforms,
+      top: ranked[0] || null,
     };
-  }, [products, approved, drafts]);
+  }, [products, drafts]);
 
   function publishFromDraft(draft) {
     onPublish?.({
@@ -86,7 +141,7 @@ export default function MyWorkspace({
             你好，@{user?.nickname || user?.username}
           </h2>
           <p className="ph-my-sub">
-            我的工作台 · 构建应用、发布上架、全网霸榜，一站式管理
+            构建 · 发布 · 霸榜 —— 查看你的应用在广场与渠道上的真实表现
           </p>
         </div>
       </div>
@@ -97,52 +152,166 @@ export default function MyWorkspace({
             <Sparkles size={20} />
           </span>
           <strong>我要构建</strong>
-          <span>选场景 → 选话题 → 选工具 → 生成任务书，4 步构建应用。</span>
+          <span>选场景 → 选话题 → 选工具 → 生成任务书</span>
         </button>
         <button type="button" className="ph-my-pillar" onClick={() => onPublish?.()}>
           <span className="ph-my-pillar-icon">
             <Rocket size={20} />
           </span>
           <strong>我要发布</strong>
-          <span>按表单提交 · 审核通过后上架应用广场</span>
+          <span>提交审核，通过后进入应用广场</span>
         </button>
         <button type="button" className="ph-my-pillar" onClick={() => onPromote?.()}>
           <span className="ph-my-pillar-icon">
             <Trophy size={20} />
           </span>
           <strong>我要霸榜</strong>
-          <span>推广已发布的应用，分享到多渠道，冲榜赢现金激励。</span>
+          <span>多渠道推广，提升热度与排位</span>
         </button>
       </div>
 
-      <div className="ph-my-kpi" aria-label="我的数据看板">
-        <div className="ph-my-kpi-head">
-          <BarChart3 size={16} />
-          <h3>应用看板</h3>
+      {/* 发布漏斗：对齐产品实际状态，而不是 Demo 那套 KPI */}
+      <section className="ph-my-pipeline" aria-label="发布进度">
+        <button type="button" className="ph-my-pipe" onClick={onBuild}>
+          <b>{board.drafts}</b>
+          <span>构建草稿</span>
+        </button>
+        <span className="ph-my-pipe-arrow" aria-hidden>
+          →
+        </span>
+        <div className="ph-my-pipe">
+          <b>{board.pending}</b>
+          <span>审核中</span>
         </div>
-        <div className="ph-my-kpi-grid ph-my-kpi-grid-5">
-          <div>
-            <strong>{kpi.views}</strong>
-            <span>总浏览量</span>
-          </div>
-          <div>
-            <strong>{kpi.trials}</strong>
-            <span>总体验数</span>
-          </div>
-          <div>
-            <strong>{kpi.votes}</strong>
-            <span>获赞总数</span>
-          </div>
-          <div>
-            <strong>{kpi.weekRank}</strong>
-            <span>周榜最高排名</span>
-          </div>
-          <div>
-            <strong>¥{Number(kpi.incentive || 0).toFixed(2)}</strong>
-            <span>累计激励</span>
-          </div>
+        <span className="ph-my-pipe-arrow" aria-hidden>
+          →
+        </span>
+        <div className="ph-my-pipe is-live">
+          <b>{board.approved}</b>
+          <span>已上架</span>
         </div>
-      </div>
+        <span className="ph-my-pipe-arrow" aria-hidden>
+          →
+        </span>
+        <button type="button" className="ph-my-pipe" onClick={() => onPromote?.()}>
+          <b>{fmt(board.shares)}</b>
+          <span>分享回流</span>
+        </button>
+      </section>
+
+      <section className="ph-my-insight" aria-label="应用表现">
+        <div className="ph-my-insight-metrics">
+          <article>
+            <Eye size={16} />
+            <div>
+              <strong>{fmt(board.views)}</strong>
+              <span>详情页浏览</span>
+            </div>
+          </article>
+          <article>
+            <ThumbsUp size={16} />
+            <div>
+              <strong>{fmt(board.votes)}</strong>
+              <span>获得点赞</span>
+            </div>
+          </article>
+          <article>
+            <Share2 size={16} />
+            <div>
+              <strong>{fmt(board.shares)}</strong>
+              <span>霸榜分享次数</span>
+            </div>
+          </article>
+          <article>
+            <Flame size={16} />
+            <div>
+              <strong>{fmt(board.heat)}</strong>
+              <span>综合热度分</span>
+            </div>
+          </article>
+        </div>
+
+        <section className="ph-my-duo" aria-label="走势与热度">
+          <header className="ph-my-duo-head">
+            <div>
+              <h3>表现概览</h3>
+              <p>近 30 日累计走势与各应用热度贡献</p>
+            </div>
+          </header>
+          <div className="ph-my-duo-body">
+            <MyTrendChart
+              views={board.views}
+              votes={board.votes}
+              shares={board.shares}
+            />
+
+            <aside className="ph-my-duo-heat">
+              <div className="ph-my-duo-heat-title">
+                <h4>热度贡献 TOP</h4>
+                <span>浏览 + 点赞 + 分享加权</span>
+              </div>
+              {board.ranked.length === 0 ? (
+                <div className="ph-my-heat-empty">发布应用后显示各应用热度占比</div>
+              ) : (
+                <ul className="ph-my-duo-heat-list">
+                  {board.ranked.slice(0, 4).map((row, idx) => (
+                    <li key={row.product.id}>
+                      <div className="ph-my-duo-heat-top">
+                        <span className="ph-my-heat-rank">#{idx + 1}</span>
+                        <div className="ph-my-heat-main">
+                          <strong>{row.product.name}</strong>
+                          <span>
+                            {row.platform}
+                            {row.status !== "approved"
+                              ? ` · ${
+                                  row.status === "pending"
+                                    ? "审核中"
+                                    : row.status === "rejected"
+                                      ? "未通过"
+                                      : "已下架"
+                                }`
+                              : ""}
+                          </span>
+                        </div>
+                        <b className="ph-my-heat-score">{fmt(row.heat)}</b>
+                      </div>
+                      <div className="ph-my-heat-bar" aria-hidden>
+                        <i
+                          style={{
+                            width: `${Math.max(8, (row.heat / board.maxHeat) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="ph-my-duo-heat-foot">
+                        <span>
+                          览 {fmt(row.views)} · 赞 {fmt(row.votes)} · 享{" "}
+                          {fmt(row.shares)}
+                        </span>
+                        {(row.status || "approved") === "approved" && (
+                          <button
+                            type="button"
+                            onClick={() => onPromote?.(row.product)}
+                          >
+                            推广
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {Object.keys(board.platforms).length > 0 && (
+                <p className="ph-my-duo-platform">
+                  形态分布：
+                  {Object.entries(board.platforms)
+                    .map(([k, v]) => `${k} ${v}`)
+                    .join(" · ")}
+                </p>
+              )}
+            </aside>
+          </div>
+        </section>
+      </section>
 
       {drafts.length > 0 && (
         <section className="ph-my-drafts">
@@ -188,7 +357,7 @@ export default function MyWorkspace({
               <Trophy size={16} /> 我要霸榜
             </h3>
             <p className="ph-my-sub">
-              全网推广你已发布的应用 · 提升榜单排位 · 赢取激励
+              把已上架应用推到小红书 / 抖音 / 朋友圈 / CSDN，分享会计入回流热度
             </p>
           </div>
           <button
@@ -199,7 +368,6 @@ export default function MyWorkspace({
             📢 立即推广
           </button>
         </header>
-
         <p className="ph-my-promote-link-row">
           <button type="button" className="ph-text-link" onClick={onOpenSquare}>
             查看完整榜单 →

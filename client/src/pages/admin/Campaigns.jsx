@@ -155,9 +155,6 @@ export default function Campaigns() {
   return (
     <>
       <div className="admin-toolbar">
-        <p className="admin-toolbar-hint">
-          配置活动封面、时间/规则/奖励与首页「活动专区」入口，作品按活动聚合展示。
-        </p>
         <button type="button" className="add-banner-btn" onClick={() => openModal()}>
           新增活动
         </button>
@@ -168,64 +165,72 @@ export default function Campaigns() {
       {campaigns.length === 0 ? (
         <EmptyState title="还没有活动" />
       ) : (
-        <div className="admin-masonry">
+        <div className="admin-campaign-grid">
           {campaigns.map((campaign) => (
             <article
               className={
-                "admin-masonry-card" +
+                "admin-campaign-card" +
                 (campaign.enabled !== false ? "" : " is-off")
               }
               key={campaign.id}
             >
-              <div className="admin-masonry-card-top">
-                <span
-                  className={
-                    "status-badge " +
-                    (campaign.enabled !== false
-                      ? "status-approved"
-                      : "status-rejected")
-                  }
-                >
-                  {campaign.enabled !== false ? "展示中" : "已隐藏"}
-                </span>
-                <span className="admin-masonry-sort">#{campaign.sort ?? 0}</span>
+              <div className="admin-campaign-card-cover" aria-hidden>
+                {campaign.coverImage ? (
+                  <img src={campaign.coverImage} alt="" />
+                ) : (
+                  <span>{(campaign.title || "活").slice(0, 1)}</span>
+                )}
               </div>
-              <h2 className="admin-masonry-title">{campaign.title}</h2>
-              {campaign.description && (
-                <p className="admin-masonry-desc">{campaign.description}</p>
-              )}
-              <div className="admin-masonry-meta">
-                <span>榜单：{campaign.rankLabel || campaign.title}</span>
-                {campaign.timeText && <span>{campaign.timeText}</span>}
-                <span>作品 {campaign.productCount ?? 0}</span>
-                <span>已上架 {campaign.approvedCount ?? 0}</span>
-                <span>待审 {campaign.pendingCount ?? 0}</span>
-              </div>
-              <div className="admin-masonry-actions">
-                <button
-                  type="button"
-                  className="admin-btn admin-btn-primary"
-                  disabled={actionId === campaign.id}
-                  onClick={() => openModal(campaign)}
-                >
-                  编辑
-                </button>
-                <button
-                  type="button"
-                  className="admin-btn admin-btn-ghost"
-                  disabled={actionId === campaign.id}
-                  onClick={() => toggleEnabled(campaign)}
-                >
-                  {campaign.enabled !== false ? "隐藏" : "展示"}
-                </button>
-                <button
-                  type="button"
-                  className="admin-btn admin-btn-danger"
-                  disabled={actionId === campaign.id}
-                  onClick={() => handleDelete(campaign.id, campaign.title)}
-                >
-                  删除
-                </button>
+              <div className="admin-campaign-card-body">
+                <div className="admin-masonry-card-top">
+                  <span
+                    className={
+                      "status-badge " +
+                      (campaign.enabled !== false
+                        ? "status-approved"
+                        : "status-rejected")
+                    }
+                  >
+                    {campaign.enabled !== false ? "展示中" : "已隐藏"}
+                  </span>
+                  <span className="admin-masonry-sort">#{campaign.sort ?? 0}</span>
+                </div>
+                <h2 className="admin-masonry-title">{campaign.title}</h2>
+                <p className="admin-masonry-desc">
+                  {campaign.description || "暂无简介"}
+                </p>
+                <div className="admin-masonry-meta">
+                  <span>榜单：{campaign.rankLabel || campaign.title}</span>
+                  {campaign.timeText ? <span>{campaign.timeText}</span> : null}
+                  <span>作品 {campaign.productCount ?? campaign.approvedCount ?? 0}</span>
+                  <span>待审 {campaign.pendingCount ?? 0}</span>
+                </div>
+                <div className="admin-masonry-actions">
+                  <button
+                    type="button"
+                    className="admin-btn admin-btn-primary"
+                    disabled={actionId === campaign.id}
+                    onClick={() => openModal(campaign)}
+                  >
+                    编辑
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-btn admin-btn-ghost"
+                    disabled={actionId === campaign.id}
+                    onClick={() => toggleEnabled(campaign)}
+                  >
+                    {campaign.enabled !== false ? "隐藏" : "展示"}
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-btn admin-btn-danger"
+                    disabled={actionId === campaign.id}
+                    onClick={() => handleDelete(campaign.id, campaign.title)}
+                  >
+                    删除
+                  </button>
+                </div>
               </div>
             </article>
           ))}

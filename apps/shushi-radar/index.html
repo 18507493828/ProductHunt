@@ -197,7 +197,8 @@
       <input id="q" type="search" placeholder="搜书名、课程、卖家…" autocomplete="off">
     </div>
     <div class="top-actions">
-      <button class="btn ghost" id="btnMine">我的预约</button>
+      <button class="btn ghost" id="relocate-btn">重新定位</button>
+      <button class="btn ghost" id="btnMine">我的</button>
       <button class="btn" id="btnPublish">发布闲书</button>
     </div>
   </header>
@@ -251,36 +252,73 @@
     </div>
   </div>
 </div>
+<script src="/apps/_shared/geo.js"></script>
 <script>
 const COLORS = ["#8b5e3c","#3d5a80","#6d597a","#bc4749","#2a9d8f","#e9c46a","#264653","#9c6644"];
+const SPOT_OFFSETS = {
+  "一食堂门口": { dNorth: 180, dEast: -120 },
+  "图书馆大厅": { dNorth: -90, dEast: 260 },
+  "二教北门": { dNorth: 420, dEast: 80 },
+  "南门快递点": { dNorth: -520, dEast: -340 }
+};
 const DEFAULT = [
-  { id:"b1", title:"高等数学（同济第七版）上册", cat:"数学", price:18, orig:45, cond:"轻微划线", spot:"一食堂门口", seller:"小林", college:"理学院", note:"有课后题答案笔记，适合期末突击", time: Date.now()-3600e3 },
-  { id:"b2", title:"C++ Primer 中文版", cat:"计算机", price:42, orig:128, cond:"几乎全新", spot:"图书馆大厅", seller:"阿哲", college:"计科", note:"塑封刚拆，无笔记", time: Date.now()-7200e3 },
-  { id:"b3", title:"考研英语真题黄皮书", cat:"考研", price:25, orig:68, cond:"笔记较多", spot:"二教北门", seller:"小雨", college:"外语", note:"阅读理解全标了，写作模板在扉页", time: Date.now()-1e7 },
-  { id:"b4", title:"微观经济学（平狄克）", cat:"经管", price:30, orig:79, cond:"轻微划线", spot:"南门快递点", seller:"老周", college:"经管", note:"第8章重点已标", time: Date.now()-2e7 },
-  { id:"b5", title:"人间失格", cat:"文学", price:8, orig:25, cond:"几乎全新", spot:"图书馆大厅", seller:"南南", college:"中文", note:"周末文学社同款", time: Date.now()-3e7 },
-  { id:"b6", title:"线性代数辅导讲义", cat:"数学", price:12, orig:35, cond:"有磨损", spot:"一食堂门口", seller:"阿凯", college:"工科", note:"封面有折痕，内容完整", time: Date.now()-4e7 },
-  { id:"b7", title:"Python编程：从入门到实践", cat:"计算机", price:35, orig:89, cond:"几乎全新", spot:"二教北门", seller:"米米", college:"软工", note:"项目代码已下载可分享", time: Date.now()-5e7 },
-  { id:"b8", title:"大学英语四级词汇", cat:"英语", price:10, orig:32, cond:"笔记较多", spot:"南门快递点", seller:"小何", college:"外语", note:"核心词已勾", time: Date.now()-6e7 },
-  { id:"b9", title:"会计学原理", cat:"经管", price:22, orig:58, cond:"轻微划线", spot:"图书馆大厅", seller:"橙子", college:"经管", note:"课后题做过一半", time: Date.now()-8e7 },
-  { id:"b10", title:"数据结构（严蔚敏）", cat:"计算机", price:15, orig:42, cond:"有磨损", spot:"一食堂门口", seller:"阿龙", college:"计科", note:"经典旧版，算法课够用", time: Date.now()-9e7 },
-  { id:"b11", title:"红楼梦（人民文学）", cat:"文学", price:28, orig:68, cond:"几乎全新", spot:"二教北门", seller:"书虫", college:"中文", note:"四册合售可议", time: Date.now()-1e8 },
-  { id:"b12", title:"考研数学复习全书", cat:"考研", price:48, orig:98, cond:"轻微划线", spot:"图书馆大厅", seller:"上岸鱼", college:"工科", note:"高数线代概率全套", time: Date.now()-12e7 },
+  { id:"b1", title:"高等数学（同济第七版）上册", cat:"数学", price:18, orig:45, cond:"轻微划线", spot:"一食堂门口", seller:"小林", college:"理学院", note:"有课后题答案笔记，适合期末突击", time: Date.now()-3600e3, dNorth:180, dEast:-120 },
+  { id:"b2", title:"C++ Primer 中文版", cat:"计算机", price:42, orig:128, cond:"几乎全新", spot:"图书馆大厅", seller:"阿哲", college:"计科", note:"塑封刚拆，无笔记", time: Date.now()-7200e3, dNorth:-90, dEast:260 },
+  { id:"b3", title:"考研英语真题黄皮书", cat:"考研", price:25, orig:68, cond:"笔记较多", spot:"二教北门", seller:"小雨", college:"外语", note:"阅读理解全标了，写作模板在扉页", time: Date.now()-1e7, dNorth:420, dEast:80 },
+  { id:"b4", title:"微观经济学（平狄克）", cat:"经管", price:30, orig:79, cond:"轻微划线", spot:"南门快递点", seller:"老周", college:"经管", note:"第8章重点已标", time: Date.now()-2e7, dNorth:-520, dEast:-340 },
+  { id:"b5", title:"人间失格", cat:"文学", price:8, orig:25, cond:"几乎全新", spot:"图书馆大厅", seller:"南南", college:"中文", note:"周末文学社同款", time: Date.now()-3e7, dNorth:-90, dEast:260 },
+  { id:"b6", title:"线性代数辅导讲义", cat:"数学", price:12, orig:35, cond:"有磨损", spot:"一食堂门口", seller:"阿凯", college:"工科", note:"封面有折痕，内容完整", time: Date.now()-4e7, dNorth:180, dEast:-120 },
+  { id:"b7", title:"Python编程：从入门到实践", cat:"计算机", price:35, orig:89, cond:"几乎全新", spot:"二教北门", seller:"米米", college:"软工", note:"项目代码已下载可分享", time: Date.now()-5e7, dNorth:420, dEast:80 },
+  { id:"b8", title:"大学英语四级词汇", cat:"英语", price:10, orig:32, cond:"笔记较多", spot:"南门快递点", seller:"小何", college:"外语", note:"核心词已勾", time: Date.now()-6e7, dNorth:-520, dEast:-340 },
+  { id:"b9", title:"会计学原理", cat:"经管", price:22, orig:58, cond:"轻微划线", spot:"图书馆大厅", seller:"橙子", college:"经管", note:"课后题做过一半", time: Date.now()-8e7, dNorth:-90, dEast:260 },
+  { id:"b10", title:"数据结构（严蔚敏）", cat:"计算机", price:15, orig:42, cond:"有磨损", spot:"一食堂门口", seller:"阿龙", college:"计科", note:"经典旧版，算法课够用", time: Date.now()-9e7, dNorth:180, dEast:-120 },
+  { id:"b11", title:"红楼梦（人民文学）", cat:"文学", price:28, orig:68, cond:"几乎全新", spot:"二教北门", seller:"书虫", college:"中文", note:"四册合售可议", time: Date.now()-1e8, dNorth:420, dEast:80 },
+  { id:"b12", title:"考研数学复习全书", cat:"考研", price:48, orig:98, cond:"轻微划线", spot:"图书馆大厅", seller:"上岸鱼", college:"工科", note:"高数线代概率全套", time: Date.now()-12e7, dNorth:-90, dEast:260 },
 ];
 
 const LS_BOOKS = "shushi-radar-books";
 const LS_RESERVED = "shushi-radar-reserved";
-let books = JSON.parse(localStorage.getItem(LS_BOOKS) || "null") || DEFAULT.slice();
-let reserved = JSON.parse(localStorage.getItem(LS_RESERVED) || "[]");
+let books = DEFAULT.slice();
+let reserved = [];
+let userPos = null;
 let state = { cat:"全部", cond:"全部", spot:"全部", q:"", sort:"new", selected:null, drawerMode:"detail" };
+
+function spotOffset(spot){
+  return SPOT_OFFSETS[spot] || { dNorth:0, dEast:0 };
+}
+function enrichBookGeo(b, center){
+  const off = (b.dNorth!=null || b.dEast!=null)
+    ? { dNorth:b.dNorth||0, dEast:b.dEast||0 }
+    : spotOffset(b.spot);
+  const origin = center || userPos || MashangChuangGeo.FALLBACK;
+  const pos = MashangChuangGeo.offsetLatLng(origin.lat, origin.lng, off.dNorth, off.dEast);
+  const meters = MashangChuangGeo.haversine(origin, pos);
+  return Object.assign(b, {
+    dNorth: off.dNorth, dEast: off.dEast,
+    lat: pos.lat, lng: pos.lng,
+    meters, dist: MashangChuangGeo.formatDist(meters)
+  });
+}
+function refreshBookDists(){
+  const center = userPos || MashangChuangGeo.FALLBACK;
+  books.forEach(b=>enrichBookGeo(b, center));
+}
 
 const $=id=>document.getElementById(id);
 const toast=(m)=>{ const t=$("toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1800); };
-const save=()=>{ localStorage.setItem(LS_BOOKS,JSON.stringify(books)); localStorage.setItem(LS_RESERVED,JSON.stringify(reserved)); };
+const save=()=>{ MashangChuangAuth.writeJSON(LS_BOOKS, books); MashangChuangAuth.writeJSON(LS_RESERVED, reserved); };
 
 function updateMineBtn(){
   const n=reserved.length;
-  $("btnMine").textContent = n ? `我的预约 (${n})` : "我的预约";
+  const m=myPublished().length;
+  const parts=[];
+  if(n) parts.push(`预约 ${n}`);
+  if(m) parts.push(`上架 ${m}`);
+  $("btnMine").textContent = parts.length ? `我的 (${parts.join(" · ")})` : "我的";
+}
+
+function myPublished(){
+  return books.filter(b=>b.mine || b.seller==="我");
 }
 
 function colorFor(title){ let h=0; for(const c of title) h=(h+c.charCodeAt(0))%COLORS.length; return COLORS[h]; }
@@ -333,7 +371,7 @@ function renderGrid(){
         <div class="book-meta">${b.cat} · ${b.seller}</div>
         <div class="price-row">
           <div class="price">¥${b.price}<small>¥${b.orig}</small></div>
-          <div class="spot">${reservedAlready?"已预约":b.spot}</div>
+          <div class="spot">${reservedAlready?"已预约":(b.dist?b.dist+" · ":"")+b.spot}</div>
         </div>
       </div>
     </button>`;
@@ -363,51 +401,63 @@ function cancelReservation(id){
   renderGrid();
 }
 
+function unlistBook(id){
+  books = books.filter(b=>b.id!==id);
+  reserved = reserved.filter(x=>x!==id);
+  save();
+  updateMineBtn();
+  toast("已下架删除");
+  if(state.selected===id){ state.selected=null; }
+  if(state.drawerMode==="mine") renderMineDrawer();
+  else { $("drawer").classList.remove("open"); $("drawerInner").innerHTML=""; }
+  render();
+}
+
 function renderMineDrawer(){
   const drawer=$("drawer");
   state.drawerMode="mine";
   drawer.classList.add("open");
   const list=reservedBooks();
-  if(!list.length){
-    $("drawerInner").innerHTML=`
-      <div class="drawer-head">
-        <h2>我的预约</h2>
-        <button class="close-x" id="closeDrawer">×</button>
-      </div>
-      <div class="mine-empty">
-        <h3>还没有预约</h3>
-        <p>点开一本书，预约面交后会出现在这里</p>
-        <button class="btn ghost" id="browseBooks">去逛书市</button>
-      </div>`;
-    $("closeDrawer").onclick=()=>{ state.selected=null; state.drawerMode="detail"; drawer.classList.remove("open"); $("drawerInner").innerHTML=""; renderGrid(); };
-    $("browseBooks").onclick=()=>{ state.selected=null; state.drawerMode="detail"; drawer.classList.remove("open"); $("drawerInner").innerHTML=""; renderGrid(); };
-    return;
-  }
+  const published=myPublished();
   $("drawerInner").innerHTML=`
     <div class="drawer-head">
-      <h2>我的预约</h2>
+      <h2>我的</h2>
       <button class="close-x" id="closeDrawer">×</button>
     </div>
-    <p style="font-size:12px;color:var(--muted);margin:-6px 0 12px">共 ${list.length} 本 · 点击查看详情</p>
-    <div class="mine-list">
-      ${list.map(b=>`
+    <h3 style="font-size:13px;font-weight:800;margin:0 0 8px;color:var(--wood)">我的预约 · ${list.length}</h3>
+    ${!list.length
+      ? `<div class="mine-empty" style="padding:16px 0 20px"><h3 style="font-size:14px">还没有预约</h3><p>点开一本书，预约面交后会出现在这里</p></div>`
+      : `<div class="mine-list" style="margin-bottom:18px">${list.map(b=>`
         <div class="mine-row" data-open="${b.id}">
           <h4>${b.title}</h4>
           <div class="meta">卖家 ${b.seller} · ${b.cond}</div>
-          <div class="price-line">
-            <b>¥${b.price}</b>
-            <span class="spot">${b.spot}</span>
-          </div>
+          <div class="price-line"><b>¥${b.price}</b><span class="spot">${b.spot}</span></div>
           <div class="mine-actions">
             <button type="button" class="btn outline" data-detail="${b.id}">查看详情</button>
             <button type="button" class="btn ghost" data-cancel="${b.id}">取消预约</button>
           </div>
-        </div>`).join("")}
-    </div>`;
+        </div>`).join("")}</div>`}
+    <h3 style="font-size:13px;font-weight:800;margin:0 0 8px;color:var(--wood)">我的上架 · ${published.length}</h3>
+    ${!published.length
+      ? `<div class="mine-empty" style="padding:16px 0"><h3 style="font-size:14px">还没有上架</h3><p>点「发布闲书」上架后会出现在这里</p></div>`
+      : `<div class="mine-list">${published.map(b=>`
+        <div class="mine-row">
+          <h4>${b.title}</h4>
+          <div class="meta">${b.cat} · ${b.cond} · ${b.spot}</div>
+          <div class="price-line"><b>¥${b.price}</b><span class="spot">${reserved.includes(b.id)?"有人预约中":"在架"}</span></div>
+          <div class="mine-actions">
+            <button type="button" class="btn outline" data-detail="${b.id}">查看详情</button>
+            <button type="button" class="btn ghost" data-unlist="${b.id}">下架删除</button>
+          </div>
+        </div>`).join("")}</div>`}
+    ${!list.length && !published.length ? `<button class="btn ghost" id="browseBooks" style="margin-top:8px">去逛书市</button>` : ""}`;
   $("closeDrawer").onclick=()=>{ state.selected=null; state.drawerMode="detail"; drawer.classList.remove("open"); $("drawerInner").innerHTML=""; renderGrid(); };
+  $("browseBooks")?.addEventListener("click", ()=>{ state.selected=null; state.drawerMode="detail"; drawer.classList.remove("open"); $("drawerInner").innerHTML=""; renderGrid(); });
   $("drawerInner").onclick=e=>{
     const cancel=e.target.closest("[data-cancel]");
     if(cancel){ e.stopPropagation(); cancelReservation(cancel.dataset.cancel); return; }
+    const unlist=e.target.closest("[data-unlist]");
+    if(unlist){ e.stopPropagation(); unlistBook(unlist.dataset.unlist); return; }
     const detail=e.target.closest("[data-detail]");
     const row=e.target.closest("[data-open]");
     const id=detail?.dataset.detail || row?.dataset.open;
@@ -427,8 +477,9 @@ function renderDrawer(){
   if(!b){ drawer.classList.remove("open"); return; }
   drawer.classList.add("open");
   const isRes=reserved.includes(b.id);
+  const isMineBook=!!(b.mine || b.seller==="我");
   const backHtml = state.fromMine
-    ? `<button type="button" class="back-link" id="backToMine">← 返回预约列表</button>`
+    ? `<button type="button" class="back-link" id="backToMine">← 返回我的</button>`
     : "";
   $("drawerInner").innerHTML=`
     ${backHtml}
@@ -447,16 +498,20 @@ function renderDrawer(){
       <div><span>售价</span><b style="color:var(--accent);font-size:18px">¥${b.price}</b></div>
       <div><span>原价参考</span><b>¥${b.orig}</b></div>
       <div><span>成色</span><b>${b.cond}</b></div>
-      <div><span>面交地点</span><b>${b.spot}</b></div>
+      <div><span>面交地点</span><b>${b.spot}${b.dist?" · "+b.dist:""}</b></div>
       <div><span>科目</span><b>${b.cat}</b></div>
     </div>
     <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px">${b.note||""}</p>
     <div class="drawer-actions">
-      ${isRes
+      ${isMineBook
+        ? `<button class="btn ghost" id="unlistBtn">下架删除</button>
+           <button class="btn" disabled>我发布的</button>`
+        : isRes
         ? `<button class="btn ghost" id="cancelResBtn">取消预约</button>
            <button class="btn" disabled>已预约面交</button>`
         : `<button class="btn" id="reserveBtn">预约面交</button>`}
-      <button class="btn ghost" id="copySpot">复制见面地点</button>
+      <button class="btn ghost" id="navSpot">导航到见面点</button>
+      <button class="btn outline" id="copySpot">复制见面地点</button>
     </div>`;
   $("closeDrawer").onclick=()=>{ state.selected=null; state.fromMine=false; state.drawerMode="detail"; drawer.classList.remove("open"); $("drawerInner").innerHTML=""; renderGrid(); };
   $("backToMine")?.addEventListener("click", ()=>{ state.fromMine=false; renderMineDrawer(); renderGrid(); });
@@ -472,7 +527,12 @@ function renderDrawer(){
     }
   });
   $("cancelResBtn")?.addEventListener("click", ()=>cancelReservation(b.id));
-  $("copySpot").onclick=()=>{ navigator.clipboard?.writeText(b.spot); toast("已复制："+b.spot); };
+  $("unlistBtn")?.addEventListener("click", ()=>unlistBook(b.id));
+  $("navSpot").onclick=()=>{
+    enrichBookGeo(b, userPos || MashangChuangGeo.FALLBACK);
+    MashangChuangGeo.openNav({ lat:b.lat, lng:b.lng, name:b.spot });
+  };
+  $("copySpot").onclick=()=>{ navigator.clipboard?.writeText(b.spot+(b.dist?" · "+b.dist:"")); toast("已复制："+b.spot); };
 }
 
 function render(){ renderFilters(); renderGrid(); renderDrawer(); updateMineBtn(); }
@@ -484,11 +544,15 @@ $("cancelPub").onclick=()=>$("modal").classList.remove("show");
 $("okPub").onclick=()=>{
   const title=$("fTitle").value.trim();
   if(!title){ toast("请填写书名"); return; }
-  books.unshift({
+  const spot=$("fSpot").value;
+  const off=spotOffset(spot);
+  const book=enrichBookGeo({
     id:"u"+Date.now(), title, cat:$("fCat").value, price:+$("fPrice").value||10,
-    orig: Math.round((+$("fPrice").value||10)*2.5), cond:$("fCond").value, spot:$("fSpot").value,
-    seller:"我", college:"本校", note:"刚发布", time:Date.now()
-  });
+    orig: Math.round((+$("fPrice").value||10)*2.5), cond:$("fCond").value, spot,
+    seller:"我", college:"本校", note:"刚发布", time:Date.now(), mine:true,
+    dNorth:off.dNorth, dEast:off.dEast
+  }, userPos || MashangChuangGeo.FALLBACK);
+  books.unshift(book);
   save(); $("modal").classList.remove("show"); $("fTitle").value=""; toast("已上架到书市"); render();
 };
 $("btnMine").onclick=()=>{
@@ -497,7 +561,43 @@ $("btnMine").onclick=()=>{
   renderGrid();
 };
 
-render();
 </script>
+<script src="/apps/_shared/auth.js"></script>
+
+<script>
+(function(){
+  if(!window.MashangChuangAuth) return;
+  MashangChuangAuth.boot({
+    requireLogin: false,
+    appName: '书市雷达',
+    onReady: async function(user){
+      window.__MSC_USER__ = user;
+      document.dispatchEvent(new CustomEvent('msc-auth-ready', { detail: user }));
+      try {
+        var label = MashangChuangAuth.meLabel('我');
+        window.__MSC_ME__ = label;
+      } catch(e) {}
+      books = MashangChuangAuth.readJSON(LS_BOOKS, null) || DEFAULT.slice();
+      reserved = MashangChuangAuth.readJSON(LS_RESERVED, []) || [];
+      async function refreshLoc(showToast){
+        if(!window.MashangChuangGeo){ refreshBookDists(); if(typeof render==='function') render(); return; }
+        const btn=document.getElementById("relocate-btn");
+        if(btn) btn.disabled=true;
+        const loc=await MashangChuangGeo.locateWithPlace();
+        userPos=loc.pos;
+        const place=loc.ok?(loc.placeLabel||loc.placeShort||"当前位置"):MashangChuangGeo.FALLBACK.label;
+        refreshBookDists();
+        if(typeof render==='function') render();
+        if(btn) btn.disabled=false;
+        if(showToast) toast(loc.ok?("已重新定位 · "+place):("定位失败 · "+place));
+        else if(loc.ok) toast("已定位 · "+place);
+      }
+      document.getElementById("relocate-btn")?.addEventListener("click", function(){ refreshLoc(true); });
+      await refreshLoc(false);
+    }
+  });
+})();
+</script>
+
 </body>
 </html>

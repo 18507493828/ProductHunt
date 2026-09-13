@@ -85,14 +85,20 @@ body{
 .joined-item{
   display:flex;flex-direction:column;gap:10px;text-align:left;width:100%;
   border:1px solid rgba(216,243,220,.28);background:rgba(8,28,21,.4);
-  color:#d8f3dc;border-radius:14px;padding:14px 16px;font:inherit;cursor:pointer;
+  color:#d8f3dc;border-radius:14px;padding:14px 16px;font:inherit;
 }
 .joined-item:hover{background:rgba(216,243,220,.14);border-color:rgba(216,243,220,.5)}
 .joined-item.hi{animation:joinPulse .9s ease}
 @keyframes joinPulse{0%{box-shadow:0 0 0 0 rgba(183,228,199,.4)}100%{box-shadow:0 0 0 10px transparent}}
 .joined-item .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .joined-item b{display:block;font-size:16px;font-weight:800}
-.joined-item .go{font-size:12px;font-weight:800;color:#b7e4c7;flex:none}
+.joined-item .go{font-size:12px;font-weight:800;color:#b7e4c7;flex:none;background:none;border:none;color:#b7e4c7;font:inherit;font-weight:800;cursor:pointer;padding:0}
+.joined-item .leave{
+  align-self:flex-start;margin-top:2px;border:1px solid rgba(216,243,220,.35);background:transparent;
+  color:#b7e4c7;border-radius:10px;padding:7px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;
+}
+.joined-item .leave:hover{background:rgba(216,243,220,.12)}
+.joined-empty{font-size:12px;opacity:.75;padding:4px 0 2px}
 .joined-facts{
   display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
 }
@@ -137,6 +143,13 @@ body{
 .drawer-facts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .drawer-facts .fact{background:#fff;border:1px solid #cce3d4}
 .drawer-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;padding-top:8px}
+.wx-box{
+  background:#fff;border:1px solid #cce3d4;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.55;
+}
+.wx-box .wx-h{font-size:12px;color:var(--muted);letter-spacing:.08em;margin-bottom:6px;font-weight:700}
+.wx-box b{font-size:22px;font-weight:900;color:var(--moss)}
+.dist-chip{font-size:12px;font-weight:800;color:var(--moss);margin-top:4px}
+.drawer-actions.three{grid-template-columns:1fr}
 </style>
 </head>
 <body>
@@ -145,12 +158,14 @@ body{
     <div>
       <h1>徒步组队社</h1>
       <p>周末山径海报墙 · 按难度挑线，一键入队与领队会合。</p>
+      <p id="placeHint" style="font-size:12px;opacity:.8;margin-top:6px">定位中…</p>
     </div>
     <div class="filters" id="filters">
       <button class="on" data-d="all">全部难度</button>
       <button data-d="1">入门</button>
       <button data-d="2">进阶</button>
       <button data-d="3">挑战</button>
+      <button type="button" id="relocate-btn">重新定位</button>
     </div>
   </header>
   <div class="joined-bar" id="joined-bar"></div>
@@ -169,10 +184,17 @@ body{
       <div class="block"><h4>装备建议</h4><p id="d-pack"></p></div>
       <div class="block"><h4>风险提示</h4><p id="d-risk"></p></div>
       <div class="block"><h4>集合说明</h4><p id="d-meet"></p></div>
+      <div class="block" id="d-wx-wrap" style="display:none">
+        <div class="wx-box">
+          <div class="wx-h">集合点天气</div>
+          <div id="d-wx">加载中…</div>
+        </div>
+      </div>
       <div class="drawer-actions">
         <button class="btn ghost" id="d-close">关闭</button>
         <button class="btn" id="d-join">加入队伍</button>
       </div>
+      <button class="btn ghost" id="d-nav" style="width:100%;margin-top:4px">导航到集合点</button>
     </div>
   </div>
 </div>
@@ -180,24 +202,31 @@ body{
 <script>
 const TRAILS=[
   {id:1,name:"青城后山半日线",route:"建福宫 → 上清宫 → 老君阁",diff:1,diffLabel:"入门",km:9,gain:420,date:"本周六 07:30",spots:12,left:4,leader:"阿林",c1:"#40916c",c2:"#1b4332",
-    pack:"登山鞋、至少 1L 水、防晒帽、轻便雨衣；可不带登山杖。",risk:"石阶湿滑，雨天注意防滑；景区人流较多，勿抄近路。",meet:"建福宫售票处外左侧台阶集合，领队举绿旗。",meetPoint:"建福宫售票处"},
+    pack:"登山鞋、至少 1L 水、防晒帽、轻便雨衣；可不带登山杖。",risk:"石阶湿滑，雨天注意防滑；景区人流较多，勿抄近路。",meet:"建福宫售票处外左侧台阶集合，领队举绿旗。",meetPoint:"建福宫售票处",lat:30.900,lng:103.400},
   {id:2,name:"雾灵山脊穿越",route:"主峰东线 → 仙人塔 → 龙潭",diff:3,diffLabel:"挑战",km:18,gain:1100,date:"下周日 06:00",spots:8,left:2,leader:"老周",c1:"#2d6a4f",c2:"#081c15",
-    pack:"高帮登山鞋、登山杖、头灯、能量胶、雨具、急救包。",risk:"山脊风大、落差大；需有中长距离徒步经验，禁止单独掉队。",meet:"景区东门停车场集合，提前 15 分钟签到核对装备。",meetPoint:"东门停车场"},
+    pack:"高帮登山鞋、登山杖、头灯、能量胶、雨具、急救包。",risk:"山脊风大、落差大；需有中长距离徒步经验，禁止单独掉队。",meet:"景区东门停车场集合，提前 15 分钟签到核对装备。",meetPoint:"东门停车场",lat:40.603,lng:117.478},
   {id:3,name:"西山森林步道",route:"北门 → 香山寺环线",diff:1,diffLabel:"入门",km:7,gain:280,date:"本周日 08:00",spots:15,left:9,leader:"小满",c1:"#52b788",c2:"#1b4332",
-    pack:"运动鞋即可、水杯、薄外套；可带相机。",risk:"林道岔口多，跟紧队伍；秋季落叶覆盖注意脚下。",meet:"北门游客中心门口集合，领队穿荧光绿马甲。",meetPoint:"北门游客中心"},
+    pack:"运动鞋即可、水杯、薄外套；可带相机。",risk:"林道岔口多，跟紧队伍；秋季落叶覆盖注意脚下。",meet:"北门游客中心门口集合，领队穿荧光绿马甲。",meetPoint:"北门游客中心",lat:39.994,lng:116.193},
   {id:4,name:"黄山鲫鱼背观景",route:"云谷寺 → 白鹅岭 → 光明顶",diff:2,diffLabel:"进阶",km:14,gain:860,date:"下周六 05:30",spots:10,left:3,leader:"山野君",c1:"#74c69d",c2:"#081c15",
-    pack:"防风外套、手套、充足饮水、备用电池；建议戴护膝。",risk:"鲫鱼背窄且风大，恐高者谨慎；雾天能见度低勿靠近崖边。",meet:"云谷寺索道站外广场集合，凭入队短信签到。",meetPoint:"云谷寺索道站"},
+    pack:"防风外套、手套、充足饮水、备用电池；建议戴护膝。",risk:"鲫鱼背窄且风大，恐高者谨慎；雾天能见度低勿靠近崖边。",meet:"云谷寺索道站外广场集合，凭入队短信签到。",meetPoint:"云谷寺索道站",lat:30.141,lng:118.155},
   {id:5,name:"莫干竹海慢行",route:"庾村 → 竹海栈道 → 裸心谷",diff:1,diffLabel:"入门",km:6,gain:180,date:"本周六 09:00",spots:20,left:11,leader:"阿竹",c1:"#95d5b2",c2:"#2d6a4f",
-    pack:"舒适步行鞋、防晒霜、少量零食；可带折叠伞。",risk:"栈道潮湿易滑；竹林蚊虫较多，建议驱蚊。",meet:"庾村公交站出口集合，之后拼车/步行进竹海。",meetPoint:"庾村公交站"},
+    pack:"舒适步行鞋、防晒霜、少量零食；可带折叠伞。",risk:"栈道潮湿易滑；竹林蚊虫较多，建议驱蚊。",meet:"庾村公交站出口集合，之后拼车/步行进竹海。",meetPoint:"庾村公交站",lat:30.612,lng:119.855},
   {id:6,name:"太白山南坡营地",route:"汤峪 → 大爷海（两日）",diff:3,diffLabel:"挑战",km:22,gain:1600,date:"下下周六 集合",spots:6,left:1,leader:"高海拔",c1:"#1b4332",c2:"#000",
-    pack:"帐篷睡袋、高山炉具、羽绒服、头灯、高热量食品、高原反应药。",risk:"高反风险；天气多变，必须听从领队是否继续登顶的决定。",meet:"汤峪镇游客中心集合，统一采购补给后发车。",meetPoint:"汤峪游客中心"}
+    pack:"帐篷睡袋、高山炉具、羽绒服、头灯、高热量食品、高原反应药。",risk:"高反风险；天气多变，必须听从领队是否继续登顶的决定。",meet:"汤峪镇游客中心集合，统一采购补给后发车。",meetPoint:"汤峪游客中心",lat:34.010,lng:107.810}
 ];
 const KEY="tb-joins-v1";
-let joins=JSON.parse(localStorage.getItem(KEY)||"[]");
+let joins=[];
 let diff="all";
 let detailId=null;
 let highlightJoin=null;
+let userPos=null;
+
 function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1600)}
+function trailDistLabel(t){
+  if(!userPos||!window.MashangChuangGeo||t.lat==null) return "";
+  const m=MashangChuangGeo.haversine(userPos,{lat:t.lat,lng:t.lng});
+  return MashangChuangGeo.formatDist(m);
+}
 function dots(n){
   return `<span class="dots">${[1,2,3].map(i=>`<i class="${i<=n?"on":""}"></i>`).join("")}</span>`;
 }
@@ -223,11 +252,19 @@ function joinTrail(id){
   const t=TRAILS.find(x=>x.id===id);if(!t)return;
   if(leftOf(t)===0){toast("该线路已满员");return}
   joins.unshift(id);
-  localStorage.setItem(KEY,JSON.stringify(joins));
+  MashangChuangAuth.writeJSON(KEY,joins);
   toast("入队成功，留意领队通知");
   render();
   focusJoined(id);
   if(detailId===id) openDetail(id);
+}
+function leaveTrail(id){
+  if(!joins.includes(id)) return;
+  joins=joins.filter(x=>x!==id);
+  MashangChuangAuth.writeJSON(KEY,joins);
+  toast("已退出本队");
+  if(detailId===id) openDetail(id);
+  render();
 }
 function openDetail(id){
   const t=TRAILS.find(x=>x.id===id);if(!t)return;
@@ -243,14 +280,30 @@ function openDetail(id){
     <div class="fact"><b>${t.diffLabel}</b><span>难度</span></div>
     <div class="fact"><b>${t.km} km</b><span>里程</span></div>
     <div class="fact"><b>${t.gain} m</b><span>累计爬升</span></div>
-    <div class="fact"><b>${t.date}</b><span>集合时间</span></div>`;
+    <div class="fact"><b>${t.dateLabel || t.date}</b><span>集合时间</span></div>`;
   document.getElementById("d-leader").textContent=`${t.leader} · 名额 ${t.spots} · 余 ${left} 席 · 已有 ${teammatesOf(t)} 人`;
   document.getElementById("d-pack").textContent=t.pack;
   document.getElementById("d-risk").textContent=t.risk;
   document.getElementById("d-meet").textContent=t.meet;
   const joinBtn=document.getElementById("d-join");
-  joinBtn.disabled=inTeam||left===0;
-  joinBtn.textContent=inTeam?"已入队":left===0?"已满员":"加入队伍";
+  joinBtn.disabled=!inTeam&&left===0;
+  joinBtn.textContent=inTeam?"退出本队":left===0?"已满员":"加入队伍";
+  joinBtn.dataset.mode=inTeam?"leave":"join";
+  const wxWrap=document.getElementById("d-wx-wrap");
+  const wxEl=document.getElementById("d-wx");
+  wxWrap.style.display="block";
+  wxEl.textContent="加载天气…";
+  if(window.MashangChuangGeo && t.lat!=null){
+    MashangChuangGeo.fetchWeather(t.lat,t.lng).then(function(wx){
+      if(detailId!==id) return;
+      wxEl.innerHTML=`<b>${wx.temp}°</b> ${wx.desc}<br>风 ${wx.wind} · 降水概率 ${wx.rain}`;
+    }).catch(function(){
+      if(detailId!==id) return;
+      wxEl.textContent="天气暂不可用";
+    });
+  } else {
+    wxEl.textContent="天气暂不可用";
+  }
   document.getElementById("drawer").classList.add("open");
 }
 function closeDetail(){
@@ -259,25 +312,29 @@ function closeDetail(){
 }
 function renderBar(){
   const el=document.getElementById("joined-bar");
-  if(!joins.length){el.classList.remove("show");return}
   el.classList.add("show");
+  if(!joins.length){
+    el.innerHTML=`<div class="title">我的队伍 · 0</div><div class="joined-empty">还没有入队，挑一条线路加入吧</div>`;
+    return;
+  }
   el.innerHTML=`<div class="title">我的队伍 · ${joins.length}</div>
     <div class="joined-list">${joins.map(id=>{
       const t=TRAILS.find(x=>x.id===id);if(!t)return"";
       const mates=teammatesOf(t);
-      return `<button type="button" class="joined-item${id===highlightJoin?" hi":""}" data-open="${t.id}">
+      return `<div class="joined-item${id===highlightJoin?" hi":""}">
         <div class="top">
           <div><b>${t.name}</b></div>
-          <span class="go">查看说明 →</span>
+          <button type="button" class="go" data-open="${t.id}">查看说明 →</button>
         </div>
         <div class="joined-facts">
-          <div class="jf"><strong>${t.date}</strong><span>集合日期</span></div>
+          <div class="jf"><strong>${t.dateLabel || t.date}</strong><span>集合日期</span></div>
           <div class="jf"><strong>${t.km} km</strong><span>里程</span></div>
           <div class="jf"><strong>${t.diffLabel}</strong><span>难度</span></div>
           <div class="jf"><strong>${mates} 人</strong><span>队友（含你）</span></div>
         </div>
         <div class="joined-meet">集合点：${t.meetPoint} · 领队 ${t.leader}</div>
-      </button>`;
+        <button type="button" class="leave" data-leave="${t.id}">退出本队</button>
+      </div>`;
     }).join("")}</div>`;
 }
 function render(){
@@ -285,20 +342,21 @@ function render(){
   document.getElementById("board").innerHTML=list.map(t=>{
     const inTeam=joins.includes(t.id);
     const left=leftOf(t);
+    const dist=trailDistLabel(t);
     return `<article class="poster">
       <div class="banner" style="--c1:${t.c1};--c2:${t.c2}">
         <div class="diff">${t.diffLabel} ${dots(t.diff)}</div>
         <h2>${t.name}</h2>
-        <div class="route">${t.route}</div>
+        <div class="route">${t.route}${dist?` · ${dist}`:""}</div>
       </div>
       <div class="meta-panel">
         <div class="facts">
           <div class="fact"><b>${t.km} km</b><span>里程</span></div>
           <div class="fact"><b>${t.gain} m</b><span>累计爬升</span></div>
-          <div class="fact"><b>${t.date}</b><span>集合时间</span></div>
+          <div class="fact"><b>${t.dateLabel || t.date}</b><span>集合时间</span></div>
           <div class="fact"><b>余 ${left} 席</b><span>名额 ${t.spots}</span></div>
         </div>
-        <div class="team">领队 <strong>${t.leader}</strong> · 集合后统一核对装备与天气</div>
+        <div class="team">领队 <strong>${t.leader}</strong> · 集合后统一核对装备与天气${dist?` · 距你 <strong>${dist}</strong>`:""}</div>
         <div class="actions">
           <button class="btn" data-join="${t.id}" ${inTeam||left===0?"disabled":""}>${inTeam?"已入队":left===0?"已满员":"加入队伍"}</button>
           <button class="btn ghost" data-info="${t.id}">路线说明</button>
@@ -322,13 +380,65 @@ document.getElementById("board").onclick=e=>{
   joinTrail(+join.dataset.join);
 };
 document.getElementById("joined-bar").onclick=e=>{
+  const leave=e.target.closest("[data-leave]");
+  if(leave){leaveTrail(+leave.dataset.leave);return}
   const item=e.target.closest("[data-open]");if(!item)return;
   openDetail(+item.dataset.open);
 };
 document.getElementById("d-close").onclick=closeDetail;
 document.getElementById("drawer").onclick=e=>{if(e.target.id==="drawer")closeDetail()};
-document.getElementById("d-join").onclick=()=>{if(detailId!=null)joinTrail(detailId)};
-render();
+document.getElementById("d-join").onclick=()=>{
+  if(detailId==null)return;
+  if(document.getElementById("d-join").dataset.mode==="leave") leaveTrail(detailId);
+  else joinTrail(detailId);
+};
+document.getElementById("d-nav").onclick=()=>{
+  if(detailId==null||!window.MashangChuangGeo) return;
+  const t=TRAILS.find(x=>x.id===detailId);if(!t||t.lat==null) return;
+  MashangChuangGeo.openNav({lat:t.lat,lng:t.lng,name:t.meetPoint||t.name});
+};
 </script>
+<script src="/apps/_shared/geo.js"></script>
+<script src="/apps/_shared/auth.js"></script>
+
+<script>
+(function(){
+  if(!window.MashangChuangAuth) return;
+  MashangChuangAuth.boot({
+    requireLogin: false,
+    appName: '徒步组队社',
+    onReady: function(user){
+      window.__MSC_USER__ = user;
+      document.dispatchEvent(new CustomEvent('msc-auth-ready', { detail: user }));
+      try {
+        var label = MashangChuangAuth.meLabel('我');
+        window.__MSC_ME__ = label;
+      } catch(e) {}
+      joins = MashangChuangAuth.readJSON(KEY, []) || [];
+      if(typeof render === 'function') render();
+      async function refreshLoc(showToast){
+        if(!window.MashangChuangGeo) return;
+        const btn=document.getElementById("relocate-btn");
+        const hint=document.getElementById("placeHint");
+        if(btn) btn.disabled=true;
+        if(hint) hint.textContent="正在定位…";
+        const loc=await MashangChuangGeo.locateWithPlace();
+        userPos=loc.pos;
+        const place=loc.ok?(loc.placeLabel||loc.placeShort||"当前位置"):MashangChuangGeo.FALLBACK.label;
+        if(hint) hint.textContent=(loc.ok?"已定位 · ":"默认位置 · ")+place;
+        TRAILS.forEach(function(t){
+          t.dateLabel = MashangChuangGeo.resolveSchedule(t.date);
+        });
+        if(typeof render === 'function') render();
+        if(btn) btn.disabled=false;
+        if(showToast && typeof toast==='function') toast(loc.ok?("已重新定位 · "+place):("定位失败 · "+place));
+      }
+      document.getElementById("relocate-btn")?.addEventListener("click", function(){ refreshLoc(true); });
+      if(window.MashangChuangGeo) refreshLoc(false);
+    }
+  });
+})();
+</script>
+
 </body>
 </html>

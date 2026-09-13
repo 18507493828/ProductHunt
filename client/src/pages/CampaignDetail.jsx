@@ -65,6 +65,10 @@ export default function CampaignDetail() {
     () => splitLines(campaign?.rules),
     [campaign?.rules],
   );
+  const rewardLines = useMemo(
+    () => splitLines(campaign?.rewards),
+    [campaign?.rewards],
+  );
 
   async function reloadCampaign() {
     const data = await fetchCampaign(id);
@@ -316,7 +320,15 @@ export default function CampaignDetail() {
                     <Gift size={18} aria-hidden="true" />
                     <h2>活动奖励</h2>
                   </div>
-                  <p>{campaign?.rewards || "奖励说明以当期公告为准。"}</p>
+                  {rewardLines.length > 0 ? (
+                    <ul className="ph-campaign-info-list">
+                      {rewardLines.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>奖励说明以当期公告为准。</p>
+                  )}
                 </article>
               </section>
 

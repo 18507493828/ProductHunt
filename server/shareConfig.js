@@ -29,7 +29,7 @@ export const SHARE_PLATFORMS = [
   },
   {
     id: "csdn",
-    name: "CSDN博客",
+    name: "CSDN 博客",
     tip: "技术博客安利风，适合沉淀长文与教程引流",
     defaultNote: "站内渠道 · 权重加成 ×2",
     defaultRefluxWeight: 2.0,

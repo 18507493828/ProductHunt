@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  fetchAdminBanners,
-  fetchAdminNavs,
-  fetchAdminOpsOverview,
-  fetchAdminProducts,
-} from "../../api";
+import { fetchAdminOpsOverview, fetchAdminProducts } from "../../api";
 import EcosystemStats from "../../components/EcosystemStats";
+
+const PERIODS = [
+  { id: "week", label: "周" },
+  { id: "month", label: "月" },
+  { id: "quarter", label: "季" },
+];
 
 function formatCount(n) {
   const num = Number(n) || 0;
@@ -16,39 +17,21 @@ function formatCount(n) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [dashboard, setDashboard] = useState({
-    products: { pending: 0, approved: 0, rejected: 0, all: 0 },
-    banners: 0,
-    navs: 0,
-  });
+  const [range, setRange] = useState("week");
+  const [pendingCount, setPendingCount] = useState(0);
   const [ops, setOps] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function loadDashboard() {
+  async function loadDashboard(nextRange = range) {
     try {
       setLoading(true);
       setError("");
-      const [pending, approved, rejected, all, banners, navs, overview] =
-        await Promise.all([
-          fetchAdminProducts("pending"),
-          fetchAdminProducts("approved"),
-          fetchAdminProducts("rejected"),
-          fetchAdminProducts("all"),
-          fetchAdminBanners(),
-          fetchAdminNavs(),
-          fetchAdminOpsOverview().catch(() => null),
-        ]);
-      setDashboard({
-        products: {
-          pending: Array.isArray(pending) ? pending.length : 0,
-          approved: Array.isArray(approved) ? approved.length : 0,
-          rejected: Array.isArray(rejected) ? rejected.length : 0,
-          all: Array.isArray(all) ? all.length : 0,
-        },
-        banners: Array.isArray(banners) ? banners.length : 0,
-        navs: Array.isArray(navs) ? navs.length : 0,
-      });
+      const [pending, overview] = await Promise.all([
+        fetchAdminProducts("pending"),
+        fetchAdminOpsOverview(nextRange).catch(() => null),
+      ]);
+      setPendingCount(Array.isArray(pending) ? pending.length : 0);
       setOps(overview);
     } catch (err) {
       setError(err.message);
@@ -58,11 +41,13 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    loadDashboard();
-  }, []);
+    loadDashboard(range);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [range]);
 
   const kpis = ops?.kpis;
   const funnel = ops?.funnel;
+  const rangeLabel = ops?.rangeLabel || "近 7 天";
   const funnelMax = Math.max(
     funnel?.build || 0,
     funnel?.publish || 0,
@@ -76,10 +61,25 @@ export default function Dashboard() {
       {error && <div className="error">{error}</div>}
 
       <div className="dash-section">
-        <h2 className="dash-section-title">关键指标看板</h2>
-        <p className="admin-hint">
-          应用审核与下架 · 渠道推广许可 · 榜单与激励系统
-        </p>
+        <div className="ph-ops-section-head">
+          <div className="admin-period-tabs" role="tablist" aria-label="统计周期">
+            {PERIODS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={range === item.id}
+                className={
+                  "admin-period-tab" + (range === item.id ? " is-active" : "")
+                }
+                onClick={() => setRange(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {loading ? (
           <div className="dash-loading">加载中...</div>
         ) : (
@@ -91,30 +91,30 @@ export default function Dashboard() {
               </span>
             </div>
             <div className="dash-card dash-card-success">
-              <span className="dash-card-label">本周新增应用</span>
+              <span className="dash-card-label">{rangeLabel}新增应用</span>
               <span className="dash-card-value">
-                {formatCount(kpis?.weekNewApps ?? dashboard.products.all)}
+                {formatCount(kpis?.periodNewApps ?? kpis?.weekNewApps ?? 0)}
               </span>
             </div>
             <div className="dash-card dash-card-warning">
               <span className="dash-card-label">待审核应用</span>
               <span className="dash-card-value">
-                {kpis?.pending ?? dashboard.products.pending}
+                {kpis?.pending ?? pendingCount}
               </span>
             </div>
             <div className="dash-card dash-card-neutral">
-              <span className="dash-card-label">广场日均浏览</span>
+              <span className="dash-card-label">上架应用浏览</span>
               <span className="dash-card-value">
-                {formatCount(kpis?.avgDailyViews ?? 0)}
+                {formatCount(kpis?.totalViews ?? kpis?.avgDailyViews ?? 0)}
               </span>
             </div>
             <div className="dash-card dash-card-primary">
-              <span className="dash-card-label">华为码道相关转化</span>
+              <span className="dash-card-label">华为码道转化</span>
               <span className="dash-card-value">
                 {formatCount(kpis?.maodaoConversions ?? 0)}
               </span>
               <span className="dash-card-sub">
-                单次激励 ¥{kpis?.maodaoReward ?? 9.9}
+                ¥{kpis?.maodaoReward ?? 9.9}/次
               </span>
             </div>
             <div className="dash-card dash-card-success">
@@ -132,7 +132,7 @@ export default function Dashboard() {
 
       {!loading && funnel && (
         <div className="dash-section">
-          <h2 className="dash-section-title">核心漏斗 · 构建 → 发布 → 体验（近 7 天）</h2>
+          <h2 className="dash-section-title">漏斗 · {rangeLabel}</h2>
           <div className="ph-ops-funnel">
             {[
               ["构建提交", funnel.build],
@@ -158,7 +158,7 @@ export default function Dashboard() {
 
       {!loading && ops?.sceneDistribution?.length > 0 && (
         <div className="dash-section">
-          <h2 className="dash-section-title">场景分布 · 已发布应用</h2>
+          <h2 className="dash-section-title">场景分布</h2>
           <div className="ph-ops-scene-list">
             {ops.sceneDistribution.map((item) => (
               <div key={item.scene} className="ph-ops-scene-row">
@@ -178,13 +178,13 @@ export default function Dashboard() {
       {!loading && (
         <div className="dash-section">
           <div className="ph-ops-section-head">
-            <h2 className="dash-section-title">应用审核队列</h2>
+            <h2 className="dash-section-title">待审核</h2>
             <button
               type="button"
               className="ph-btn-secondary"
               onClick={() => navigate("/admin/products")}
             >
-              进入审核
+              全部
             </button>
           </div>
           {ops?.pendingPreview?.length ? (
@@ -204,51 +204,12 @@ export default function Dashboard() {
                 </button>
               ))}
             </div>
-          ) : (
-            <p className="admin-hint">暂无待审核应用</p>
-          )}
+          ) : null}
         </div>
       )}
 
-      <div className="dash-section">
-        <h2 className="dash-section-title">快捷入口</h2>
-        <div className="dash-actions">
-          <button
-            type="button"
-            className="dash-action"
-            onClick={() => navigate("/admin/products")}
-          >
-            应用审核 / 下架
-            <span className="dash-action-badge">
-              {dashboard.products.pending}
-            </span>
-          </button>
-          <button
-            type="button"
-            className="dash-action"
-            onClick={() => navigate("/admin/shares")}
-          >
-            渠道推广许可
-          </button>
-          <button
-            type="button"
-            className="dash-action"
-            onClick={() => navigate("/admin/incentives")}
-          >
-            榜单激励配置
-          </button>
-          <button
-            type="button"
-            className="dash-action"
-            onClick={() => navigate("/admin/rankings")}
-          >
-            榜单管理
-          </button>
-        </div>
-      </div>
-
       <div className="dash-section dash-section-eco">
-        <EcosystemStats />
+        <EcosystemStats compact />
       </div>
     </div>
   );

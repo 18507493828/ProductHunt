@@ -16,7 +16,7 @@
     background: #e8dcc8; min-height: 100vh; display: flex; justify-content: center; color: var(--ink);
   }
   #phone {
-    width: 100%; max-width: 430px; min-height: 100vh;
+    width: 100%; max-width: 430px; height: 100dvh; min-height: 100dvh; max-height: 100dvh;
     background: linear-gradient(180deg, #b8dff0 0%, #d4eef8 18%, var(--cream) 42%);
     display: flex; flex-direction: column; position: relative; overflow: hidden;
   }
@@ -49,6 +49,12 @@
     color: #4a7a8c; letter-spacing: -.02em;
   }
   header p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .geo-hint { font-size: 11px; color: #6a8a9a; margin-top: 4px; min-height: 14px; }
+  .nav-walk {
+    border: none; background: #e8f2f6; color: #4a7a8c;
+    font: inherit; font-size: 12px; font-weight: 700;
+    padding: 6px 10px; border-radius: 999px; cursor: pointer; flex: none;
+  }
 
   .mine-strip {
     position: sticky; top: 0; z-index: 8;
@@ -56,7 +62,7 @@
     background: rgba(255,255,255,.94); backdrop-filter: blur(8px);
     border: 2px solid rgba(255,143,107,.25); border-radius: 16px;
     box-shadow: 0 6px 18px rgba(180,150,120,.12);
-    scroll-margin-top: 8px; max-height: 42vh; overflow: auto;
+    scroll-margin-top: 8px; max-height: 28vh; overflow: auto;
     transition: box-shadow .25s, border-color .25s;
   }
   .mine-strip.focus {
@@ -93,48 +99,33 @@
   }
 
   .map-strip {
-    margin: 8px 14px 0; background: linear-gradient(180deg, #c8e6a8 0%, #e8f5d4 40%, #f5ebe0 100%);
-    border-radius: 20px; height: 200px; position: relative; overflow: hidden;
-    box-shadow: 0 8px 24px rgba(120,140,100,.15); border: 2px solid rgba(255,255,255,.7);
+    margin: 8px 14px 0; height: 200px; position: relative; overflow: hidden;
+    border-radius: 20px; box-shadow: 0 8px 24px rgba(120,140,100,.15);
+    border: 2px solid rgba(255,255,255,.7); z-index: 1; background: #d4e8c8;
+    flex: none;
   }
-  .path {
-    position: absolute; left: 8%; right: 8%; top: 55%; height: 0;
-    border-top: 3px dashed rgba(120,100,70,.35);
+  .map-strip .map-fallback {
+    position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+    padding: 16px; font-size: 12px; color: #6a8a5a; line-height: 1.5; pointer-events: none;
   }
-  .path svg {
-    position: absolute; left: 0; right: 0; top: -40px; width: 100%; height: 80px; overflow: visible;
+  .map-strip.has-map .map-fallback { display: none; }
+  .map-strip .leaflet-container { height: 100%; width: 100%; font: inherit; background: #d4e8c8; }
+  .map-strip .leaflet-control-attribution { font-size: 9px; }
+  .walk-marker { background: none !important; border: none !important; }
+  .walk-pin {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #fff; border: 3px solid #fff; box-shadow: 0 4px 12px rgba(80,60,40,.2);
+    display: grid; place-items: center; font-size: 20px; line-height: 1;
   }
-  .park-label {
-    position: absolute; font-size: 10px; font-weight: 700; color: #6a8a5a;
-    background: rgba(255,255,255,.7); padding: 3px 8px; border-radius: 999px;
-  }
-  .bubble {
-    position: absolute; width: 48px; height: 48px; border-radius: 50%;
-    background: #fff; border: 3px solid #fff; box-shadow: 0 4px 14px rgba(80,60,40,.18);
-    display: grid; place-items: center; font-size: 24px; cursor: pointer;
-    transition: transform .2s; z-index: 2; animation: bob 2.8s ease-in-out infinite;
-  }
-  .bubble.joined {
-    border-color: var(--coral);
-    box-shadow: 0 0 0 4px rgba(255,143,107,.35), 0 4px 14px rgba(80,60,40,.18);
-  }
-  .bubble:hover, .bubble.on { transform: scale(1.12); border-color: var(--coral); }
-  .bubble.joined.on {
-    box-shadow: 0 0 0 5px rgba(255,143,107,.45), 0 4px 14px rgba(80,60,40,.18);
-  }
-  .bubble .tip {
-    position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%) scale(.96);
-    background: var(--ink); color: #fff; font-size: 10px; padding: 4px 8px; border-radius: 6px;
-    white-space: nowrap; opacity: 0; pointer-events: none; transition: .15s;
-  }
-  .bubble.on .tip { opacity: 1; }
-  @keyframes bob {
-    0%,100% { translate: 0 0; }
-    50% { translate: 0 -6px; }
+  .walk-pin.on { border-color: var(--coral); transform: scale(1.1); }
+  .walk-pin.joined { border-color: var(--coral); box-shadow: 0 0 0 3px rgba(255,143,107,.35), 0 4px 12px rgba(80,60,40,.2); }
+  .me-pin {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #4a7a8c; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(74,122,140,.45);
   }
 
   .walk-list {
-    flex: 1; padding: 14px 14px 110px; overflow: auto;
+    flex: 1; padding: 14px 14px 130px; overflow: auto; min-height: 0;
   }
   .walk-list h2 {
     font-family: Quicksand, sans-serif; font-size: 15px; color: #6a8a9a; margin-bottom: 10px;
@@ -163,11 +154,12 @@
   .compose {
     position: absolute; left: 14px; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom));
     background: #fff; border-radius: 20px; padding: 12px 14px;
-    box-shadow: 0 10px 32px rgba(80,60,40,.15); display: flex; gap: 10px; align-items: center; z-index: 10;
+    box-shadow: 0 10px 32px rgba(80,60,40,.15); display: flex; flex-direction: column; gap: 8px; z-index: 10;
   }
+  .compose .row { display: flex; gap: 8px; align-items: center; }
   .compose input {
     flex: 1; border: none; background: #fff8ee; border-radius: 12px; padding: 11px 12px;
-    font: inherit; font-size: 13px; outline: none;
+    font: inherit; font-size: 13px; outline: none; min-width: 0;
   }
   .compose button {
     border: none; background: #4a7a8c; color: #fff; font: inherit; font-weight: 700;
@@ -190,17 +182,15 @@
   <header>
     <h1>遛宠圈</h1>
     <p>今天一起出门吸氧吧</p>
+    <div class="geo-hint" id="geoHint">定位中…</div>
+    <button type="button" class="nav-walk" id="relocate-btn" style="margin-top:8px">重新定位</button>
   </header>
   <div class="mine-strip" id="mine-strip"></div>
   <div class="toast" id="toast"></div>
 
   <div class="map-strip" id="map">
-    <svg class="path" viewBox="0 0 300 80" preserveAspectRatio="none" style="position:absolute;left:5%;right:5%;top:35%;width:90%;height:90px">
-      <path d="M10 50 C 60 10, 100 70, 150 40 S 240 10, 290 45" fill="none" stroke="rgba(120,100,70,.4)" stroke-width="3" stroke-dasharray="8 6"/>
-    </svg>
-    <span class="park-label" style="left:12px;top:12px">社区花园</span>
-    <span class="park-label" style="right:12px;bottom:14px">湖心步道</span>
-    <div id="bubbles"></div>
+    <div class="map-fallback" id="map-fallback">地图加载中…</div>
+    <div id="map-canvas" style="height:100%;width:100%"></div>
   </div>
 
   <div class="walk-list">
@@ -209,25 +199,161 @@
   </div>
 
   <div class="compose">
-    <input id="newRoute" placeholder="发起：如 傍晚滨河线 · 带柯基" maxlength="40">
-    <button id="startWalk">出发</button>
+    <input id="newRoute" placeholder="路线名：如 傍晚滨河线 · 带柯基" maxlength="40">
+    <div class="row">
+      <input id="newTime" placeholder="时间：今天 18:00" maxlength="24">
+      <input id="newPlace" placeholder="集合点" maxlength="28">
+      <button id="startWalk">出发</button>
+    </div>
   </div>
 </div>
 <script>
+function mscMe(){ return (window.MashangChuangAuth && MashangChuangAuth.meLabel()) || window.__MSC_ME__ || "我"; }
 const LS = "liuchong-walks-v3";
 const PET_EMOJI = ["🐕","🐈","🐩","🦮","🐶","🐱","🐰","🦊"];
-let walks = JSON.parse(localStorage.getItem(LS) || "null") || [
-  { id:"w1", title:"滨河晚风线", time:"今天 18:00", place:"滨河公园西门", dist:"2.4km", pets:["🐕","🐈"], petNames:["豆豆","咪咪"], host:"小鹿", joined:false, map:{x:18,y:42} },
-  { id:"w2", title:"湖心一圈浅跑", time:"今天 17:30", place:"城南湖步道", dist:"3.1km", pets:["🐩","🦮","🐶"], petNames:["棉花糖","阿黄","球球"], host:"阿汤", joined:false, map:{x:55,y:28} },
-  { id:"w3", title:"社区花园晒太阳", time:"明天 09:00", place:"梧桐社区花园", dist:"1.2km", pets:["🐱","🐰"], petNames:["橘子","蹦蹦"], host:"绵绵", joined:false, map:{x:72,y:58} },
-  { id:"w4", title:"夜遛小吃局", time:"今天 20:30", place:"大学路夜市口", dist:"1.8km", pets:["🐕","🦊"], petNames:["旺财","小狐"], host:"皮皮", joined:false, map:{x:38,y:62} },
+const DEFAULT_WALKS = [
+  { id:"w1", title:"滨河晚风线", time:"今天 18:00", place:"滨河公园西门", dNorth:1800, dEast:-1600, pets:["🐕","🐈"], petNames:["豆豆","咪咪"], host:"小鹿", joined:false },
+  { id:"w2", title:"湖心一圈浅跑", time:"今天 17:30", place:"城南湖步道", dNorth:-2200, dEast:2200, pets:["🐩","🦮","🐶"], petNames:["棉花糖","阿黄","球球"], host:"阿汤", joined:false },
+  { id:"w3", title:"社区花园晒太阳", time:"明天 09:00", place:"梧桐社区花园", dNorth:900, dEast:800, pets:["🐱","🐰"], petNames:["橘子","蹦蹦"], host:"绵绵", joined:false },
+  { id:"w4", title:"夜遛小吃局", time:"今天 20:30", place:"大学路夜市口", dNorth:-1200, dEast:-1300, pets:["🐕","🦊"], petNames:["旺财","小狐"], host:"皮皮", joined:false },
 ];
+let walks = DEFAULT_WALKS.map(w=>({...w, pets:w.pets.slice(), petNames:w.petNames.slice(), map: w.map ? {...w.map} : {x:50,y:50}}));
 let focus = walks[0].id;
 let highlightMine = null;
+let userPos = null;
+let geoOk = false;
+let userPlaceLabel = "";
+let leafletMap = null;
+let meMarker = null;
+const walkMarkers = new Map();
+
+function applyGeoToWalks(pos){
+  if(!pos || !window.MashangChuangGeo) return;
+  const G = MashangChuangGeo;
+  walks.forEach(w => {
+    if(w.lat == null || w.lng == null){
+      const p = G.offsetLatLng(pos.lat, pos.lng, w.dNorth || 400, w.dEast || 200);
+      w.lat = p.lat; w.lng = p.lng;
+    }
+    const meters = G.haversine(pos, { lat: w.lat, lng: w.lng });
+    w.dist = G.formatDist(meters);
+  });
+}
+
+function leaveOrDeleteWalk(w){
+  if(!w) return;
+  const isHost = w.mine || w.host === mscMe() || w.host === "我" || (!!window.__MSC_ME__ && w.host === window.__MSC_ME__);
+  if(isHost){
+    walks = walks.filter(x=>x.id!==w.id);
+    if(focus===w.id) focus = (walks[0] && walks[0].id) || null;
+    toast("已删除我发起的路线");
+  } else {
+    w.joined = false;
+    toast("已取消本次遛宠");
+  }
+  save(); render();
+}
+
+function walkIcon(w){
+  const L = window.L;
+  const emoji = (w.pets && w.pets[0]) || "🐾";
+  const on = focus === w.id ? " on" : "";
+  const joined = w.joined ? " joined" : "";
+  return L.divIcon({
+    className: "walk-marker",
+    html: `<div class="walk-pin${on}${joined}">${emoji}</div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+  });
+}
+function meIcon(){
+  return window.L.divIcon({
+    className: "walk-marker",
+    html: '<div class="me-pin"></div>',
+    iconSize: [16, 16],
+    iconAnchor: [8, 8]
+  });
+}
+
+async function ensureMap(){
+  const strip = $("map");
+  const fallback = $("map-fallback");
+  if(!window.MashangChuangGeo){
+    if(fallback) fallback.textContent = "地图组件未加载";
+    return null;
+  }
+  try{
+    const center = userPos || MashangChuangGeo.FALLBACK;
+    const res = await MashangChuangGeo.createMap("map-canvas", center);
+    leafletMap = res.map;
+    if(strip) strip.classList.add("has-map");
+    setTimeout(()=>{ try{ leafletMap && leafletMap.invalidateSize(); }catch(e){} }, 120);
+    setTimeout(()=>{ try{ leafletMap && leafletMap.invalidateSize(); }catch(e){} }, 400);
+    return leafletMap;
+  }catch(e){
+    if(fallback) fallback.textContent = "地图暂时不可用 · 仍可浏览下方遛宠局";
+    return null;
+  }
+}
+
+function syncMapMarkers(){
+  if(!leafletMap || !window.L) return;
+  walkMarkers.forEach(m => leafletMap.removeLayer(m));
+  walkMarkers.clear();
+  walks.forEach(w => {
+    if(w.lat == null || w.lng == null) return;
+    const m = L.marker([w.lat, w.lng], { icon: walkIcon(w), title: w.title, zIndexOffset: focus === w.id ? 500 : 0 })
+      .addTo(leafletMap)
+      .bindTooltip(w.title, { direction: "top", offset: [0, -18] });
+    m.on("click", () => {
+      focus = w.id;
+      render();
+      document.querySelector(`.walk[data-id="${focus}"]`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    walkMarkers.set(w.id, m);
+  });
+  if(userPos){
+    if(meMarker) leafletMap.removeLayer(meMarker);
+    meMarker = L.marker([userPos.lat, userPos.lng], { icon: meIcon(), zIndexOffset: 1000, title: "我的位置" }).addTo(leafletMap);
+  }
+}
+
+function fitMapBounds(){
+  if(!leafletMap) return;
+  const latlngs = walks.filter(w => w.lat != null && w.lng != null).map(w => [w.lat, w.lng]);
+  if(userPos) latlngs.push([userPos.lat, userPos.lng]);
+  if(!latlngs.length) return;
+  leafletMap.fitBounds(latlngs, { padding: [28, 28], maxZoom: 15 });
+}
+
+async function locateWalks(showToast){
+  if(!window.MashangChuangGeo) return;
+  const hint = $("geoHint");
+  if(hint) hint.textContent = "正在定位…";
+  const btn = $("relocate-btn");
+  if(btn) btn.disabled = true;
+  const loc = await MashangChuangGeo.locateWithPlace();
+  userPos = loc.pos;
+  geoOk = !!loc.ok;
+  userPlaceLabel = loc.ok
+    ? (loc.placeLabel || loc.placeShort || "当前位置")
+    : MashangChuangGeo.FALLBACK.label;
+  applyGeoToWalks(userPos);
+  if(hint) hint.textContent = geoOk
+    ? ("已定位 · " + userPlaceLabel)
+    : ("定位未授权 · " + userPlaceLabel);
+  save();
+  await ensureMap();
+  render();
+  fitMapBounds();
+  if(btn) btn.disabled = false;
+  if(showToast) toast(geoOk ? ("已重新定位 · " + userPlaceLabel) : "定位失败，使用默认位置");
+}
 
 const $=id=>document.getElementById(id);
-const save=()=>localStorage.setItem(LS, JSON.stringify(walks));
+const save=()=>MashangChuangAuth.writeJSON(LS, walks);
 const toast=m=>{ const t=$("toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2000); };
+$("relocate-btn")?.addEventListener("click", ()=>locateWalks(true));
 
 function focusMine(id){
   highlightMine = id;
@@ -260,26 +386,11 @@ function renderMine(){
           <div class="meta">${w.time} · ${w.place} · 约 ${w.dist||"—"}</div>
           <div class="pals">毛孩搭子：${pals} ${w.pets.map(p=>p).join("")}</div>
         </div>
-        <button type="button" class="cancel" data-cancel="${w.id}">取消</button>
+        ${w.lat!=null?`<button type="button" class="nav-walk" data-nav="${w.id}">导航</button>`:""}
+        <button type="button" class="cancel" data-cancel="${w.id}">${(w.mine||w.host===mscMe())?"删除路线":"取消"}</button>
       </div>
     </div>`;
   }).join("");
-}
-
-function renderBubbles(){
-  $("bubbles").innerHTML = walks.map((w,i)=>{
-    const emoji = w.pets[0] || "🐾";
-    return `<div class="bubble ${focus===w.id?'on':''} ${w.joined?'joined':''}" data-id="${w.id}"
-      style="left:${w.map.x}%;top:${w.map.y}%;animation-delay:${i*.35}s">
-      ${emoji}<span class="tip">${w.title}</span>
-    </div>`;
-  }).join("");
-  $("bubbles").onclick = e => {
-    const b = e.target.closest("[data-id]"); if(!b) return;
-    focus = b.dataset.id;
-    render();
-    document.querySelector(`.walk[data-id="${focus}"]`)?.scrollIntoView({ behavior:"smooth", block:"nearest" });
-  };
 }
 
 function renderList(){
@@ -290,20 +401,26 @@ function renderList(){
         <div class="meta">${w.time} · ${w.place} · ${w.dist||"—"}<br>发起人 ${w.host} · ${(w.petNames||[]).join("、")||w.pets.length+" 只毛孩子"}</div>
         <div class="pets-row">${w.pets.map(p=>`<span>${p}</span>`).join("")}${w.joined?`<span>🙋</span>`:""}</div>
       </div>
-      <button class="join ${w.joined?'done':''}" data-join="${w.id}">${w.joined?"已加入":"一起遛"}</button>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:stretch">
+        ${w.lat!=null?`<button type="button" class="nav-walk" data-nav="${w.id}">导航</button>`:""}
+        <button class="join ${w.joined?'done':''}" data-join="${w.id}">${w.joined?(w.mine||w.host===mscMe()?"删除路线":"已加入"):"一起遛"}</button>
+      </div>
     </article>`).join("");
 
   $("list").onclick = e => {
+    const nav = e.target.closest("[data-nav]");
+    if(nav){
+      const w = walks.find(x=>x.id===nav.dataset.nav);
+      if(w && w.lat != null && window.MashangChuangGeo) MashangChuangGeo.openNav({ lat:w.lat, lng:w.lng, name:w.place||w.title });
+      return;
+    }
     const join = e.target.closest("[data-join]");
     const card = e.target.closest("[data-id]");
     if(join){
       const w = walks.find(x=>x.id===join.dataset.join);
       if(!w) return;
       if(w.joined){
-        w.joined = false;
-        toast("已取消本次遛宠");
-        focus = w.id;
-        save(); render();
+        leaveOrDeleteWalk(w);
       } else {
         w.joined = true;
         focus = w.id;
@@ -317,17 +434,19 @@ function renderList(){
   };
 }
 
-function render(){ renderMine(); renderBubbles(); renderList(); }
+function render(){ renderMine(); syncMapMarkers(); renderList(); }
 
 $("mine-strip").onclick = e => {
+  const nav = e.target.closest("[data-nav]");
+  if(nav){
+    const w = walks.find(x=>x.id===nav.dataset.nav);
+    if(w && w.lat != null && window.MashangChuangGeo) MashangChuangGeo.openNav({ lat:w.lat, lng:w.lng, name:w.place||w.title });
+    return;
+  }
   const cancel = e.target.closest("[data-cancel]");
   if(cancel){
     const w = walks.find(x=>x.id===cancel.dataset.cancel);
-    if(!w) return;
-    w.joined = false;
-    focus = w.id;
-    save(); render();
-    toast("已取消本次遛宠");
+    leaveOrDeleteWalk(w);
     return;
   }
   const row = e.target.closest("[data-focus]");
@@ -342,19 +461,70 @@ $("startWalk").onclick = () => {
   const title = $("newRoute").value.trim();
   if(!title){ $("newRoute").focus(); toast("写一条路线名字吧"); return; }
   const pet = PET_EMOJI[Math.floor(Math.random()*PET_EMOJI.length)];
+  const origin = userPos || (window.MashangChuangGeo && MashangChuangGeo.FALLBACK) || { lat:30.2741, lng:120.1551 };
+  const ang = Math.random() * Math.PI * 2;
+  const meters = 400 + Math.floor(Math.random() * 401);
+  const dNorth = Math.cos(ang) * meters;
+  const dEast = Math.sin(ang) * meters;
+  let lat, lng, dist = "约 " + (meters >= 1000 ? (meters/1000).toFixed(1)+"km" : meters+"m");
+  if(window.MashangChuangGeo){
+    const p = MashangChuangGeo.offsetLatLng(origin.lat, origin.lng, dNorth, dEast);
+    lat = p.lat; lng = p.lng;
+    dist = MashangChuangGeo.formatDist(MashangChuangGeo.haversine(origin, p));
+  }
   const nw = {
-    id: "w"+Date.now(), title, time: "待定", place: "自定集合点", dist: "约 2km",
-    pets: [pet], petNames: ["我家宝贝"], host: "我", joined: true,
-    map: { x: 20+Math.random()*55, y: 25+Math.random()*40 }
+    id: "w"+Date.now(), title,
+    time: $("newTime").value.trim() || "待定",
+    place: $("newPlace").value.trim() || "自定集合点",
+    dist, lat, lng, dNorth, dEast,
+    pets: [pet], petNames: ["我家宝贝"], host: mscMe(), joined: true, mine: true,
+    map: { x: 50, y: 50 }
   };
   walks.unshift(nw); focus = nw.id; save();
   $("newRoute").value = "";
+  $("newTime").value = "";
+  $("newPlace").value = "";
   toast("路线已放到地图上");
   render();
+  fitMapBounds();
   focusMine(nw.id);
 };
 
-render();
 </script>
+<script src="/apps/_shared/geo.js"></script>
+<script src="/apps/_shared/auth.js"></script>
+
+<script>
+(function(){
+  if(!window.MashangChuangAuth) return;
+  MashangChuangAuth.boot({
+    requireLogin: false,
+    appName: '遛宠圈',
+    onReady: async function(user){
+      window.__MSC_USER__ = user;
+      document.dispatchEvent(new CustomEvent('msc-auth-ready', { detail: user }));
+      try {
+        var label = MashangChuangAuth.meLabel('我');
+        window.__MSC_ME__ = label;
+      } catch(e) {}
+      walks = MashangChuangAuth.readJSON(LS, null) || DEFAULT_WALKS.map(function(w){
+        return Object.assign({}, w, { pets: w.pets.slice(), petNames: w.petNames.slice(), map: Object.assign({}, w.map || {x:50,y:50}) });
+      });
+      if(!walks.find(function(w){ return w.id === focus; })) focus = walks[0] && walks[0].id;
+      if(window.MashangChuangGeo){
+        userPos = MashangChuangGeo.FALLBACK;
+        userPlaceLabel = MashangChuangGeo.FALLBACK.label || "杭州西湖附近";
+        applyGeoToWalks(userPos);
+      }
+      if(typeof render === 'function') render();
+      if(typeof ensureMap === 'function'){
+        ensureMap().then(function(){ if(typeof fitMapBounds === 'function') fitMapBounds(); });
+      }
+      if(typeof locateWalks === 'function') locateWalks();
+    }
+  });
+})();
+</script>
+
 </body>
 </html>

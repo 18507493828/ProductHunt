@@ -1,37 +1,32 @@
-import { Link, Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, Navigate, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../AuthContext";
 import BrandLogo from "../../components/BrandLogo";
 
-const NAV_ITEMS = [
-  { to: "/admin", end: true, label: "关键看板" },
-  { to: "/admin/products", end: false, label: "应用审核" },
-  { to: "/admin/votes", end: false, label: "投票管理" },
-  { to: "/admin/rankings", end: false, label: "榜单管理" },
-  { to: "/admin/incentives", end: false, label: "榜单激励" },
-  { to: "/admin/shares", end: false, label: "渠道许可" },
-  { to: "/admin/categories", end: false, label: "分类管理" },
-  { to: "/admin/campaigns", end: false, label: "活动管理" },
-  { to: "/admin/banners", end: false, label: "轮播管理" },
-  { to: "/admin/navs", end: false, label: "导航管理" },
+const NAV_GROUPS = [
+  {
+    items: [
+      { to: "/admin", end: true, label: "数据看板" },
+      { to: "/admin/products", end: false, label: "应用管理" },
+      { to: "/admin/topics", end: false, label: "构建场景话题" },
+      { to: "/admin/channels", end: false, label: "推广渠道管理" },
+      { to: "/admin/rank-incentives", end: false, label: "榜单&激励管理" },
+      { to: "/admin/build-tools", end: false, label: "构建工具&激励" },
+    ],
+  },
+  {
+    label: "内容运营",
+    items: [
+      { to: "/admin/votes", end: false, label: "投票管理" },
+      { to: "/admin/categories", end: false, label: "分类管理" },
+      { to: "/admin/campaigns", end: false, label: "活动管理" },
+      { to: "/admin/banners", end: false, label: "轮播管理" },
+      { to: "/admin/navs", end: false, label: "导航管理" },
+    ],
+  },
 ];
-
-const TITLE_MAP = {
-  "/admin": "关键指标看板",
-  "/admin/products": "应用审核与下架",
-  "/admin/votes": "投票管理",
-  "/admin/rankings": "榜单管理",
-  "/admin/incentives": "榜单与激励系统",
-  "/admin/shares": "渠道推广许可",
-  "/admin/categories": "分类管理",
-  "/admin/campaigns": "活动管理",
-  "/admin/banners": "轮播管理",
-  "/admin/navs": "导航管理",
-};
 
 export default function AdminLayout() {
   const { user, isAdmin, loading } = useAuth();
-  const { pathname } = useLocation();
-  const title = TITLE_MAP[pathname] || "后台管理";
 
   if (loading) {
     return <div className="auth-page">加载中...</div>;
@@ -66,17 +61,24 @@ export default function AdminLayout() {
             </Link>
 
             <nav className="admin-sidebar-nav" aria-label="后台导航">
-              {NAV_ITEMS.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  className={({ isActive }) =>
-                    "admin-nav-item" + (isActive ? " active" : "")
-                  }
-                >
-                  {item.label}
-                </NavLink>
+              {NAV_GROUPS.map((group, groupIndex) => (
+                <div className="admin-nav-group" key={group.label || groupIndex}>
+                  {group.label ? (
+                    <p className="admin-nav-group-label">{group.label}</p>
+                  ) : null}
+                  {group.items.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.end}
+                      className={({ isActive }) =>
+                        "admin-nav-item" + (isActive ? " active" : "")
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </div>
               ))}
             </nav>
           </aside>
@@ -85,10 +87,8 @@ export default function AdminLayout() {
             <header className="admin-main-header">
               <div className="admin-main-title">
                 <span className="admin-brand-name">码上创 vibe building</span>
-                <span className="admin-brand-divider">·</span>
-                <h1>{title}</h1>
               </div>
-              <span className="admin-header-user">运营：{user.username}</span>
+              <span className="admin-header-user">{user.username}</span>
             </header>
             <div className="admin-main-content">
               <Outlet />

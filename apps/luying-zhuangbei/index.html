@@ -27,14 +27,17 @@ body{
   background:linear-gradient(160deg,#5c4033,#8b7355);color:#f5efe4;border-radius:20px;padding:18px;
   box-shadow:0 14px 36px rgba(92,64,51,.25);
 }
-.weather .loc{font-size:12px;opacity:.8;letter-spacing:.08em}
+.weather .loc{font-size:12px;opacity:.8;letter-spacing:.04em;line-height:1.45}
 .weather .temp{font-family:"Special Elite",monospace;font-size:56px;line-height:1;margin:8px 0 4px}
 .weather .desc{font-size:14px;margin-bottom:14px}
 .w-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .w-grid div{background:rgba(255,255,255,.1);border-radius:12px;padding:10px}
 .w-grid b{display:block;font-size:15px}.w-grid span{font-size:11px;opacity:.75}
 .controls{margin-top:14px;display:flex;flex-direction:column;gap:10px}
-.controls label{font-size:12px;opacity:.85;display:block;margin-bottom:4px}
+.controls label{font-size:12px;opacity:.85;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.controls label button{
+  border:none;background:transparent;color:#e8dcc4;font:inherit;font-size:11px;font-weight:700;cursor:pointer;padding:0;opacity:.95;
+}
 .controls select,.controls input{
   width:100%;border:none;border-radius:10px;padding:10px 12px;font:inherit;background:rgba(255,255,255,.92);color:var(--ink);
 }
@@ -42,9 +45,7 @@ body{
   border:none;border-radius:12px;padding:12px;font:inherit;font-weight:800;cursor:pointer;
   background:#f5efe4;color:var(--brown);margin-top:4px;
 }
-.progress{
-  margin-top:14px;font-size:12px;opacity:.9;
-}
+.progress{margin-top:14px;font-size:12px;opacity:.9}
 .bar{height:8px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden;margin-top:6px}
 .bar i{display:block;height:100%;background:#e8dcc4;border-radius:99px;width:0%;transition:.3s}
 .crates{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
@@ -85,19 +86,19 @@ body{
   <header class="head">
     <div>
       <h1>露营装备单</h1>
-      <p>按人数与天气生成装箱清单，勾选即打包</p>
+      <p>按人数与实时天气生成装箱清单，勾选即打包</p>
     </div>
   </header>
   <div class="layout">
     <aside class="weather">
-      <div class="loc">CAMPSITE · 龙脊山谷</div>
-      <div class="temp" id="temp">18°</div>
-      <div class="desc" id="wdesc">多云 · 适宜露营</div>
+      <div class="loc" id="loc">正在定位并拉取天气…</div>
+      <div class="temp" id="temp">--°</div>
+      <div class="desc" id="wdesc">请稍候</div>
       <div class="w-grid">
-        <div><b id="wind">3 级</b><span>风力</span></div>
-        <div><b id="rain">10%</b><span>降水概率</span></div>
-        <div><b id="low">12°</b><span>夜间低温</span></div>
-        <div><b id="uv">中等</b><span>紫外线</span></div>
+        <div><b id="wind">—</b><span>风力</span></div>
+        <div><b id="rain">—</b><span>降水概率</span></div>
+        <div><b id="low">—</b><span>夜间低温</span></div>
+        <div><b id="uv">—</b><span>紫外线</span></div>
       </div>
       <div class="controls">
         <div>
@@ -105,8 +106,9 @@ body{
           <input type="number" id="people" min="1" max="12" value="3">
         </div>
         <div>
-          <label>天气情景</label>
+          <label>装备情景 <button type="button" id="refresh-wx">重新定位</button></label>
           <select id="weather">
+            <option value="auto">跟随实时天气</option>
             <option value="clear">晴好干燥</option>
             <option value="cool">凉爽多风</option>
             <option value="rain">有雨转凉</option>
@@ -124,13 +126,9 @@ body{
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<script src="/apps/_shared/geo.js"></script>
 <script>
-const WEATHER={
-  clear:{temp:22,desc:"晴好干燥 · 星空友好",wind:"2 级",rain:"5%",low:"14°",uv:"高"},
-  cool:{temp:16,desc:"凉爽多风 · 注意防风",wind:"4 级",rain:"15%",low:"9°",uv:"中等"},
-  rain:{temp:14,desc:"有雨转凉 · 防水优先",wind:"3 级",rain:"70%",low:"8°",uv:"低"},
-  hot:{temp:31,desc:"炎热暴晒 · 遮阳补水",wind:"2 级",rain:"0%",low:"23°",uv:"很强"}
-};
+const SCENARIO_LABEL={clear:"晴好干燥",cool:"凉爽多风",rain:"有雨转凉",hot:"炎热暴晒"};
 const BASE={
   睡眠:[{id:"tent",label:"帐篷 / 天幕",tag:"必备"},{id:"bag",label:"睡袋",tag:"按人"},{id:"mat",label:"防潮垫 / 充气垫",tag:"按人"},{id:"pillow",label:"充气枕",tag:"舒适"}],
   炊事:[{id:"stove",label:"气罐炉头",tag:"必备"},{id:"pot",label:"套锅",tag:"共用"},{id:"cutlery",label:"餐具套装",tag:"按人"},{id:"water",label:"饮用水 / 滤水器",tag:"按人"}],
@@ -144,22 +142,70 @@ const EXTRA={
   clear:[{cat:"安全",id:"chair",label:"折叠椅",tag:"舒适"}]
 };
 const KEY="ly-pack-v1";
-let checked=new Set(JSON.parse(localStorage.getItem(KEY)||"[]"));
+const PREF_KEY="ly-pack-prefs-v1";
+let checked=new Set();
 let items=[];
+let liveWx=null;
+let userPos=null;
+let userPlaceLabel="";
 
 function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1600)}
-function applyWeather(){
-  const w=WEATHER[document.getElementById("weather").value];
-  document.getElementById("temp").textContent=w.temp+"°";
-  document.getElementById("wdesc").textContent=w.desc;
-  document.getElementById("wind").textContent=w.wind;
-  document.getElementById("rain").textContent=w.rain;
-  document.getElementById("low").textContent=w.low;
-  document.getElementById("uv").textContent=w.uv;
+function loadPrefs(){
+  const prefs=MashangChuangAuth.readJSON(PREF_KEY, null);
+  if(prefs){
+    if(prefs.people) document.getElementById("people").value=prefs.people;
+    if(prefs.weather) document.getElementById("weather").value=prefs.weather;
+  }
+}
+function savePrefs(){
+  MashangChuangAuth.writeJSON(PREF_KEY,{
+    people:+document.getElementById("people").value||1,
+    weather:document.getElementById("weather").value
+  });
+}
+function activeScenario(){
+  const v=document.getElementById("weather").value;
+  if(v!=="auto") return v;
+  return (liveWx && liveWx.scenario) || "clear";
+}
+function paintWeatherPanel(){
+  if(!liveWx){
+    document.getElementById("temp").textContent="--°";
+    document.getElementById("wdesc").textContent="天气暂不可用";
+    return;
+  }
+  document.getElementById("temp").textContent=liveWx.temp+"°";
+  document.getElementById("wdesc").textContent=liveWx.desc;
+  document.getElementById("wind").textContent=liveWx.wind;
+  document.getElementById("rain").textContent=liveWx.rain;
+  document.getElementById("low").textContent=liveWx.low+"°";
+  document.getElementById("uv").textContent=liveWx.uv;
+}
+async function refreshWeather(showToast){
+  document.getElementById("loc").textContent="正在定位并拉取天气…";
+  const loc=await MashangChuangGeo.locateWithPlace();
+  userPos=loc.pos;
+  userPlaceLabel=loc.ok
+    ? (loc.placeLabel||loc.placeShort||"当前位置")
+    : MashangChuangGeo.FALLBACK.label;
+  const place=loc.ok
+    ? `当前位置 · ${userPlaceLabel}`
+    : `默认营地 · ${userPlaceLabel}`;
+  try{
+    liveWx=await MashangChuangGeo.fetchWeather(userPos.lat, userPos.lng);
+    document.getElementById("loc").textContent=place+" · 实况天气";
+    paintWeatherPanel();
+    if(showToast) toast("已重新定位 · "+userPlaceLabel);
+  }catch(e){
+    document.getElementById("loc").textContent=place+" · 天气拉取失败";
+    liveWx=null;
+    paintWeatherPanel();
+    if(showToast) toast(loc.ok?"已定位，天气暂不可用":"定位失败，可手动选情景");
+  }
 }
 function build(silent){
   const people=+document.getElementById("people").value||1;
-  const weather=document.getElementById("weather").value;
+  const weather=activeScenario();
   const cats={};
   Object.entries(BASE).forEach(([cat,list])=>{
     cats[cat]=list.map(it=>{
@@ -175,9 +221,10 @@ function build(silent){
   items=Object.entries(cats).flatMap(([cat,list])=>list.map(x=>({...x,cat})));
   const ids=new Set(items.map(i=>i.id));
   checked=new Set([...checked].filter(id=>ids.has(id)));
-  localStorage.setItem(KEY,JSON.stringify([...checked]));
+  MashangChuangAuth.writeJSON(KEY,[...checked]);
+  savePrefs();
   render();
-  if(!silent) toast("已按 "+people+" 人 · "+WEATHER[weather].desc.split("·")[0].trim()+" 生成");
+  if(!silent) toast("已按 "+people+" 人 · "+SCENARIO_LABEL[weather]+" 生成");
 }
 function progress(){
   const total=items.length||1;
@@ -206,16 +253,41 @@ function render(){
   }).join("");
   progress();
 }
-document.getElementById("weather").onchange=applyWeather;
+document.getElementById("weather").onchange=()=>{savePrefs();build(true)};
+document.getElementById("people").onchange=savePrefs;
+document.getElementById("people").oninput=savePrefs;
 document.getElementById("gen").onclick=()=>build(false);
+document.getElementById("refresh-wx").onclick=()=>refreshWeather(true).then(()=>build(true));
 document.getElementById("crates").onclick=e=>{
   const row=e.target.closest("[data-id]");if(!row)return;
   const id=row.dataset.id;
   if(checked.has(id)) checked.delete(id); else checked.add(id);
-  localStorage.setItem(KEY,JSON.stringify([...checked]));
+  MashangChuangAuth.writeJSON(KEY,[...checked]);
   render();
 };
-applyWeather();build(true);
 </script>
+
+<script src="/apps/_shared/auth.js"></script>
+<script>
+(function(){
+  if(!window.MashangChuangAuth) return;
+  MashangChuangAuth.boot({
+    requireLogin: false,
+    appName: '露营装备单',
+    onReady: async function(user){
+      window.__MSC_USER__ = user;
+      document.dispatchEvent(new CustomEvent('msc-auth-ready', { detail: user }));
+      try {
+        window.__MSC_ME__ = MashangChuangAuth.meLabel('我');
+      } catch(e) {}
+      checked = new Set(MashangChuangAuth.readJSON(KEY, []) || []);
+      loadPrefs();
+      await refreshWeather(false);
+      build(true);
+    }
+  });
+})();
+</script>
+
 </body>
 </html>

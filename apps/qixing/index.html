@@ -59,8 +59,10 @@ body{
   padding:12px 14px;cursor:pointer;color:inherit;font:inherit;
 }
 .route.on{border-color:rgba(34,211,238,.45);background:rgba(34,211,238,.1)}
+.route.saved-hi{border-color:rgba(34,211,238,.7);background:rgba(34,211,238,.16)}
 .route.flash{animation:favFlash .9s ease}
 @keyframes favFlash{0%,100%{box-shadow:none}40%{box-shadow:0 0 0 2px rgba(34,211,238,.55)}}
+.route .star{color:var(--cyan);margin-left:4px}
 .route b{display:block;font-size:15px;font-weight:900;margin-bottom:4px}
 .route .m{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
 .route .m em{font-style:normal;color:var(--cyan);font-family:"Share Tech Mono",monospace}
@@ -68,12 +70,9 @@ body{
   padding:36px 18px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6;
 }
 .routes-empty b{display:block;color:var(--ink);font-size:14px;margin-bottom:6px}
-.mapbox{position:relative;min-height:280px;background:
-  linear-gradient(90deg,rgba(34,211,238,.05) 1px,transparent 1px) 0 0/40px 40px,
-  linear-gradient(rgba(34,211,238,.05) 1px,transparent 1px) 0 0/40px 40px,
-  #06141b;
-}
-.mapbox svg{width:100%;height:100%;min-height:280px;display:block}
+.mapbox{position:relative;min-height:260px;height:280px;background:#06141b;border-radius:0}
+.mapbox #map{width:100%;height:100%;min-height:220px}
+.leaflet-container{font:inherit;background:#06141b}
 .stations{padding:12px;display:flex;flex-direction:column;gap:8px;overflow:auto;max-height:220px}
 .station{
   display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;
@@ -93,7 +92,7 @@ body{
 .toast{
   position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
   background:rgba(230,251,255,.95);color:#042028;padding:10px 16px;border-radius:12px;font-size:13px;font-weight:700;
-  opacity:0;pointer-events:none;transition:.25s;z-index:40;
+  opacity:0;pointer-events:none;transition:.25s;z-index:2000;
 }
 .toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 .blink{animation:blink 1.4s infinite}
@@ -147,6 +146,23 @@ body{
   box-shadow:0 0 12px rgba(34,211,238,.5);transition:width .35s linear;
 }
 .panel.fav-focus{box-shadow:0 0 0 2px rgba(34,211,238,.35)}
+.trip-log{
+  margin-top:14px;border:1px solid rgba(34,211,238,.18);border-radius:14px;padding:12px 14px;
+  background:rgba(4,16,22,.55);
+}
+.trip-log h4{font-size:12px;font-weight:800;color:var(--cyan);letter-spacing:.06em;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.trip-log h4 button{
+  border:1px solid rgba(34,211,238,.3);background:transparent;color:var(--muted);
+  border-radius:8px;padding:4px 8px;font:inherit;font-size:11px;font-weight:700;cursor:pointer;
+}
+.trip-log-row{
+  display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:12px;padding:6px 0;
+  border-bottom:1px solid rgba(34,211,238,.08);color:var(--ink);
+}
+.trip-log-row > div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.trip-log-row:last-child{border-bottom:none}
+.trip-log-row span{color:var(--muted);font-family:"Share Tech Mono",monospace;font-size:11px}
+.trip-log-empty{font-size:12px;color:var(--muted);padding:4px 0}
 </style>
 </head>
 <body>
@@ -154,6 +170,10 @@ body{
   <div class="main-title">
     <h1>骑行城市线</h1>
     <span class="blink" id="rec">● REC HUD</span>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;flex-wrap:wrap">
+    <span id="place-label" style="font-size:12px;color:var(--muted)">定位中…</span>
+    <button type="button" class="btn ghost" id="relocate-btn" style="width:auto;margin:0;padding:6px 12px;font-size:12px">重新定位</button>
   </div>
   <div class="trip-card" id="trip-card">
     <div class="nav-top">
@@ -199,24 +219,20 @@ body{
         <button type="button" data-chip="saved">已收藏 <span id="chip-saved-n">0</span></button>
       </div>
       <div class="routes" id="routes"></div>
-      <div class="action-bar">
-        <button class="btn" id="start">开始导航（演示）</button>
+      <div class="action-bar" style="flex-wrap:wrap">
+        <button class="btn" id="start">开始导航</button>
         <button class="btn ghost" id="save">收藏路线</button>
+        <button class="btn ghost" id="open-start" type="button" style="flex:1 1 100%">地图导航到起点</button>
+      </div>
+      <div class="trip-log" id="trip-log">
+        <h4>行程记录 <button type="button" id="trip-clear">清空</button></h4>
+        <div id="trip-log-body"></div>
       </div>
     </section>
     <section class="panel">
       <div class="panel-h"><h2 id="rname">河岸绿道环线</h2><span id="rtag">CITY LOOP</span></div>
       <div class="mapbox">
-        <svg viewBox="0 0 560 280" id="svg">
-          <defs>
-            <linearGradient id="cyanGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#06b6d4"/>
-            </linearGradient>
-          </defs>
-          <path id="road" d="" fill="none" stroke="rgba(34,211,238,.15)" stroke-width="14" stroke-linecap="round"/>
-          <path id="line" d="" fill="none" stroke="url(#cyanGrad)" stroke-width="4" stroke-linecap="round"/>
-          <g id="pins"></g>
-        </svg>
+        <div id="map" style="height:100%;min-height:220px"></div>
       </div>
       <div class="panel-h" style="border-top:1px solid var(--line);border-bottom:none"><h2>补给站</h2><span>SUPPLY</span></div>
       <div class="stations" id="stations"></div>
@@ -226,27 +242,91 @@ body{
 <div class="toast" id="toast"></div>
 <script>
 const ROUTES=[
-  {id:1,name:"河岸绿道环线",tag:"CITY LOOP",km:18.4,mins:48,spd:24.6,cad:86,path:"M40 200 C120 160,180 120,260 140 S400 220,480 160 S520 100,540 90",
+  {id:1,name:"河岸绿道环线",tag:"CITY LOOP",km:18.4,mins:48,spd:24.6,cad:86,dNorth:420,dEast:-280,
     stations:[{name:"东桥补给点",desc:"饮水 · 打气筒",at:"4.2km"},{name:"湿地驿站",desc:"能量胶 · 卫生间",at:"9.8km"},{name:"南岸咖啡",desc:"休息 · 简易维修",at:"14.5km"}]},
-  {id:2,name:"大学城通勤快线",tag:"COMMUTE",km:12.0,mins:32,spd:27.1,cad:92,path:"M30 160 C140 140,220 200,320 170 S450 90,530 120",
+  {id:2,name:"大学城通勤快线",tag:"COMMUTE",km:12.0,mins:32,spd:27.1,cad:92,dNorth:-360,dEast:640,
     stations:[{name:"南门便利店",desc:"补给饮料",at:"3.0km"},{name:"体育馆气站",desc:"打气 · 补胎",at:"7.5km"}]},
-  {id:3,name:"古城骑行观光线",tag:"SIGHTSEE",km:22.5,mins:70,spd:21.0,cad:78,path:"M50 240 C100 100,200 80,280 150 S380 250,460 180 S520 120,540 140",
+  {id:3,name:"古城骑行观光线",tag:"SIGHTSEE",km:22.5,mins:70,spd:21.0,cad:78,dNorth:880,dEast:220,
     stations:[{name:"北门茶馆",desc:"歇脚 · 加水",at:"5.5km"},{name:"钟楼补给",desc:"能量棒",at:"11.0km"},{name:"护城河驿",desc:"维修工具箱",at:"17.2km"}]},
-  {id:4,name:"滨海风道冲刺",tag:"SPRINT",km:15.8,mins:38,spd:29.4,cad:98,path:"M40 120 C160 100,240 160,340 130 S470 70,540 80",
+  {id:4,name:"滨海风道冲刺",tag:"SPRINT",km:15.8,mins:38,spd:29.4,cad:98,dNorth:-180,dEast:-520,
     stations:[{name:"风车广场",desc:"饮水机",at:"6.0km"},{name:"灯塔补给",desc:"电解质 · 打气",at:"12.4km"}]},
-  {id:5,name:"山地公园爬坡线",tag:"CLIMB",km:25.0,mins:95,spd:16.8,cad:70,path:"M40 220 C90 200,130 80,220 100 S300 220,380 140 S470 60,540 100",
+  {id:5,name:"山地公园爬坡线",tag:"CLIMB",km:25.0,mins:95,spd:16.8,cad:70,dNorth:120,dEast:1100,
     stations:[{name:"山脚补给",desc:"重装补水",at:"2.0km"},{name:"半山观景台",desc:"休息 · 补给",at:"13.5km"},{name:"顶峰驿站",desc:"热饮 · 简修",at:"22.0km"}]}
 ];
 const KEY="qx-saved-v1";
-let saved=JSON.parse(localStorage.getItem(KEY)||"[]");
+const TRIP_KEY="qx-trips-v1";
+let saved=[];
+let trips=[];
 let active=ROUTES[0];
 let listFilter="all";
 let navTimer=null;
 let navTick=0;
+let navProgress=0;
 let navigating=false;
 let flashId=null;
+let geoWatchId=null;
+let gpsLive=false;
+let lastGpsPos=null;
+let distCoveredGps=0; // km from haversine accumulation
+let gpsSpeedKmh=null;
+let windLabel="";
+let userOrigin=null;
+let userPlaceLabel="";
+let leafletMap=null;
+let routePoly=null;
+let mapMarkers=[];
 
 function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1600)}
+function setPlaceUI(){
+  const el=document.getElementById("place-label");
+  if(el) el.textContent=userPlaceLabel?("当前位置 · "+userPlaceLabel):"定位中…";
+}
+function setRecStatus(){
+  const rec=document.getElementById("rec");
+  if(!navigating){rec.textContent="● REC HUD"+(windLabel?" · "+windLabel:"");return}
+  rec.textContent=gpsLive?"● GPS LIVE":"● NAV · 估算";
+  if(windLabel) rec.textContent+=" · "+windLabel;
+}
+async function refreshLocation(showToast){
+  const btn=document.getElementById("relocate-btn");
+  if(btn) btn.disabled=true;
+  if(!window.MashangChuangGeo){ if(btn) btn.disabled=false; return; }
+  try{
+    const loc=await MashangChuangGeo.locateWithPlace();
+    const p=loc.pos||MashangChuangGeo.FALLBACK;
+    userOrigin=p;
+    userPlaceLabel=loc.ok?(loc.placeLabel||loc.placeShort||"当前位置"):MashangChuangGeo.FALLBACK.label;
+    enrichRoutes(p);
+    setPlaceUI();
+    if(typeof render==="function") render();
+    try{
+      const wx=await MashangChuangGeo.fetchWeather(p.lat,p.lng);
+      windLabel="风 "+wx.wind;
+    }catch(e){}
+    setRecStatus();
+    if(showToast) toast(loc.ok?("已重新定位 · "+userPlaceLabel):("定位失败 · "+userPlaceLabel));
+  } finally {
+    if(btn) btn.disabled=false;
+  }
+}
+function saveTrips(){MashangChuangAuth.writeJSON(TRIP_KEY,trips.slice(0,20))}
+function saveSaved(){MashangChuangAuth.writeJSON(KEY,saved)}
+function renderTripLog(){
+  const box=document.getElementById("trip-log-body");
+  if(!trips.length){box.innerHTML='<div class="trip-log-empty">完成一次导航后会出现在这里</div>';return}
+  box.innerHTML=trips.map(t=>`
+    <div class="trip-log-row">
+      <div><b>${t.name}</b><span>${t.km}km · ${t.elapsed} · ${t.at}</span></div>
+      <button type="button" data-del-trip="${t.id}" style="border:none;background:transparent;color:var(--muted);font:inherit;font-size:11px;cursor:pointer">删除</button>
+    </div>
+  `).join("");
+  box.onclick=e=>{
+    const b=e.target.closest("[data-del-trip]");
+    if(!b) return;
+    trips=trips.filter(x=>String(x.id)!==String(b.dataset.delTrip));
+    saveTrips();renderTripLog();toast("已删除该行程");
+  };
+}
 function fmtElapsed(sec){
   const m=String(Math.floor(sec/60)).padStart(2,"0");
   const s=String(sec%60).padStart(2,"0");
@@ -262,24 +342,90 @@ function setHud(r,override){
   const dist=override?.dist??r.km;
   const mins=override?.mins??r.mins;
   const cad=override?.cad??r.cad;
+  const cadEst=override?.cadEst!==false;
   document.getElementById("spd").innerHTML=(typeof spd==="number"?spd.toFixed(1):spd)+"<small>km/h</small>";
   document.getElementById("dist").innerHTML=(typeof dist==="number"?dist.toFixed(1):dist)+"<small>km</small>";
   document.getElementById("time").innerHTML=mins+"<small>min</small>";
   document.getElementById("cad").innerHTML=cad+"<small>rpm</small>";
+  const cadLabel=document.getElementById("cad")?.closest(".gauge-card")?.querySelector(".label");
+  if(cadLabel) cadLabel.textContent=cadEst?"AVG CADENCE · 估算":"AVG CADENCE";
+}
+function enrichRoutes(origin){
+  const o=origin||(window.MashangChuangGeo&&MashangChuangGeo.FALLBACK)||{lat:30.2741,lng:120.1551};
+  userOrigin=o;
+  if(!window.MashangChuangGeo) return;
+  ROUTES.forEach(r=>{
+    const start=MashangChuangGeo.offsetLatLng(o.lat,o.lng,r.dNorth||0,r.dEast||0);
+    r.startLat=start.lat;
+    r.startLng=start.lng;
+    r.latlngs=MashangChuangGeo.buildLoopRoute(start,r.km,r.id);
+  });
+}
+function pointAlongPath(pts,frac){
+  if(!pts||!pts.length) return null;
+  if(pts.length===1||frac<=0) return pts[0];
+  if(frac>=1) return pts[pts.length-1];
+  const total=MashangChuangGeo.pathLength(pts);
+  const target=total*frac;
+  let acc=0;
+  for(let i=1;i<pts.length;i++){
+    const seg=MashangChuangGeo.haversine(pts[i-1],pts[i]);
+    if(acc+seg>=target){
+      const t=seg>0?(target-acc)/seg:0;
+      return {
+        lat:pts[i-1].lat+(pts[i].lat-pts[i-1].lat)*t,
+        lng:pts[i-1].lng+(pts[i].lng-pts[i-1].lng)*t
+      };
+    }
+    acc+=seg;
+  }
+  return pts[pts.length-1];
+}
+function clearMapLayers(){
+  if(!leafletMap) return;
+  if(routePoly){try{leafletMap.removeLayer(routePoly)}catch(e){} routePoly=null}
+  mapMarkers.forEach(m=>{try{leafletMap.removeLayer(m)}catch(e){}});
+  mapMarkers=[];
 }
 function drawMap(r){
-  document.getElementById("road").setAttribute("d",r.path);
-  document.getElementById("line").setAttribute("d",r.path);
-  const pins=document.getElementById("pins");
-  pins.innerHTML="";
-  const pts=[[40,200],[260,140],[480,160],[540,90]];
-  r.stations.forEach((s,i)=>{
-    const p=pts[Math.min(i+1,pts.length-1)];
-    const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
-    c.setAttribute("cx",p[0]);c.setAttribute("cy",p[1]);c.setAttribute("r","6");
-    c.setAttribute("fill","#22d3ee");c.setAttribute("stroke","#041016");c.setAttribute("stroke-width","2");
-    pins.appendChild(c);
-  });
+  if(!window.MashangChuangGeo) return;
+  if(!r.latlngs||!r.latlngs.length){
+    const o=userOrigin||MashangChuangGeo.FALLBACK;
+    const start=MashangChuangGeo.offsetLatLng(o.lat,o.lng,r.dNorth||0,r.dEast||0);
+    r.startLat=start.lat;r.startLng=start.lng;
+    r.latlngs=MashangChuangGeo.buildLoopRoute(start,r.km,r.id);
+  }
+  const center={lat:r.startLat,lng:r.startLng};
+  MashangChuangGeo.createMap("map",center,13).then(({map,L})=>{
+    leafletMap=map;
+    clearMapLayers();
+    const pts=r.latlngs;
+    const latlngs=pts.map(p=>[p.lat,p.lng]);
+    routePoly=L.polyline(latlngs,{color:"#22d3ee",weight:4,opacity:.92}).addTo(map);
+    const startM=L.circleMarker([pts[0].lat,pts[0].lng],{
+      radius:8,color:"#041016",weight:2,fillColor:"#06b6d4",fillOpacity:1
+    }).addTo(map).bindPopup("起点 · "+r.name);
+    mapMarkers.push(startM);
+    (r.stations||[]).forEach((s,i)=>{
+      const kmMatch=String(s.at||"").match(/([\d.]+)/);
+      const atKm=kmMatch?parseFloat(kmMatch[1]):((i+1)/(r.stations.length+1))*r.km;
+      const frac=Math.min(0.98,Math.max(0.02,atKm/r.km));
+      const pos=pointAlongPath(pts,frac);
+      if(!pos) return;
+      const m=L.circleMarker([pos.lat,pos.lng],{
+        radius:7,color:"#041016",weight:2,fillColor:"#22d3ee",fillOpacity:1
+      }).addTo(map).bindPopup("<b>"+s.name+"</b><br>"+(s.desc||"")+" · "+s.at);
+      mapMarkers.push(m);
+    });
+    try{map.fitBounds(routePoly.getBounds(),{padding:[36,36],maxZoom:15})}catch(e){}
+    setTimeout(()=>map.invalidateSize(),100);
+  }).catch(function(){});
+}
+function currentProgress(){
+  if(gpsLive && distCoveredGps>0.05){
+    return Math.min(100,Math.round(distCoveredGps/active.km*100));
+  }
+  return Math.min(100,navTick*2);
 }
 function nextStationIndex(progress){
   const n=active.stations.length;
@@ -296,11 +442,19 @@ function renderStations(r,nextIdx){
 }
 function renderTripStops(progress){
   const nextIdx=progress>=100?-1:nextStationIndex(progress);
-  document.getElementById("trip-stops").innerHTML=active.stations.map((s,i)=>`
+  const stops=active.stations||[];
+  if(!stops.length){
+    document.getElementById("trip-stops").innerHTML=`<div class="trip-stop"><b>直达终点 · 无中途补给</b><span>—</span></div>`;
+    return;
+  }
+  document.getElementById("trip-stops").innerHTML=stops.map((s,i)=>`
     <div class="trip-stop${i===nextIdx?" next":""}">
-      <b>${s.name}${i===nextIdx?" · 下一站":""}</b>
+      <div>
+        <b>${s.name}${i===nextIdx?" · 下一站":""}</b>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.desc||""}</div>
+      </div>
       <span>${s.at}</span>
-    </div>`).join("")||`<div class="trip-stop"><b>直达终点 · 无中途补给</b><span>—</span></div>`;
+    </div>`).join("");
 }
 function updateTripCard(progress){
   document.getElementById("nav-name").textContent=active.name;
@@ -333,23 +487,51 @@ function visibleRoutesRender(){
     </button>`).join("");
 }
 function render(){
-  if(!navigating) setHud(active);
+  if(!navigating) setHud(active,{cadEst:true});
   document.getElementById("rname").textContent=active.name;
   document.getElementById("rtag").textContent=active.tag;
   drawMap(active);
-  const nextIdx=navigating?nextStationIndex(Math.min(100,navTick*2)): -1;
+  const nextIdx=navigating?nextStationIndex(navProgress): -1;
   renderStations(active, nextIdx);
   visibleRoutesRender();
+  renderTripLog();
   document.getElementById("save").textContent=saved.includes(active.id)?"已收藏":"收藏路线";
   document.getElementById("start").disabled=navigating;
-  document.getElementById("start").textContent=navigating?"导航中…":"开始导航（演示）";
+  document.getElementById("start").textContent=navigating?"导航中…":"开始导航";
+  const openBtn=document.getElementById("open-start");
+  if(openBtn) openBtn.disabled=navigating;
+}
+function clearGeoWatch(){
+  if(geoWatchId!=null && navigator.geolocation){
+    try{navigator.geolocation.clearWatch(geoWatchId)}catch(e){}
+  }
+  geoWatchId=null;
+  gpsLive=false;
+  lastGpsPos=null;
+  gpsSpeedKmh=null;
 }
 function stopNav(done){
   clearInterval(navTimer);navTimer=null;
+  const progress=navProgress||currentProgress();
+  const elapsed=fmtElapsed(navTick);
+  clearGeoWatch();
+  if(done && navTick>0){
+    const already=trips[0] && trips[0].routeId===active.id && trips[0].progress===100 && (Date.now()-trips[0].id)<5000;
+    if(!already){
+      trips.unshift({
+        id:Date.now(), routeId:active.id, name:active.name,
+        km:active.km, elapsed, progress:Math.min(100,progress),
+        at:new Date().toLocaleString("zh-CN",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})
+      });
+      saveTrips();
+    }
+  }
   navigating=false;
+  navProgress=0;
+  distCoveredGps=0;
   document.getElementById("trip-card").classList.remove("open");
-  document.getElementById("rec").textContent="● REC HUD";
-  setHud(active);
+  setRecStatus();
+  setHud(active,{cadEst:true});
   render();
   if(done) toast("导航已结束 · "+active.name);
 }
@@ -357,32 +539,79 @@ function startNav(){
   if(navigating) return;
   navigating=true;
   navTick=0;
+  navProgress=0;
+  distCoveredGps=0;
+  lastGpsPos=null;
+  gpsSpeedKmh=null;
+  gpsLive=false;
   const card=document.getElementById("trip-card");
   card.classList.add("open");
   updateTripCard(0);
   document.getElementById("nav-elapsed").textContent="00:00";
-  document.getElementById("rec").textContent="● NAV LIVE";
+  setRecStatus();
   render();
   card.scrollIntoView({behavior:"smooth",block:"nearest"});
   toast("导航已启动 · "+active.name);
+  clearGeoWatch();
+  if(window.MashangChuangGeo){
+    geoWatchId=MashangChuangGeo.watch(function(upd){
+      if(!navigating||!upd||!upd.ok||!upd.pos) return;
+      const p=upd.pos;
+      gpsLive=true;
+      setRecStatus();
+      if(p.speed!=null && Number.isFinite(p.speed) && p.speed>0.3){
+        gpsSpeedKmh=+(p.speed*3.6).toFixed(1);
+      }
+      if(lastGpsPos){
+        const dm=MashangChuangGeo.haversine(lastGpsPos,p);
+        if(Number.isFinite(dm) && dm>1 && dm<200){
+          distCoveredGps+=dm/1000;
+        }
+      }
+      lastGpsPos={lat:p.lat,lng:p.lng};
+    });
+  }
   clearInterval(navTimer);
   navTimer=setInterval(()=>{
     navTick++;
-    const progress=Math.min(100,navTick*2);
+    const progress=currentProgress();
+    navProgress=progress;
     document.getElementById("nav-elapsed").textContent=fmtElapsed(navTick);
     updateTripCard(progress);
-    const distCovered=+(active.km*progress/100).toFixed(1);
+    const progressDist=+(active.km*progress/100).toFixed(1);
+    const distCovered=gpsLive && distCoveredGps>0.05
+      ? +Math.min(active.km, distCoveredGps).toFixed(1)
+      : progressDist;
     const mins=Math.max(1, Math.round(active.mins*progress/100));
     const wobble=Math.sin(navTick/3)*1.8;
-    const v=Math.max(12,active.spd+wobble);
+    const estV=Math.max(12,active.spd+wobble);
+    const v=(gpsLive && gpsSpeedKmh!=null && gpsSpeedKmh>1) ? gpsSpeedKmh : estV;
     const cad=Math.round(active.cad+Math.sin(navTick/4)*4);
-    setHud(active,{spd:v,dist:distCovered,mins,cad});
+    setHud(active,{spd:v,dist:distCovered,mins,cad,cadEst:true});
     renderStations(active, progress>=100?-1:nextStationIndex(progress));
     if(progress>=100){
       clearInterval(navTimer);navTimer=null;
+      clearGeoWatch();
+      trips.unshift({
+        id:Date.now(), routeId:active.id, name:active.name,
+        km:active.km, elapsed:fmtElapsed(navTick), progress:100,
+        at:new Date().toLocaleString("zh-CN",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})
+      });
+      saveTrips();
+      renderTripLog();
       toast("已到达终点");
     }
   },500);
+}
+function openNavToStart(){
+  if(navigating){toast("请先结束当前导航");return}
+  if(!window.MashangChuangGeo){toast("地图未就绪");return}
+  if(active.startLat==null){
+    const o=userOrigin||MashangChuangGeo.FALLBACK;
+    const start=MashangChuangGeo.offsetLatLng(o.lat,o.lng,active.dNorth||0,active.dEast||0);
+    active.startLat=start.lat;active.startLng=start.lng;
+  }
+  MashangChuangGeo.openNav({lat:active.startLat,lng:active.startLng,name:active.name+" · 起点"});
 }
 document.getElementById("chips").onclick=e=>{
   const b=e.target.closest("[data-chip]");if(!b)return;
@@ -400,7 +629,7 @@ document.getElementById("save").onclick=()=>{
   const wasSaved=saved.includes(active.id);
   if(wasSaved) saved=saved.filter(id=>id!==active.id);
   else saved.unshift(active.id);
-  localStorage.setItem(KEY,JSON.stringify(saved));
+  saveSaved();
   if(!wasSaved){
     setChip("saved");
     flashId=active.id;
@@ -418,8 +647,42 @@ document.getElementById("save").onclick=()=>{
   }
 };
 document.getElementById("start").onclick=()=>startNav();
+document.getElementById("open-start").onclick=()=>openNavToStart();
 document.getElementById("nav-end").onclick=()=>stopNav(true);
-render();
+document.getElementById("trip-clear").onclick=()=>{
+  if(!trips.length){toast("暂无行程记录");return}
+  trips=[];saveTrips();renderTripLog();toast("行程记录已清空");
+};
 </script>
+
+<script src="/apps/_shared/geo.js"></script>
+<script src="/apps/_shared/auth.js"></script>
+<script>
+(function(){
+  if(!window.MashangChuangAuth) return;
+  MashangChuangAuth.boot({
+    requireLogin: false,
+    appName: '骑行城市线',
+    onReady: function(user){
+      window.__MSC_USER__ = user;
+      document.dispatchEvent(new CustomEvent('msc-auth-ready', { detail: user }));
+      try {
+        window.__MSC_ME__ = MashangChuangAuth.meLabel('我');
+      } catch(e) {}
+      saved = MashangChuangAuth.readJSON(KEY, []) || [];
+      trips = MashangChuangAuth.readJSON(TRIP_KEY, []) || [];
+      document.getElementById("relocate-btn")?.addEventListener("click", function(){ refreshLocation(true); });
+      if(window.MashangChuangGeo){
+        enrichRoutes(MashangChuangGeo.FALLBACK);
+        if(typeof render === 'function') render();
+        refreshLocation(false);
+      } else if(typeof render === 'function') {
+        render();
+      }
+    }
+  });
+})();
+</script>
+
 </body>
 </html>

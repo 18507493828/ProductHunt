@@ -69,10 +69,6 @@ export default function Incentives() {
   return (
     <div className="dash">
       <div className="dash-section">
-        <h2 className="dash-section-title">榜单与激励系统</h2>
-        <p className="admin-hint">
-          支持按周期（周 / 月 / 季）配置激励类型与金额，保存后实时生效。华为码道赞助位按有效转化结算。
-        </p>
         {error && <div className="error">{error}</div>}
         {message && <div className="admin-success">{message}</div>}
         {loading ? (

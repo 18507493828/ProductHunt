@@ -3,13 +3,12 @@ import { createPortal } from "react-dom";
 import { ExternalLink, Sparkles, X } from "lucide-react";
 import { useModalMotion } from "../useModalMotion";
 import {
-  BUILD_SCENES,
-  BUILD_TOOLS,
   buildTaskBrief,
   getSceneById,
   getToolById,
   upsertBuildDraft,
 } from "../buildConfig";
+import useBuildCatalog from "../useBuildCatalog";
 
 export default function BuildWizardModal({
   open,
@@ -18,6 +17,7 @@ export default function BuildWizardModal({
   onCompleted,
 }) {
   const { mounted, overlayClassName, panelClassName } = useModalMotion(open);
+  const { scenes: BUILD_SCENES, tools: BUILD_TOOLS } = useBuildCatalog();
   const [step, setStep] = useState(1);
   const [sceneId, setSceneId] = useState("");
   const [topic, setTopic] = useState("");
@@ -31,8 +31,8 @@ export default function BuildWizardModal({
     setToolId("");
   }, [open]);
 
-  const scene = useMemo(() => getSceneById(sceneId), [sceneId]);
-  const tool = useMemo(() => getToolById(toolId), [toolId]);
+  const scene = useMemo(() => getSceneById(sceneId), [sceneId, BUILD_SCENES]);
+  const tool = useMemo(() => getToolById(toolId), [toolId, BUILD_TOOLS]);
   const topics = scene?.topics || [];
 
   function goStep(n) {
@@ -182,8 +182,10 @@ export default function BuildWizardModal({
           {step === 3 && (
             <div>
               <p className="ph-build-hint">
-                话题：{topic} · 选择「华为码道」完成构建并成功发布，可获 9.9
-                元现金激励（官方赞助活动）
+                话题：{topic}
+                {BUILD_TOOLS.some((t) => t.sponsored && t.incentive > 0)
+                  ? ` · 选择赞助工具完成构建并成功发布，可获现金激励`
+                  : ""}
               </p>
               <div className="ph-build-tools">
                 {BUILD_TOOLS.map((t) => (

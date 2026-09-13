@@ -3,48 +3,27 @@ import { createPortal } from "react-dom";
 import { Trophy, X } from "lucide-react";
 import { useModalMotion } from "../useModalMotion";
 import { useShare } from "../ShareContext";
+import { fetchShareConfig } from "../api";
+import { SHARE_PLATFORMS, PROMOTE_PLATFORM_IDS } from "../sharePlatforms";
 
-const PROMOTE_CHANNELS = [
-  {
-    id: "xiaohongshu",
-    name: "小红书",
-    tip: "种草笔记，适合快速曝光",
-    icon: "🟥",
-    color: "#ff2442",
-  },
-  {
-    id: "douyin",
-    name: "抖音",
-    tip: "短视频挂载，适合扩散传播",
-    icon: "🎵",
-    color: "#101820",
-  },
-  {
-    id: "wechat",
-    name: "微信朋友圈",
-    tip: "海报分享，适合熟人圈层",
-    icon: "💬",
-    color: "#07c160",
-  },
-  {
-    id: "csdn",
-    name: "CSDN 我的博客",
-    tip: "构建复盘，适合技术向传播",
-    icon: "✍️",
-    color: "#fc5531",
-  },
-];
+function defaultPromoteChannels() {
+  return SHARE_PLATFORMS.filter(
+    (p) => PROMOTE_PLATFORM_IDS.includes(p.id) && p.defaultEnabled !== false,
+  );
+}
 
 export default function PromoteWizardModal({
   open,
   onClose,
   products = [],
   onPublish,
+  initialProductId = "",
 }) {
   const { mounted, overlayClassName, panelClassName } = useModalMotion(open);
   const { openShare } = useShare();
   const [step, setStep] = useState(1);
   const [productId, setProductId] = useState("");
+  const [channels, setChannels] = useState(defaultPromoteChannels);
 
   const approved = useMemo(
     () => (products || []).filter((p) => (p.status || "approved") === "approved"),
@@ -58,8 +37,34 @@ export default function PromoteWizardModal({
 
   useEffect(() => {
     if (!open) return;
-    setStep(1);
-    setProductId("");
+    const ok =
+      initialProductId &&
+      approved.some((p) => p.id === initialProductId);
+    setProductId(ok ? initialProductId : "");
+    setStep(ok ? 2 : 1);
+  }, [open, initialProductId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!open) return;
+    let ignore = false;
+    fetchShareConfig()
+      .then((cfg) => {
+        if (ignore) return;
+        const platforms = cfg?.platforms || {};
+        const enabled = SHARE_PLATFORMS.filter((meta) => {
+          if (!PROMOTE_PLATFORM_IDS.includes(meta.id)) return false;
+          const row = platforms[meta.id];
+          if (row && typeof row === "object") return row.enabled !== false;
+          return meta.defaultEnabled !== false;
+        });
+        setChannels(enabled);
+      })
+      .catch(() => {
+        if (!ignore) setChannels(defaultPromoteChannels());
+      });
+    return () => {
+      ignore = true;
+    };
   }, [open]);
 
   function selectApp(id) {
@@ -138,9 +143,6 @@ export default function PromoteWizardModal({
                 </div>
               ) : (
                 <>
-                  <p className="ph-build-hint">
-                    选择要推广的应用，分享到各渠道后可提升榜单曝光。
-                  </p>
                   <div className="ph-promote-app-list">
                     {approved.map((p) => (
                       <button
@@ -176,33 +178,35 @@ export default function PromoteWizardModal({
 
           {step === 2 && (
             <div>
-              <p className="ph-build-hint">
-                当前应用：{selected?.name || "—"} · 选择渠道后将打开分享文案
-              </p>
-              <div className="ph-promote-channel-list">
-                {PROMOTE_CHANNELS.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className="ph-promote-channel-card"
-                    onClick={() => selectChannel(c.id)}
-                    disabled={!selected}
-                  >
-                    <span
-                      className="ph-promote-channel-icon"
-                      style={{ background: c.color }}
-                      aria-hidden="true"
+              <p className="ph-build-hint">应用：{selected?.name || "—"}</p>
+              {channels.length === 0 ? (
+                <p className="ph-build-empty">暂无可用推广渠道</p>
+              ) : (
+                <div className="ph-promote-channel-list">
+                  {channels.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className="ph-promote-channel-card"
+                      onClick={() => selectChannel(c.id)}
+                      disabled={!selected}
                     >
-                      {c.icon}
-                    </span>
-                    <span className="ph-promote-channel-meta">
-                      <strong>{c.name}</strong>
-                      <span>{c.tip}</span>
-                    </span>
-                    <span className="ph-promote-channel-cta">去分享</span>
-                  </button>
-                ))}
-              </div>
+                      <span
+                        className="ph-promote-channel-icon"
+                        style={{ background: c.color }}
+                        aria-hidden="true"
+                      >
+                        {c.icon}
+                      </span>
+                      <span className="ph-promote-channel-meta">
+                        <strong>{c.name}</strong>
+                        <span>{c.tip}</span>
+                      </span>
+                      <span className="ph-promote-channel-cta">去分享</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="ph-build-nav-row">
                 <button type="button" className="ph-btn-secondary" onClick={() => setStep(1)}>
                   上一步

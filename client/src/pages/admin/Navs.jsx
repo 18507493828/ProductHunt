@@ -135,9 +135,6 @@ export default function Navs() {
   return (
     <>
       <div className="admin-toolbar">
-        <span className="admin-toolbar-hint">
-          顶部导航会按顺序展示在 Logo 右侧，共 {navs.length} 个
-        </span>
         <button
           type="button"
           className="add-banner-btn"

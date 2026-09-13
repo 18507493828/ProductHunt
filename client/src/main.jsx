@@ -14,7 +14,10 @@ import Products from "./pages/admin/Products.jsx";
 import Votes from "./pages/admin/Votes.jsx";
 import Rankings from "./pages/admin/Rankings.jsx";
 import Incentives from "./pages/admin/Incentives.jsx";
+import RankIncentives from "./pages/admin/RankIncentives.jsx";
 import Shares from "./pages/admin/Shares.jsx";
+import Topics from "./pages/admin/Topics.jsx";
+import BuildTools from "./pages/admin/BuildTools.jsx";
 import Banners from "./pages/admin/Banners.jsx";
 import Campaigns from "./pages/admin/Campaigns.jsx";
 import Categories from "./pages/admin/Categories.jsx";
@@ -41,10 +44,14 @@ createRoot(document.getElementById("root")).render(
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="products" element={<Products />} />
-              <Route path="votes" element={<Votes />} />
+              <Route path="topics" element={<Topics />} />
+              <Route path="channels" element={<Shares />} />
+              <Route path="shares" element={<Shares />} />
+              <Route path="rank-incentives" element={<RankIncentives />} />
               <Route path="rankings" element={<Rankings />} />
               <Route path="incentives" element={<Incentives />} />
-              <Route path="shares" element={<Shares />} />
+              <Route path="build-tools" element={<BuildTools />} />
+              <Route path="votes" element={<Votes />} />
               <Route path="categories" element={<Categories />} />
               <Route path="campaigns" element={<Campaigns />} />
               <Route path="banners" element={<Banners />} />

@@ -19,6 +19,17 @@ body{
 .top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
 .brand h1{font-family:"Barlow Condensed",sans-serif;font-size:36px;font-weight:800;letter-spacing:.02em;color:#1d4ed8}
 .brand p{font-size:13px;color:var(--muted)}
+.wx-strip{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:8px 14px;font-size:12px;color:var(--muted);font-weight:600;
+}
+.wx-strip b{color:var(--blue);font-family:"Barlow Condensed",sans-serif;font-size:20px;font-weight:800}
+.wx-strip .wx-tag{color:var(--ink);font-weight:800}
+.route .near-badge{
+  display:inline-block;font-size:10px;font-weight:800;color:#fff;background:var(--blue);
+  padding:2px 7px;border-radius:999px;margin-left:6px;vertical-align:middle;
+}
 .pace-row{display:flex;gap:8px;flex-wrap:wrap}
 .pace{
   border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;
@@ -35,10 +46,8 @@ body{
 .map-head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
 .map-head h2{font-size:15px;font-weight:900}
 .map-head span{font-size:12px;color:var(--muted)}
-.map-svg{flex:1;background:
-  radial-gradient(circle at 20% 30%,rgba(56,189,248,.15),transparent 40%),
-  linear-gradient(160deg,#e0f2fe,#f8fafc);position:relative;min-height:360px}
-.map-svg svg{width:100%;height:100%;display:block}
+.map-box{flex:1;position:relative;min-height:360px;background:#e0f2fe}
+.map-box .leaflet-container{height:100%;min-height:360px;width:100%;z-index:1}
 .stats{
   display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line);
 }
@@ -59,11 +68,17 @@ body{
 .route.on{border-color:var(--blue);background:#eff6ff;box-shadow:inset 3px 0 0 var(--blue)}
 .route b{display:block;font-size:14px;font-weight:900;margin-bottom:4px}
 .route .m{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.action-row{display:flex;gap:8px}
+.action-row .fav-btn,.action-row .nav-btn{flex:1}
 .fav-btn{
   border:none;border-radius:12px;padding:12px;font:inherit;font-weight:800;cursor:pointer;
   background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;
 }
 .fav-btn.saved{background:#fff;color:var(--blue);border:1px solid #bfdbfe}
+.nav-btn{
+  border:1px solid #bfdbfe;border-radius:12px;padding:12px;font:inherit;font-weight:800;cursor:pointer;
+  background:#eff6ff;color:var(--blue);
+}
 .favs{
   border:1px solid var(--line);border-radius:16px;padding:12px;background:#f8fbff;
   scroll-margin-top:12px;transition:box-shadow .25s;
@@ -74,20 +89,29 @@ body{
 .favs .favs-h span{font-size:11px;color:var(--muted);font-weight:700}
 .fav-list{display:flex;flex-direction:column;gap:8px;max-height:220px;overflow:auto}
 .fav-item{
-  text-align:left;width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;
-  padding:10px 12px;cursor:pointer;font:inherit;color:inherit;
+  display:flex;align-items:stretch;gap:0;width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;
+  overflow:hidden;font:inherit;color:inherit;
 }
 .fav-item:hover{border-color:#93c5fd}
 .fav-item.on{border-color:var(--blue);background:#eff6ff}
 .fav-item.hi{animation:favPulse .9s ease}
 @keyframes favPulse{0%{box-shadow:0 0 0 0 rgba(37,99,235,.35)}100%{box-shadow:0 0 0 8px transparent}}
+.fav-item .fav-main{
+  flex:1;text-align:left;border:none;background:transparent;padding:10px 12px;cursor:pointer;font:inherit;color:inherit;
+}
+.fav-item .fav-x{
+  border:none;border-left:1px solid var(--line);background:#f8fafc;color:var(--muted);
+  width:40px;cursor:pointer;font-size:18px;font-weight:700;
+}
+.fav-item .fav-x:hover{color:#ef4444;background:#fef2f2}
 .fav-item b{display:block;font-size:13px;font-weight:900;margin-bottom:4px}
 .fav-item .m{font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
-.fav-empty{font-size:12px;color:var(--muted);padding:10px 4px;text-align:center}
+.fav-empty{font-size:12px;color:var(--muted);padding:14px 8px;text-align:center;line-height:1.6}
+.fav-empty b{display:block;color:var(--ink);font-size:13px;margin-bottom:4px}
 .toast{
   position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
   background:rgba(15,23,42,.92);color:#fff;padding:10px 16px;border-radius:12px;font-size:13px;
-  opacity:0;pointer-events:none;transition:.25s;z-index:40;
+  opacity:0;pointer-events:none;transition:.25s;z-index:2000;
 }
 .toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 </style>
@@ -98,6 +122,8 @@ body{
     <div class="brand">
       <h1>跑线推荐</h1>
       <p>按配速与路况挑选城市跑步路线</p>
+      <div class="wx-strip" id="wx-strip" style="margin-top:8px">跑线条件 · 定位中…</div>
+      <button type="button" class="pace" id="relocate-btn" style="margin-top:8px">重新定位</button>
     </div>
     <div class="pace-row" id="paces">
       <button class="pace on" data-p="all">全部配速</button>
@@ -112,22 +138,7 @@ body{
         <h2 id="route-name">滨江夜跑道</h2>
         <span id="route-tag">柏油平整 · 灯光充足</span>
       </div>
-      <div class="map-svg" id="map">
-        <svg viewBox="0 0 640 360" preserveAspectRatio="xMidYMid slice">
-          <defs>
-            <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#2563eb"/>
-            </linearGradient>
-          </defs>
-          <rect width="640" height="360" fill="transparent"/>
-          <path id="road" d="M40 280 C120 260,140 200,220 190 S340 220,400 160 S520 80,600 100" fill="none" stroke="#cbd5e1" stroke-width="18" stroke-linecap="round"/>
-          <path id="poly" d="M40 280 C120 260,140 200,220 190 S340 220,400 160 S520 80,600 100" fill="none" stroke="url(#g)" stroke-width="6" stroke-linecap="round"/>
-          <circle id="start-dot" cx="40" cy="280" r="8" fill="#22c55e"/>
-          <circle id="end-dot" cx="600" cy="100" r="8" fill="#ef4444"/>
-          <text id="start-label" x="52" y="300" font-size="12" fill="#64748b">起点</text>
-          <text id="end-label" x="560" y="88" font-size="12" fill="#64748b">终点</text>
-        </svg>
-      </div>
+      <div class="map-box" id="map"></div>
       <div class="stats">
         <div class="stat"><b id="s-km">8.2</b><span>公里</span></div>
         <div class="stat"><b id="s-pace">5'45"</b><span>建议配速</span></div>
@@ -144,7 +155,10 @@ body{
         <h3>推荐路线</h3>
         <div class="routes" id="routes"></div>
       </div>
-      <button class="fav-btn" id="fav">收藏这条跑线</button>
+      <div class="action-row">
+        <button class="fav-btn" id="fav">收藏这条跑线</button>
+        <button class="nav-btn" id="nav-start" type="button">导航到起点</button>
+      </div>
       <div class="favs" id="favs-panel">
         <div class="favs-h">
           <h3>我的收藏</h3>
@@ -158,69 +172,179 @@ body{
 <div class="toast" id="toast"></div>
 <script>
 const ROUTES=[
-  {id:1,name:"滨江夜跑道",tag:"柏油平整 · 灯光充足",road:"柏油路",pace:"稳态",km:8.2,paceText:"5'45\"",gain:46,mins:47,elev:[20,22,28,35,40,38,42,46,44,40,36,30,28,26,24],path:"M40 280 C120 260,140 200,220 190 S340 220,400 160 S520 80,600 100"},
-  {id:2,name:"大学城环湖线",tag:"缓坡 · 人流适中",road:"混合步道",pace:"轻松",km:5.6,paceText:"6'40\"",gain:28,mins:38,elev:[10,12,14,18,22,26,24,20,18,16,14,12],path:"M50 200 C140 240,200 280,280 250 S420 160,520 180 S580 220,600 210"},
-  {id:3,name:"古城墙节奏圈",tag:"砖石混合 · 需注意脚下",road:"砖石路",pace:"节奏",km:10.0,paceText:"4'55\"",gain:72,mins:50,elev:[15,25,40,55,60,58,70,72,65,50,40,30,25],path:"M60 300 C100 180,180 120,260 140 S380 260,460 200 S560 80,590 120"},
-  {id:4,name:"奥体公园间歇道",tag:"塑胶跑道 · 适合配速训练",road:"塑胶跑道",pace:"节奏",km:6.0,paceText:"4'40\"",gain:12,mins:28,elev:[8,9,10,11,10,9,12,11,10,9,8],path:"M80 180 C160 160,240 200,320 180 S480 140,560 160"},
-  {id:5,name:"湿地公园轻松跑",tag:"木栈道 · 风景向",road:"木栈道",pace:"轻松",km:4.2,paceText:"7'00\"",gain:18,mins:30,elev:[5,8,12,16,18,15,12,10,8,6],path:"M70 260 C180 220,260 280,360 240 S500 180,580 200"}
+  {id:1,name:"滨江夜跑道",tag:"柏油平整 · 灯光充足",road:"柏油路",pace:"稳态",km:8.2,paceText:"5'45\"",gain:46,mins:47,elev:[20,22,28,35,40,38,42,46,44,40,36,30,28,26,24],dNorth:420,dEast:-180},
+  {id:2,name:"大学城环湖线",tag:"缓坡 · 人流适中",road:"混合步道",pace:"轻松",km:5.6,paceText:"6'40\"",gain:28,mins:38,elev:[10,12,14,18,22,26,24,20,18,16,14,12],dNorth:-320,dEast:680},
+  {id:3,name:"古城墙节奏圈",tag:"砖石混合 · 需注意脚下",road:"砖石路",pace:"节奏",km:10.0,paceText:"4'55\"",gain:72,mins:50,elev:[15,25,40,55,60,58,70,72,65,50,40,30,25],dNorth:860,dEast:240},
+  {id:4,name:"奥体公园间歇道",tag:"塑胶跑道 · 适合配速训练",road:"塑胶跑道",pace:"节奏",km:6.0,paceText:"4'40\"",gain:12,mins:28,elev:[8,9,10,11,10,9,12,11,10,9,8],dNorth:-180,dEast:-520},
+  {id:5,name:"湿地公园轻松跑",tag:"木栈道 · 风景向",road:"木栈道",pace:"轻松",km:4.2,paceText:"7'00\"",gain:18,mins:30,elev:[5,8,12,16,18,15,12,10,8,6],dNorth:120,dEast:1100}
 ];
 const KEY="px-favs-v1";
-let favs=JSON.parse(localStorage.getItem(KEY)||"[]");
+let favs=[];
 let pace="all", active=ROUTES[0], highlightFav=null;
+let userPos=null;
+let userPlaceLabel="";
+let nearestId=null;
+let mapApi=null;
+let mapLayers=null;
+let elevReq=0;
 
 function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1600)}
+async function refreshLocation(showToast){
+  const Geo=window.MashangChuangGeo;
+  const strip=document.getElementById("wx-strip");
+  const btn=document.getElementById("relocate-btn");
+  if(!Geo){ if(strip) strip.textContent="定位组件未加载"; return; }
+  if(btn) btn.disabled=true;
+  if(strip) strip.textContent="跑线条件 · 定位中…";
+  try{
+    const loc=await Geo.locateWithPlace();
+    userPos=loc.pos;
+    userPlaceLabel=loc.ok?(loc.placeLabel||loc.placeShort||"当前位置"):Geo.FALLBACK.label;
+    enrichRoutes();
+    if(typeof render==="function") render();
+    let wxLine="";
+    try{
+      const wx=await Geo.fetchWeather(userPos.lat,userPos.lng);
+      wxLine='<span class="wx-tag">跑线条件</span> <b>'+wx.temp+'°</b> <span>'+wx.desc+'</span> <span>风 '+wx.wind+'</span>';
+    }catch(e){
+      wxLine='<span class="wx-tag">跑线条件</span> <span>天气暂不可用</span>';
+    }
+    strip.innerHTML=wxLine+' <span>· '+userPlaceLabel+'</span>';
+    if(showToast) toast(loc.ok?("已重新定位 · "+userPlaceLabel):("定位失败 · "+userPlaceLabel));
+  } finally {
+    if(btn) btn.disabled=false;
+  }
+}
+function clearMapLayers(){
+  if(!mapApi||!mapLayers) return;
+  mapLayers.forEach(l=>{try{mapApi.map.removeLayer(l)}catch(e){}});
+  mapLayers=null;
+}
+function enrichRoutes(){
+  const Geo=window.MashangChuangGeo;
+  if(!Geo||!userPos) return;
+  ROUTES.forEach(r=>{
+    const start=Geo.offsetLatLng(userPos.lat,userPos.lng,r.dNorth||0,r.dEast||0);
+    r.lat=start.lat;r.lng=start.lng;
+    r.latlngs=Geo.buildLoopRoute(start,r.km,r.id);
+    const metersPath=Geo.pathLength(r.latlngs);
+    if(Number.isFinite(metersPath)&&metersPath>0){
+      r.pathKm=+(metersPath/1000).toFixed(1);
+    }
+    r.meters=Geo.haversine(userPos,start);
+    r.near=Geo.formatDist(r.meters);
+  });
+  const sorted=[...ROUTES].filter(r=>Number.isFinite(r.meters)).sort((a,b)=>a.meters-b.meters);
+  nearestId=sorted.length?sorted[0].id:null;
+}
+function ensureMap(){
+  const Geo=window.MashangChuangGeo;
+  if(!Geo) return Promise.resolve(null);
+  const center=userPos||(active.lat!=null?{lat:active.lat,lng:active.lng}:Geo.FALLBACK);
+  return Geo.createMap("map",center).then(function(api){
+    mapApi=api;
+    return api;
+  }).catch(function(){return null});
+}
+function drawRouteOnMap(r){
+  if(!mapApi||!r||!r.latlngs||!r.latlngs.length) return;
+  const L=mapApi.L;
+  clearMapLayers();
+  const latlngs=r.latlngs.map(p=>[p.lat,p.lng]);
+  const poly=L.polyline(latlngs,{color:"#2563eb",weight:5,opacity:.9,lineJoin:"round"}).addTo(mapApi.map);
+  const start=r.latlngs[0];
+  const end=r.latlngs[r.latlngs.length-1];
+  const startM=L.circleMarker([start.lat,start.lng],{radius:8,color:"#fff",weight:2,fillColor:"#22c55e",fillOpacity:1}).addTo(mapApi.map).bindTooltip("起点",{permanent:false});
+  const endM=L.circleMarker([end.lat,end.lng],{radius:8,color:"#fff",weight:2,fillColor:"#ef4444",fillOpacity:1}).addTo(mapApi.map).bindTooltip("终点",{permanent:false});
+  mapLayers=[poly,startM,endM];
+  try{mapApi.map.fitBounds(poly.getBounds(),{padding:[28,28]})}catch(e){}
+  setTimeout(function(){try{mapApi.map.invalidateSize()}catch(e){}},80);
+}
 function renderElev(arr){
+  if(!arr||!arr.length){document.getElementById("elev").innerHTML="";return}
   const max=Math.max(...arr);
-  document.getElementById("elev").innerHTML=arr.map(v=>`<i style="height:${Math.max(8,(v/max)*100)}%"></i>`).join("");
+  const min=Math.min(...arr);
+  const span=Math.max(1,max-min);
+  document.getElementById("elev").innerHTML=arr.map(v=>`<i style="height:${Math.max(8,((v-min)/span)*100)}%"></i>`).join("");
+}
+function loadElevations(r){
+  const Geo=window.MashangChuangGeo;
+  const req=++elevReq;
+  if(!Geo||!r.latlngs||!r.latlngs.length){
+    renderElev(r.elev);
+    document.getElementById("s-gain").textContent=r.gain;
+    return;
+  }
+  const step=Math.max(1,Math.floor(r.latlngs.length/24));
+  const sample=r.latlngs.filter((_,i)=>i%step===0||i===r.latlngs.length-1).slice(0,40);
+  Geo.fetchElevations(sample).then(function(elevs){
+    if(req!==elevReq||active.id!==r.id) return;
+    if(elevs&&elevs.length){
+      renderElev(elevs);
+      const gain=Math.max(...elevs)-Math.min(...elevs);
+      document.getElementById("s-gain").textContent=Math.max(0,Math.round(gain));
+    } else {
+      renderElev(r.elev);
+      document.getElementById("s-gain").textContent=r.gain;
+    }
+  }).catch(function(){
+    if(req!==elevReq||active.id!==r.id) return;
+    renderElev(r.elev);
+    document.getElementById("s-gain").textContent=r.gain;
+  });
+}
+function displayKm(r){
+  return (r.pathKm!=null?r.pathKm:r.km).toFixed(1);
 }
 function renderRoute(){
   const r=active;
   document.getElementById("route-name").textContent=r.name;
   document.getElementById("route-tag").textContent=r.tag;
-  document.getElementById("s-km").textContent=r.km.toFixed(1);
+  document.getElementById("s-km").textContent=displayKm(r);
   document.getElementById("s-pace").textContent=r.paceText;
   document.getElementById("s-gain").textContent=r.gain;
   document.getElementById("s-time").textContent=r.mins;
-  document.getElementById("road").setAttribute("d",r.path);
-  document.getElementById("poly").setAttribute("d",r.path);
-  const start=r.path.match(/M([\d.]+)\s+([\d.]+)/);
-  const end=r.path.match(/([\d.]+)\s+([\d.]+)$/);
-  if(start){
-    document.getElementById("start-dot").setAttribute("cx",start[1]);
-    document.getElementById("start-dot").setAttribute("cy",start[2]);
-    document.getElementById("start-label").setAttribute("x",+start[1]+12);
-    document.getElementById("start-label").setAttribute("y",+start[2]+20);
-  }
-  if(end){
-    document.getElementById("end-dot").setAttribute("cx",end[1]);
-    document.getElementById("end-dot").setAttribute("cy",end[2]);
-    document.getElementById("end-label").setAttribute("x",Math.max(20,+end[1]-40));
-    document.getElementById("end-label").setAttribute("y",+end[2]-12);
-  }
   renderElev(r.elev);
   const saved=favs.includes(r.id);
   const btn=document.getElementById("fav");
   btn.textContent=saved?"已收藏 · 再点取消":"收藏这条跑线";
   btn.classList.toggle("saved",saved);
+  ensureMap().then(function(){
+    if(r.latlngs&&r.latlngs.length) drawRouteOnMap(r);
+  });
+  loadElevations(r);
 }
 function renderList(){
-  const list=ROUTES.filter(r=>pace==="all"||r.pace===pace);
-  document.getElementById("routes").innerHTML=list.map(r=>`
+  let list=ROUTES.filter(r=>pace==="all"||r.pace===pace);
+  if(userPos) list=[...list].sort((a,b)=>(a.meters??1e12)-(b.meters??1e12));
+  document.getElementById("routes").innerHTML=list.map(r=>{
+    const nearBadge=r.id===nearestId?'<span class="near-badge">最近</span>':"";
+    const nearLabel=r.near?`<span>距你 ${r.near}</span>`:"";
+    const kmLabel=r.pathKm!=null?r.pathKm:r.km;
+    return `
     <button class="route${r.id===active.id?" on":""}" data-id="${r.id}">
-      <b>${r.name}</b>
-      <div class="m"><span>${r.km} km</span><span>${r.paceText}</span><span>${r.pace}</span><span>${r.road}</span></div>
-    </button>`).join("");
+      <b>${r.name}${nearBadge}</b>
+      <div class="m"><span>${kmLabel} km</span><span>${r.paceText}</span><span>${r.pace}</span><span>${r.road}</span>${nearLabel}</div>
+    </button>`;
+  }).join("");
 }
 function renderFavs(){
   document.getElementById("fav-count").textContent=favs.length+" 条";
   const box=document.getElementById("fav-list");
-  if(!favs.length){box.innerHTML='<div class="fav-empty">还没有收藏，点上方按钮加入</div>';return}
+  if(!favs.length){
+    box.innerHTML='<div class="fav-empty"><b>收藏夹是空的</b>选一条推荐路线，点「收藏这条跑线」即可加入；点收藏项会立刻切换地图与数据。</div>';
+    return;
+  }
   box.innerHTML=favs.map(id=>{
     const r=ROUTES.find(x=>x.id===id);if(!r)return"";
-    return `<button type="button" class="fav-item${r.id===active.id?" on":""}${id===highlightFav?" hi":""}" data-fav="${r.id}">
-      <b>${r.name}</b>
-      <div class="m"><span>配速 ${r.paceText}</span><span>${r.km} km</span><span>${r.road}</span><span>${r.pace}</span></div>
-    </button>`;
+    const kmLabel=r.pathKm!=null?r.pathKm:r.km;
+    return `<div class="fav-item${r.id===active.id?" on":""}${id===highlightFav?" hi":""}">
+      <button type="button" class="fav-main" data-load="${r.id}">
+        <b>${r.name}</b>
+        <div class="m"><span>配速 ${r.paceText}</span><span>${kmLabel} km</span><span>${r.road}</span><span>${r.pace}</span></div>
+      </button>
+      <button type="button" class="fav-x" data-unfav="${r.id}" title="取消收藏">×</button>
+    </div>`;
   }).join("");
 }
 function focusFavs(id){
@@ -233,9 +357,15 @@ function focusFavs(id){
     highlightFav=null;panel.classList.remove("focus");renderFavs();
   },1800);
 }
-function loadRoute(id){
+function loadRoute(id,fromFav){
   const r=ROUTES.find(x=>x.id===id);if(!r)return;
-  active=r;render();
+  active=r;
+  // Selecting a favorite should show the route even if pace filter would hide it
+  if(fromFav && pace!=="all" && r.pace!==pace){
+    pace="all";
+    document.querySelectorAll(".pace").forEach(x=>x.classList.toggle("on",x.dataset.p==="all"));
+  }
+  render();
 }
 function render(){renderList();renderRoute();renderFavs()}
 document.getElementById("paces").onclick=e=>{
@@ -248,28 +378,72 @@ document.getElementById("paces").onclick=e=>{
 };
 document.getElementById("routes").onclick=e=>{
   const b=e.target.closest("[data-id]");if(!b)return;
-  loadRoute(+b.dataset.id);
+  loadRoute(+b.dataset.id,false);
 };
 document.getElementById("fav-list").onclick=e=>{
-  const b=e.target.closest("[data-fav]");if(!b)return;
-  loadRoute(+b.dataset.fav);
+  const un=e.target.closest("[data-unfav]");
+  if(un){
+    const id=+un.dataset.unfav;
+    favs=favs.filter(x=>x!==id);
+    MashangChuangAuth.writeJSON(KEY,favs);
+    toast("已取消收藏");
+    render();
+    return;
+  }
+  const b=e.target.closest("[data-load]");if(!b)return;
+  loadRoute(+b.dataset.load,true);
   toast("已载入跑线 · "+active.name);
+  document.querySelector(".map-card")?.scrollIntoView({behavior:"smooth",block:"nearest"});
 };
 document.getElementById("fav").onclick=()=>{
   if(favs.includes(active.id)){
     favs=favs.filter(id=>id!==active.id);
-    localStorage.setItem(KEY,JSON.stringify(favs));
+    MashangChuangAuth.writeJSON(KEY,favs);
     toast("已取消收藏");
     render();
   } else {
     favs.unshift(active.id);
-    localStorage.setItem(KEY,JSON.stringify(favs));
+    MashangChuangAuth.writeJSON(KEY,favs);
     toast("已加入我的收藏");
     render();
     focusFavs(active.id);
   }
 };
-render();
+document.getElementById("nav-start").onclick=()=>{
+  const Geo=window.MashangChuangGeo;
+  if(!Geo) return;
+  const start=active.latlngs&&active.latlngs[0]
+    ? active.latlngs[0]
+    : (active.lat!=null?{lat:active.lat,lng:active.lng}:null);
+  if(!start){toast("定位后可导航到起点");return}
+  Geo.openNav({lat:start.lat,lng:start.lng,name:active.name+" · 起点"});
+};
 </script>
+
+<script src="/apps/_shared/geo.js"></script>
+<script src="/apps/_shared/auth.js"></script>
+<script>
+(function(){
+  if(!window.MashangChuangAuth) return;
+  MashangChuangAuth.boot({
+    requireLogin: false,
+    appName: '跑线推荐',
+    onReady: function(user){
+      window.__MSC_USER__ = user;
+      document.dispatchEvent(new CustomEvent('msc-auth-ready', { detail: user }));
+      try {
+        window.__MSC_ME__ = MashangChuangAuth.meLabel('我');
+      } catch(e) {}
+      favs = MashangChuangAuth.readJSON(KEY, []);
+      if(typeof render === 'function') render();
+      if(!window.MashangChuangGeo) return;
+      ensureMap();
+      document.getElementById("relocate-btn")?.addEventListener("click", function(){ refreshLocation(true); });
+      refreshLocation(false);
+    }
+  });
+})();
+</script>
+
 </body>
 </html>

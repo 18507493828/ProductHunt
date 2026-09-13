@@ -4,16 +4,17 @@ import {
   approveProduct,
   deleteProduct,
   fetchAdminProducts,
-  fetchCampaigns,
+  fetchAdminCampaigns,
   fetchCategoryOptions,
   rejectProduct,
   setProductSpecial,
+  unpublishProduct,
 } from "../../api";
 
 const STATUS_TABS = [
   { key: "pending", label: "待审核" },
   { key: "approved", label: "已上架" },
-  { key: "rejected", label: "已拒绝" },
+  { key: "rejected", label: "未通过" },
   { key: "offline", label: "已下架" },
   { key: "all", label: "全部" },
 ];
@@ -21,7 +22,7 @@ const STATUS_TABS = [
 const STATUS_LABEL = {
   pending: "待审核",
   approved: "已上架",
-  rejected: "已拒绝",
+  rejected: "未通过",
   offline: "已下架",
 };
 
@@ -44,7 +45,8 @@ export default function Products() {
     { id: "", label: "不参加活动" },
     ...campaigns.map((item) => ({
       id: item.id,
-      label: item.title,
+      label:
+        item.title + (item.enabled === false ? "（已隐藏）" : ""),
     })),
   ];
 
@@ -67,7 +69,7 @@ export default function Products() {
   }, [activeStatus, filters]);
 
   useEffect(() => {
-    fetchCampaigns()
+    fetchAdminCampaigns()
       .then((list) => setCampaigns(Array.isArray(list) ? list : []))
       .catch(() => setCampaigns([]));
     fetchCategoryOptions()
@@ -116,6 +118,20 @@ export default function Products() {
       setActionId(id);
       setError("");
       await deleteProduct(id);
+      await loadProducts();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setActionId("");
+    }
+  }
+
+  async function handleOffline(id, name) {
+    if (!window.confirm(`确定下架应用「${name}」？广场将不再展示。`)) return;
+    try {
+      setActionId(id);
+      setError("");
+      await unpublishProduct(id);
       await loadProducts();
     } catch (err) {
       setError(err.message);
@@ -196,6 +212,7 @@ export default function Products() {
           {campaigns.map((item) => (
             <option key={item.id} value={item.id}>
               {item.title}
+              {item.enabled === false ? "（已隐藏）" : ""}
             </option>
           ))}
         </select>
@@ -287,21 +304,31 @@ export default function Products() {
                   </>
                 )}
                 {product.status === "approved" && (
-                  <label className="admin-campaign-field">
-                    <span className="sr-only">活动归属</span>
-                    <select
-                      className="admin-campaign-select"
-                      value={product.campaign || ""}
+                  <>
+                    <label className="admin-campaign-field">
+                      <span className="sr-only">活动归属</span>
+                      <select
+                        className="admin-campaign-select"
+                        value={product.campaign || ""}
+                        disabled={actionId === product.id}
+                        onChange={(e) => handleCampaign(product, e.target.value)}
+                      >
+                        {campaignOptions.map((option) => (
+                          <option key={option.id || "none"} value={option.id}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="admin-btn admin-btn-ghost"
                       disabled={actionId === product.id}
-                      onChange={(e) => handleCampaign(product, e.target.value)}
+                      onClick={() => handleOffline(product.id, product.name)}
                     >
-                      {campaignOptions.map((option) => (
-                        <option key={option.id || "none"} value={option.id}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                      下架
+                    </button>
+                  </>
                 )}
                 <button
                   type="button"

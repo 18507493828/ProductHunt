@@ -21,6 +21,7 @@ import {
   unpublishProduct,
   uploadImage,
   voteProduct,
+  fetchBuildConfig,
 } from "./api";
 import EmptyState from "./components/EmptyState";
 import ProductCard, { ProductCardSkeleton } from "./components/ProductCard";
@@ -41,7 +42,10 @@ import MyWorkspace from "./components/MyWorkspace";
 import BuildWizardModal from "./components/BuildWizardModal";
 import PromoteWizardModal from "./components/PromoteWizardModal";
 import PeriodRankBoard from "./components/PeriodRankBoard";
-import { BUILD_SCENES, BUILD_TOOLS, getSceneById, getToolById, heatScore, inferSceneIdFromText } from "./buildConfig";
+import { applyBuildConfig, getSceneById, getToolById, compareHeatItems, inferSceneIdFromText } from "./buildConfig";
+import useBuildCatalog from "./useBuildCatalog";
+import Carousel from "./components/Carousel";
+import SiteCmsNav from "./components/SiteCmsNav";
 import {
   APP_PLATFORMS,
   DEFAULT_APP_PLATFORM,
@@ -137,6 +141,7 @@ export default function App() {
   const toast = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { scenes: BUILD_SCENES, tools: BUILD_TOOLS } = useBuildCatalog();
 
   const [products, setProducts] = useState([]);
   const [topicPosts, setTopicPosts] = useState([]);
@@ -206,6 +211,7 @@ export default function App() {
   const [unpublishingId, setUnpublishingId] = useState("");
   const [showBuildWizard, setShowBuildWizard] = useState(false);
   const [showPromoteWizard, setShowPromoteWizard] = useState(false);
+  const [promoteProductId, setPromoteProductId] = useState("");
   const [draftRefreshKey, setDraftRefreshKey] = useState(0);
 
   const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -232,7 +238,10 @@ export default function App() {
     appPlatform: DEFAULT_APP_PLATFORM,
   });
 
-  const submitScene = useMemo(() => getSceneById(form.sceneId), [form.sceneId]);
+  const submitScene = useMemo(
+    () => getSceneById(form.sceneId),
+    [form.sceneId, BUILD_SCENES],
+  );
   const submitSceneTopics = submitScene?.topics || [];
 
   const visibleProducts = useMemo(() => {
@@ -252,7 +261,7 @@ export default function App() {
     } else if (squareSort === "likes") {
       list.sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
     } else {
-      list.sort((a, b) => heatScore(b) - heatScore(a));
+      list.sort(compareHeatItems);
     }
     return list.slice(0, visibleCount);
   }, [products, visibleCount, squareScene, squareSort]);
@@ -276,6 +285,12 @@ export default function App() {
     fetchCategoryOptions()
       .then(({ categories: list }) => setCategories(["全部", ...(list || [])]))
       .catch(() => setCategories(["全部"]));
+  }, []);
+
+  useEffect(() => {
+    fetchBuildConfig()
+      .then((config) => applyBuildConfig(config))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -550,9 +565,14 @@ export default function App() {
     setShowBuildWizard(true);
   }
 
-  function openPromoteWizard() {
+  function openPromoteWizard(productOrId) {
     if (!requireLogin()) return;
     loadMyProducts();
+    const id =
+      typeof productOrId === "string"
+        ? productOrId
+        : productOrId?.id || "";
+    setPromoteProductId(id || "");
     setShowPromoteWizard(true);
   }
 
@@ -1291,6 +1311,8 @@ export default function App() {
             onChange={handleMainViewChange}
           />
 
+          <SiteCmsNav />
+
           <div className="ph-nav-actions">
             {user ? (
               <>
@@ -1324,7 +1346,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Demo 门户首页无轮播：banner 能力保留在运营配置，前台首页不再展示 */}
+      {/* 运营端轮播配置 → 广场顶部展示 */}
 
       <MainViewSwitch
         activeView={activeView}
@@ -1340,6 +1362,7 @@ export default function App() {
         }
         square={
           <div className="ph-section-inner ph-section-inner--wide">
+            <Carousel />
             <div className="ph-square-head">
               <div>
                 <h1 className="ph-section-title">应用广场</h1>
@@ -2212,7 +2235,11 @@ export default function App() {
       <PromoteWizardModal
         open={showPromoteWizard}
         products={myProducts}
-        onClose={() => setShowPromoteWizard(false)}
+        initialProductId={promoteProductId}
+        onClose={() => {
+          setShowPromoteWizard(false);
+          setPromoteProductId("");
+        }}
         onPublish={() => openSubmitModal()}
       />
 

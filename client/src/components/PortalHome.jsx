@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Eye, Rocket, Share2, Sparkles, Users, Boxes, Coins } from "lucide-react";
 import { fetchProducts, fetchStats } from "../api";
-import { BUILD_SCENES, heatScore, inferSceneIdFromText } from "../buildConfig";
+import { inferSceneIdFromText, compareHeatItems } from "../buildConfig";
+import useBuildCatalog from "../useBuildCatalog";
 import ProductCard, { ProductCardSkeleton } from "./ProductCard";
 
 function formatCount(n) {
@@ -16,7 +17,7 @@ const PILLARS = [
     icon: Sparkles,
     title: "我要构建",
     desc: "选场景 → 选话题 → 选工具 → 生成任务书，4 步构建，10 分钟拥有你的 AI 应用。",
-    preview: "场景 · 话题 · 工具 · 任务书 · 华为码道 ¥9.9 激励",
+    preview: "场景 · 话题 · 工具 · 任务书",
   },
   {
     id: "publish",
@@ -42,6 +43,7 @@ export default function PortalHome({
   onVote,
   votingId,
 }) {
+  const { scenes: BUILD_SCENES } = useBuildCatalog();
   const [stats, setStats] = useState(null);
   const [hot, setHot] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,10 +84,10 @@ export default function PortalHome({
     } else if (sort === "likes") {
       list.sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
     } else {
-      list.sort((a, b) => heatScore(b) - heatScore(a));
+      list.sort(compareHeatItems);
     }
     return list.slice(0, 6);
-  }, [hot, sceneFilter, sort]);
+  }, [hot, sceneFilter, sort, BUILD_SCENES]);
 
   function handlePillar(id) {
     if (id === "build") onOpenBuild?.();

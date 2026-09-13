@@ -1,4 +1,4 @@
-/** 我要构建：场景 → 话题 → 工具（内容对齐 Demo） */
+/** 我要构建：场景 → 话题 → 工具（内容对齐 Demo；可由运营后台动态覆盖） */
 
 export const BUILD_SCENES = [
   {
@@ -104,22 +104,83 @@ export const BUILD_TOOLS = [
   },
 ];
 
+/** 运行时目录（后台配置可覆盖默认值，界面结构不变） */
+let runtimeScenes = BUILD_SCENES;
+let runtimeTools = BUILD_TOOLS;
+const listeners = new Set();
+
+function notifyBuildCatalog() {
+  listeners.forEach((fn) => {
+    try {
+      fn({ scenes: runtimeScenes, tools: runtimeTools });
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
+export function getBuildScenes() {
+  return runtimeScenes;
+}
+
+export function getBuildTools() {
+  return runtimeTools;
+}
+
+export function subscribeBuildCatalog(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+export function applyBuildConfig(config) {
+  if (Array.isArray(config?.scenes)) {
+    runtimeScenes = config.scenes.map((s) => ({
+      id: s.id,
+      emoji: s.emoji || "📌",
+      name: s.name,
+      topics: Array.isArray(s.topics)
+        ? s.topics.map((t) => (typeof t === "string" ? t : t.name)).filter(Boolean)
+        : [],
+    }));
+  }
+  if (Array.isArray(config?.tools)) {
+    runtimeTools = config.tools.map((t) => ({
+      id: t.id,
+      name: t.name,
+      emoji: t.emoji || "🛠️",
+      desc: t.desc || "",
+      downloadUrl: t.downloadUrl || "",
+      inviteCode: t.inviteCode || "",
+      recommended: Boolean(t.recommended),
+      sponsored: Boolean(t.sponsored),
+      incentive: Number(t.incentive) || 0,
+    }));
+  }
+  notifyBuildCatalog();
+  return { scenes: runtimeScenes, tools: runtimeTools };
+}
+
+export function getSponsoredIncentive() {
+  const sponsored = runtimeTools.find((t) => t.sponsored && t.incentive > 0);
+  return sponsored?.incentive ?? 0;
+}
+
 export function getSceneById(id) {
-  return BUILD_SCENES.find((s) => s.id === id) || null;
+  return runtimeScenes.find((s) => s.id === id) || null;
 }
 
 export function getToolById(id) {
-  return BUILD_TOOLS.find((t) => t.id === id) || null;
+  return runtimeTools.find((t) => t.id === id) || null;
 }
 
 export function inferSceneIdFromText(text) {
   const hay = String(text || "");
-  for (const scene of BUILD_SCENES) {
+  for (const scene of runtimeScenes) {
     for (const topic of scene.topics) {
       if (hay.includes(topic)) return scene.id;
     }
   }
-  for (const scene of BUILD_SCENES) {
+  for (const scene of runtimeScenes) {
     if (hay.includes(scene.name)) return scene.id;
   }
   return "";
@@ -155,6 +216,32 @@ export function periodHeatScore(item, period = "week") {
   // 半衰期约等于周期窗口的一半（周榜 ≈ 3.5 天）
   const decay = Math.pow(0.5, age / (window * 0.5));
   return Math.round(base * (0.4 + 0.6 * decay));
+}
+
+/** 与运营端榜单一致：置顶 → 权重 → 周期热度 → 点赞 */
+export function compareRankItems(a, b, period = "week") {
+  const aPinned = a?.rankPinned === true;
+  const bPinned = b?.rankPinned === true;
+  if (aPinned !== bPinned) return aPinned ? -1 : 1;
+
+  const weightDiff = (Number(b?.rankWeight) || 0) - (Number(a?.rankWeight) || 0);
+  if (weightDiff !== 0) return weightDiff;
+
+  const heatDiff =
+    periodHeatScore(b, period) - periodHeatScore(a, period);
+  if (heatDiff !== 0) return heatDiff;
+
+  return (Number(b?.voteCount) || 0) - (Number(a?.voteCount) || 0);
+}
+
+/** 广场热度排序：置顶 → 权重 → 综合热度 */
+export function compareHeatItems(a, b) {
+  const aPinned = a?.rankPinned === true;
+  const bPinned = b?.rankPinned === true;
+  if (aPinned !== bPinned) return aPinned ? -1 : 1;
+  const weightDiff = (Number(b?.rankWeight) || 0) - (Number(a?.rankWeight) || 0);
+  if (weightDiff !== 0) return weightDiff;
+  return heatScore(b) - heatScore(a);
 }
 
 export function buildTaskBrief({ scene, topic, tool }) {

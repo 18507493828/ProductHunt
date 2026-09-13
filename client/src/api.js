@@ -323,6 +323,10 @@ export async function fetchAdminIncentiveConfig() {
   return request("/api/admin/incentive-config");
 }
 
+export async function fetchIncentiveConfig() {
+  return request("/api/incentive-config");
+}
+
 export async function updateAdminIncentiveConfig(payload) {
   return request("/api/admin/incentive-config", {
     method: "PUT",
@@ -330,8 +334,26 @@ export async function updateAdminIncentiveConfig(payload) {
   });
 }
 
-export async function fetchAdminOpsOverview() {
-  return request("/api/admin/ops-overview");
+export async function fetchAdminOpsOverview(range = "week") {
+  const params = new URLSearchParams();
+  if (range) params.set("range", range);
+  const qs = params.toString();
+  return request(`/api/admin/ops-overview${qs ? `?${qs}` : ""}`);
+}
+
+export async function fetchBuildConfig() {
+  return request("/api/build-config");
+}
+
+export async function fetchAdminBuildConfig() {
+  return request("/api/admin/build-config");
+}
+
+export async function updateAdminBuildConfig(payload) {
+  return request("/api/admin/build-config", {
+    method: "PUT",
+    body: JSON.stringify(payload || {}),
+  });
 }
 
 export async function fetchAdminShares(filters = {}) {

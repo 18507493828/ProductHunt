@@ -17,7 +17,7 @@
     display: flex; justify-content: center;
   }
   #phone {
-    width: 100%; max-width: 430px; min-height: 100vh;
+    width: 100%; max-width: 430px; height: 100dvh; min-height: 100dvh; max-height: 100dvh;
     background: radial-gradient(ellipse at 50% 18%, #0a3d42 0%, #041c20 55%, #021214 100%);
     color: #e8f7f8; display: flex; flex-direction: column; position: relative; overflow: hidden;
   }
@@ -35,7 +35,8 @@
   }
 
   .radar-wrap {
-    position: relative; width: min(360px, 92vw); aspect-ratio: 1; margin: 4px auto 8px;
+    position: relative; width: min(360px, 92vw); aspect-ratio: 1;
+    max-height: min(42vh, 360px); margin: 4px auto 8px;
   }
   .radar {
     position: absolute; inset: 0; border-radius: 50%;
@@ -80,7 +81,8 @@
 
   .list-panel {
     flex: 1; background: linear-gradient(180deg, rgba(232,247,248,.04), #f2fafb 40px);
-    border-radius: 22px 22px 0 0; padding: 16px 14px calc(20px + env(safe-area-inset-bottom));
+    border-radius: 22px 22px 0 0;
+    padding: 16px 14px calc(84px + env(safe-area-inset-bottom));
     color: var(--ink); overflow: auto; min-height: 0;
   }
   .list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
@@ -127,6 +129,7 @@
   .sheet-card {
     width: 100%; background: #fff; color: var(--ink); border-radius: 18px 18px 0 0;
     padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
+    max-height: min(85vh, 640px); overflow-y: auto;
   }
   .sheet-card h3 { font-size: 17px; margin-bottom: 6px; }
   .sheet-card .meta { font-size: 12px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
@@ -171,7 +174,7 @@
       <h1>招领雷达</h1>
       <p>附近失物实时扫描</p>
     </div>
-    <button class="scan-btn" id="rescan">重新扫描</button>
+    <button class="scan-btn" id="rescan">重新定位</button>
   </div>
 
   <div class="radar-wrap" id="radarWrap">
@@ -183,6 +186,7 @@
     </div>
   </div>
   <div class="range-label" id="rangeLabel">扫描半径 · 800m</div>
+  <div class="range-label" id="geoStatus" style="margin-top:-6px;margin-bottom:8px;opacity:.85;font-size:10px;letter-spacing:.06em"></div>
 
   <div class="list-panel">
     <div class="list-head">
@@ -221,24 +225,59 @@
   </div>
 </div>
 <script>
+function mscMe(){ return (window.MashangChuangAuth && MashangChuangAuth.meLabel()) || window.__MSC_ME__ || "我"; }
 const ICONS = { "校园卡":"🪪", "钥匙":"🔑", "耳机":"🎧", "雨伞":"☂️", "水杯":"🥤", "充电宝":"🔋", "眼镜":"👓", "书包":"🎒", "默认":"📦" };
-const POS = [
-  {r:28, a:40}, {r:38, a:120}, {r:32, a:210}, {r:42, a:300},
-  {r:22, a:80}, {r:36, a:160}, {r:30, a:250}, {r:40, a:20}
-];
 const LS = "zhaoling-radar-v2";
-let items = JSON.parse(localStorage.getItem(LS) || "null") || [
-  { id:"i1", type:"found", name:"校园卡", place:"图书馆东门闸机旁", note:"姓名遮挡，学号尾号 28", dist:120, claimed:false },
-  { id:"i2", type:"lost", name:"黑色索尼耳机", place:"南食堂二楼", note:"左耳仓有贴纸", dist:260, claimed:false },
-  { id:"i3", type:"found", name:"一串钥匙", place:"二教 3 楼男厕门口", note:"带蓝色卡通挂件", dist:340, claimed:false },
-  { id:"i4", type:"found", name:"透明水杯", place:"田径场看台", note:"贴了「材料 21」", dist:480, claimed:false },
-  { id:"i5", type:"lost", name:"银色充电宝", place:"西区快递站", note:"小米 20000，外壳有刮痕", dist:610, claimed:false },
-  { id:"i6", type:"found", name:"黑框眼镜", place:"体育馆更衣室", note:"度数不详", dist:190, claimed:false },
+const DEFAULT_ITEMS = [
+  { id:"i1", type:"found", name:"校园卡", place:"图书馆东门闸机旁", note:"姓名遮挡，学号尾号 28", dNorth:90, dEast:80, claimed:false },
+  { id:"i2", type:"lost", name:"黑色索尼耳机", place:"南食堂二楼", note:"左耳仓有贴纸", dNorth:-180, dEast:190, claimed:false },
+  { id:"i3", type:"found", name:"一串钥匙", place:"二教 3 楼男厕门口", note:"带蓝色卡通挂件", dNorth:220, dEast:-260, claimed:false },
+  { id:"i4", type:"found", name:"透明水杯", place:"田径场看台", note:"贴了「材料 21」", dNorth:-360, dEast:320, claimed:false },
+  { id:"i5", type:"lost", name:"银色充电宝", place:"西区快递站", note:"小米 20000，外壳有刮痕", dNorth:480, dEast:-380, claimed:false },
+  { id:"i6", type:"found", name:"黑框眼镜", place:"体育馆更衣室", note:"度数不详", dNorth:-120, dEast:-150, claimed:false },
 ];
+let items = DEFAULT_ITEMS.map(i=>({...i}));
 let filter = "all", selected = null;
+let userPos = null;
+let geoOk = false;
+
+function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
+
+function applyGeoToItems(pos){
+  if(!pos || !window.MashangChuangGeo) return;
+  const G = MashangChuangGeo;
+  items.forEach(it => {
+    if(it.lat == null || it.lng == null){
+      const dn = it.dNorth != null ? it.dNorth : (typeof it.dist === "number" ? it.dist * 0.7 : 120);
+      const de = it.dEast != null ? it.dEast : (typeof it.dist === "number" ? it.dist * 0.5 : 80);
+      const p = G.offsetLatLng(pos.lat, pos.lng, dn, de);
+      it.lat = p.lat; it.lng = p.lng;
+    }
+    it.dist = Math.round(G.haversine(pos, { lat: it.lat, lng: it.lng }));
+  });
+}
+
+async function locateAndRefresh(opts){
+  const silent = opts && opts.silent;
+  if(!window.MashangChuangGeo) return;
+  const loc = await MashangChuangGeo.locateWithPlace();
+  userPos = loc.pos;
+  geoOk = !!loc.ok;
+  const placeLabel = loc.ok
+    ? (loc.placeLabel || loc.placeShort || "当前位置")
+    : MashangChuangGeo.FALLBACK.label;
+  applyGeoToItems(userPos);
+  const st = $("geoStatus");
+  if(st) st.textContent = geoOk
+    ? ("已定位 · " + placeLabel)
+    : ("定位未授权 · " + placeLabel);
+  save();
+  render();
+  if(!silent) toast(geoOk ? ("已重新定位 · " + placeLabel) : ("定位失败 · " + placeLabel));
+}
 
 const $=id=>document.getElementById(id);
-const save=()=>localStorage.setItem(LS, JSON.stringify(items));
+const save=()=>MashangChuangAuth.writeJSON(LS, items);
 const iconOf = name => {
   for(const k of Object.keys(ICONS)){ if(name.includes(k.replace("黑色索尼","").replace("银色","")) || name.includes(k)) return ICONS[k]; }
   if(name.includes("耳机")) return ICONS["耳机"];
@@ -273,7 +312,7 @@ function polar(rPct, deg){
 }
 
 function isMine(it){
-  return !!it.mine || (it.claimed && it.claimedBy==="我");
+  return !!it.mine || (it.claimed && (it.claimedBy===mscMe() || it.claimedBy==="我" || (!!window.__MSC_ME__ && it.claimedBy===window.__MSC_ME__)));
 }
 
 function filtered(){
@@ -286,9 +325,15 @@ function filtered(){
 function renderPins(){
   // Radar always shows nearby signals (not limited to 「我的」) so UX stays intact
   const list = (filter==="mine" ? items.slice().sort((a,b)=>a.dist-b.dist) : filtered());
+  const maxDist = Math.max(...items.map(i=>Number(i.dist)||0), 800);
+  const origin = userPos || (window.MashangChuangGeo && MashangChuangGeo.FALLBACK) || { lat:30.2741, lng:120.1551 };
   $("pins").innerHTML = list.map((it,i)=>{
-    const p = POS[i % POS.length];
-    const pos = polar(p.r, p.a + (i*17)%40);
+    let br = 40 + i * 47;
+    if(it.lat != null && it.lng != null && window.MashangChuangGeo){
+      br = MashangChuangGeo.bearing(origin, { lat: it.lat, lng: it.lng });
+    }
+    const rPct = clamp((Number(it.dist)||120) / maxDist * 42, 18, 44);
+    const pos = polar(rPct, br);
     return `<button class="pin ${selected===it.id?'active':''} ${it.claimed?'claimed':''}" data-id="${it.id}"
       style="left:${pos.left};top:${pos.top};animation-delay:${i*.2}s">${iconOf(it.name)}</button>`;
   }).join("");
@@ -307,8 +352,9 @@ function renderList(){
   $("list").innerHTML = list.map(it=>{
     if(mineMode){
       const role = it.mine ? "我发布" : "我对接到";
+      const myClaim = it.claimed && (it.claimedBy===mscMe() || it.claimedBy==="我" || (!!window.__MSC_ME__ && it.claimedBy===window.__MSC_ME__));
       const claimLine = it.claimed
-        ? `对接人：${it.claimedBy||"我"} · ${formatTime(it.claimedAt)}`
+        ? `对接人：${it.claimedBy||mscMe()} · ${formatTime(it.claimedAt)}`
         : "待对接";
       return `<div class="item mine-row ${selected===it.id?'active':''}" data-id="${it.id}">
         <div class="ico">${iconOf(it.name)}</div>
@@ -316,6 +362,10 @@ function renderList(){
           <h3>${it.type==="found"?"招领":"寻物"} · ${it.name}<span class="tag">${role}</span></h3>
           <p>${it.place}</p>
           <div class="meta-full">${it.note||"无备注"}<br>${claimLine}<br>距离约 ${it.dist}m</div>
+          <div class="mine-acts" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+            ${myClaim?`<button type="button" class="btn ghost" data-cancel-claim="${it.id}" style="padding:6px 10px;font-size:12px">取消对接</button>`:""}
+            ${it.mine?`<button type="button" class="btn ghost" data-del-mine="${it.id}" style="padding:6px 10px;font-size:12px">删除发布</button>`:""}
+          </div>
         </div>
         <div class="dist">${it.dist}m</div>
       </div>`;
@@ -330,11 +380,32 @@ function renderList(){
     </div>`;
   }).join("") || `<p style="text-align:center;color:var(--muted);padding:24px;font-size:13px">${mineMode?"还没有我对接到或发布的信号":"雷达范围内暂无信号"}</p>`;
   $("list").onclick = e => {
+    const cancelClaim = e.target.closest("[data-cancel-claim]");
+    if(cancelClaim){
+      e.stopPropagation();
+      const it = items.find(x=>x.id===cancelClaim.dataset.cancelClaim);
+      if(!it) return;
+      it.claimed = false;
+      delete it.claimedAt;
+      delete it.claimedBy;
+      save();
+      render();
+      return;
+    }
+    const delMine = e.target.closest("[data-del-mine]");
+    if(delMine){
+      e.stopPropagation();
+      items = items.filter(x=>x.id!==delMine.dataset.delMine);
+      save();
+      if(selected===delMine.dataset.delMine) selected=null;
+      render();
+      return;
+    }
     const row = e.target.closest("[data-id]");
     if(!row) return;
     selected = row.dataset.id;
     const it = items.find(x=>x.id===selected);
-    if(mineMode && it && it.claimed && it.claimedBy==="我") openHandoff(selected);
+    if(mineMode && it && it.claimed && (it.claimedBy===mscMe() || it.claimedBy==="我" || (!!window.__MSC_ME__ && it.claimedBy===window.__MSC_ME__))) openHandoff(selected);
     else openDetail(selected);
     render();
   };
@@ -343,20 +414,45 @@ function renderList(){
 function openDetail(id){
   const it = items.find(x=>x.id===id); if(!it) return;
   $("handoff").classList.remove("show");
+  const minePub = !!it.mine;
+  const myClaim = it.claimed && (it.claimedBy===mscMe() || it.claimedBy==="我" || (!!window.__MSC_ME__ && it.claimedBy===window.__MSC_ME__));
   $("detailCard").innerHTML = `
     <h3>${iconOf(it.name)} ${it.name}</h3>
     <div class="meta">${it.type==="found"?"捡到地点":"丢失地点"}：${it.place}<br>距离约 ${it.dist}m<br>${it.note||""}${it.claimed?`<br>已对接 · ${it.claimedBy||""} · ${formatTime(it.claimedAt)}`:""}</div>
     <div class="actions">
       <button class="btn ghost" id="closeDetail">关闭</button>
+      ${it.lat!=null&&it.lng!=null?`<button class="btn ghost" id="navFindBtn">导航到发现点</button>`:""}
+      ${minePub?`<button class="btn ghost" id="delMineBtn">删除发布</button>`:""}
+      ${myClaim?`<button class="btn ghost" id="cancelClaimBtn">取消对接</button>`:""}
       <button class="btn" id="claimBtn" ${it.claimed?"disabled":""}>${it.claimed?"已标记对接":"我是失主 / 捡到人"}</button>
     </div>`;
   $("detail").classList.add("show");
   $("closeDetail").onclick = () => $("detail").classList.remove("show");
+  $("navFindBtn")?.addEventListener("click", () => {
+    if(it.lat == null || !window.MashangChuangGeo) return;
+    MashangChuangGeo.openNav({ lat:it.lat, lng:it.lng, name:it.place||it.name });
+  });
+  $("delMineBtn")?.addEventListener("click", () => {
+    items = items.filter(x=>x.id!==it.id);
+    save();
+    $("detail").classList.remove("show");
+    selected = null;
+    render();
+  });
+  $("cancelClaimBtn")?.addEventListener("click", () => {
+    it.claimed = false;
+    delete it.claimedAt;
+    delete it.claimedBy;
+    save();
+    $("detail").classList.remove("show");
+    render();
+    openDetail(it.id);
+  });
   $("claimBtn").onclick = () => {
     if(it.claimed) return;
     it.claimed = true;
     it.claimedAt = new Date().toISOString();
-    it.claimedBy = "我";
+    it.claimedBy = mscMe();
     save();
     $("detail").classList.remove("show");
     render();
@@ -368,6 +464,8 @@ function openHandoff(id){
   const it = items.find(x=>x.id===id); if(!it) return;
   selected = it.id;
   $("detail").classList.remove("show");
+  const minePub = !!it.mine;
+  const myClaim = it.claimed && (it.claimedBy===mscMe() || it.claimedBy==="我" || (!!window.__MSC_ME__ && it.claimedBy===window.__MSC_ME__));
   $("handoffCard").innerHTML = `
     <h3>对接详情</h3>
     <div class="detail-grid">
@@ -377,7 +475,7 @@ function openHandoff(id){
       <div><span class="k">距离</span>　约 ${it.dist}m</div>
       <div><span class="k">备注</span>　${it.note||"无"}</div>
       <div><span class="k">对接时间</span>　${formatTime(it.claimedAt)}</div>
-      <div><span class="k">对接人</span>　${it.claimedBy||"我"}</div>
+      <div><span class="k">对接人</span>　${it.claimedBy||mscMe()}</div>
     </div>
     <div class="next-step">
       <strong>建议下一步</strong>
@@ -385,10 +483,27 @@ function openHandoff(id){
     </div>
     <div class="actions">
       <button class="btn ghost" id="closeHandoff">关闭</button>
+      ${minePub?`<button class="btn ghost" id="delMineBtn2">删除发布</button>`:""}
+      ${myClaim?`<button class="btn ghost" id="cancelClaimBtn2">取消对接</button>`:""}
       <button class="btn" id="viewRadar">查看雷达位置</button>
     </div>`;
   $("handoff").classList.add("show");
   $("closeHandoff").onclick = () => $("handoff").classList.remove("show");
+  $("delMineBtn2")?.addEventListener("click", () => {
+    items = items.filter(x=>x.id!==it.id);
+    save();
+    $("handoff").classList.remove("show");
+    selected = null;
+    render();
+  });
+  $("cancelClaimBtn2")?.addEventListener("click", () => {
+    it.claimed = false;
+    delete it.claimedAt;
+    delete it.claimedBy;
+    save();
+    $("handoff").classList.remove("show");
+    render();
+  });
   $("viewRadar").onclick = () => {
     $("handoff").classList.remove("show");
     selected = it.id;
@@ -418,9 +533,20 @@ $("cancelPub").onclick = () => $("publish").classList.remove("show");
 $("okPub").onclick = () => {
   const name = $("pName").value.trim();
   if(!name){ $("pName").focus(); return; }
+  const origin = userPos || (window.MashangChuangGeo && MashangChuangGeo.FALLBACK) || { lat:30.2741, lng:120.1551 };
+  const ang = Math.random() * Math.PI * 2;
+  const meters = 50 + Math.floor(Math.random() * 101);
+  const dNorth = Math.cos(ang) * meters;
+  const dEast = Math.sin(ang) * meters;
+  let lat, lng, dist = meters;
+  if(window.MashangChuangGeo){
+    const p = MashangChuangGeo.offsetLatLng(origin.lat, origin.lng, dNorth, dEast);
+    lat = p.lat; lng = p.lng;
+    dist = Math.round(MashangChuangGeo.haversine(origin, p));
+  }
   items.unshift({
     id:"n"+Date.now(), type:$("pType").value, name, place:$("pPlace").value||"本校某处",
-    note:$("pNote").value, dist: 50+Math.floor(Math.random()*500), claimed:false, mine:true
+    note:$("pNote").value, dist, lat, lng, dNorth, dEast, claimed:false, mine:true
   });
   save(); $("publish").classList.remove("show");
   $("pName").value=""; $("pPlace").value=""; $("pNote").value="";
@@ -428,20 +554,44 @@ $("okPub").onclick = () => {
   [...$("tabs").children].forEach(x=>x.classList.toggle("on", x.dataset.f==="mine"));
   render();
 };
-$("rescan").onclick = () => {
+$("rescan").onclick = async () => {
   const blip = document.createElement("div");
   blip.className = "blip";
   blip.style.left = "50%"; blip.style.top = "50%";
   $("radar").appendChild(blip);
   setTimeout(()=>blip.remove(),3200);
-  items.forEach(it => { if(!it.claimed) it.dist = Math.max(40, it.dist + Math.floor(Math.random()*80-40)); });
-  save(); render();
+  await locateAndRefresh({ silent: false });
 };
 $("detail").onclick = e => { if(e.target===$("detail")) e.target.classList.remove("show"); };
 $("handoff").onclick = e => { if(e.target===$("handoff")) e.target.classList.remove("show"); };
 $("publish").onclick = e => { if(e.target===$("publish")) e.target.classList.remove("show"); };
 
-render();
 </script>
+<script src="/apps/_shared/geo.js"></script>
+<script src="/apps/_shared/auth.js"></script>
+
+<script>
+(function(){
+  if(!window.MashangChuangAuth) return;
+  MashangChuangAuth.boot({
+    requireLogin: false,
+    appName: '招领雷达',
+    onReady: async function(user){
+      window.__MSC_USER__ = user;
+      document.dispatchEvent(new CustomEvent('msc-auth-ready', { detail: user }));
+      try {
+        var label = MashangChuangAuth.meLabel('我');
+        window.__MSC_ME__ = label;
+      } catch(e) {}
+      items = MashangChuangAuth.readJSON(LS, null) || DEFAULT_ITEMS.map(function(i){ return Object.assign({}, i); });
+      selected = null;
+      if(typeof render === 'function') render();
+      if(typeof locateAndRefresh === 'function') await locateAndRefresh({ silent: true });
+      else if(typeof save === 'function') save();
+    }
+  });
+})();
+</script>
+
 </body>
 </html>

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { fetchMe, login as apiLogin, register as apiRegister } from "./api";
-import { clearToken, getToken, setToken } from "./authStorage";
+import { clearToken, getToken, setToken, syncAppSession } from "./authStorage";
 
 const AuthContext = createContext(null);
 
@@ -16,7 +16,10 @@ export function AuthProvider({ children }) {
     }
 
     fetchMe()
-      .then(({ user: currentUser }) => setUser(currentUser))
+      .then(({ user: currentUser }) => {
+        setUser(currentUser);
+        syncAppSession(currentUser, token);
+      })
       .catch(() => clearToken())
       .finally(() => setLoading(false));
   }, []);
@@ -30,12 +33,14 @@ export function AuthProvider({ children }) {
         const result = await apiLogin(username, password);
         setToken(result.token);
         setUser(result.user);
+        syncAppSession(result.user, result.token);
         return result;
       },
       async register(username, nickname, password) {
         const result = await apiRegister(username, nickname, password);
         setToken(result.token);
         setUser(result.user);
+        syncAppSession(result.user, result.token);
         return result;
       },
       logout() {

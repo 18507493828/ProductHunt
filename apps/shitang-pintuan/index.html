@@ -405,6 +405,7 @@
         <div class="brand-name">食堂拼团王</div>
       </div>
       <div class="nav-actions">
+        <button class="icon-btn" id="btnRelocate" title="重新定位">📍</button>
         <button class="icon-btn" id="btnReset" title="重置演示数据">↺</button>
       </div>
     </div>
@@ -416,6 +417,7 @@
       <div class="hero">
         <div class="hero-title">拼着吃，更划算</div>
         <div class="hero-sub" id="heroSub">满员自动下单 · 全员享 <b>8~9 折</b></div>
+        <div id="placeHint" style="font-size:12px;color:var(--ink-3);margin-top:8px">定位中…</div>
       </div>
       <div class="section-title">拼团大厅 <small id="homeSub"></small></div>
       <div class="stat-bar">
@@ -466,34 +468,26 @@ const Store = {
 
   init(){
     try{
-      const raw = localStorage.getItem(STORE_KEY);
-      if(raw){
-        this.state = JSON.parse(raw);
-        // 版本兼容检查
-        if(!this.state || !Array.isArray(this.state.restaurants)){
-          throw new Error('bad data');
-        }
+      const data = MashangChuangAuth.readJSON(STORE_KEY, null);
+      if(data && Array.isArray(data.restaurants)){
+        this.state = data;
       }else{
         // v1 → v2 迁移：保留用户产生的拼团/订单/资料，餐厅列表刷新为新版（内置图）
-        const legacy = localStorage.getItem(LEGACY_KEY);
+        const old = MashangChuangAuth.readJSON(LEGACY_KEY, null);
         let migrated = false;
-        if(legacy){
+        if(old && Array.isArray(old.groups)){
           try{
-            const old = JSON.parse(legacy);
-            if(old && Array.isArray(old.groups)){
-              const fresh = this.seed();
-              // 用户自建的餐厅（id 不在新种子里）也一并保留
-              const seedIds = new Set(fresh.restaurants.map(r => r.id));
-              const custom = (old.restaurants || []).filter(r => r && !seedIds.has(r.id));
-              fresh.restaurants = fresh.restaurants.concat(custom);
-              fresh.groups = old.groups;
-              fresh.orders = old.orders || [];
-              fresh.profile = old.profile || null;
-              this.state = fresh;
-              migrated = true;
-            }
+            const fresh = this.seed();
+            // 用户自建的餐厅（id 不在新种子里）也一并保留
+            const seedIds = new Set(fresh.restaurants.map(r => r.id));
+            const custom = (old.restaurants || []).filter(r => r && !seedIds.has(r.id));
+            fresh.restaurants = fresh.restaurants.concat(custom);
+            fresh.groups = old.groups;
+            fresh.orders = old.orders || [];
+            fresh.profile = old.profile || null;
+            this.state = fresh;
+            migrated = true;
           }catch(e){ /* 旧数据损坏则忽略 */ }
-          localStorage.removeItem(LEGACY_KEY);
         }
         if(!migrated){
           this.state = this.seed();
@@ -509,20 +503,24 @@ const Store = {
 
   save(){
     try{
-      localStorage.setItem(STORE_KEY, JSON.stringify(this.state));
+      MashangChuangAuth.writeJSON(STORE_KEY, this.state);
     }catch(e){
       // 存储超限时降级：剥离自定义餐厅图片后重试
       this.state.restaurants.forEach(r => {
         if(r.img && r.img.startsWith('data:')) r.img = '';
         r.menu && r.menu.forEach(m => { if(m.img && m.img.startsWith('data:')) m.img = ''; });
       });
-      try{ localStorage.setItem(STORE_KEY, JSON.stringify(this.state)); }catch(e2){}
+      try{ MashangChuangAuth.writeJSON(STORE_KEY, this.state); }catch(e2){}
     }
   },
 
   reset(){
-    localStorage.removeItem(STORE_KEY);
-    localStorage.removeItem(LEGACY_KEY);
+    try{
+      localStorage.removeItem(MashangChuangAuth.scopedKey(STORE_KEY));
+      localStorage.removeItem(MashangChuangAuth.scopedKey(LEGACY_KEY));
+      localStorage.removeItem(STORE_KEY);
+      localStorage.removeItem(LEGACY_KEY);
+    }catch(e){}
     this.state = this.seed();
     this.save();
   },
@@ -544,7 +542,7 @@ const Store = {
     const now = Date.now();
     const H = 3600 * 1000;
     const restaurants = [
-      { id:'r1', name:'江南小灶', emoji:'🍚', cover:'#FFF0E0', category:'家常菜', rating:4.8, distance:'320m', deliveryFee:0, discount:0.85, img:'@r1',
+      { id:'r1', name:'江南小灶', emoji:'🍚', cover:'#FFF0E0', category:'家常菜', rating:4.8, distance:'320m', dNorth:240, dEast:210, deliveryFee:0, discount:0.85, img:'@r1',
         tags:['满8.5折','免配送'],
         menu:[
           {id:'r1m1', name:'招牌红烧肉套餐', price:28, desc:'红烧肉+两素+米饭', emoji:'🥘', img:'@r1m1'},
@@ -552,35 +550,35 @@ const Store = {
           {id:'r1m3', name:'番茄炒蛋套餐', price:18, desc:'经典家常', emoji:'🍅', img:'@r1m3'},
           {id:'r1m4', name:'狮子头砂锅', price:26, desc:'四个大狮子头', emoji:'🍲', img:'@r1m4'}
         ]},
-      { id:'r2', name:'川渝冒菜馆', emoji:'🌶️', cover:'#FFE8E4', category:'冒菜·麻辣烫', rating:4.7, distance:'450m', deliveryFee:2, discount:0.8, img:'@r2',
+      { id:'r2', name:'川渝冒菜馆', emoji:'🌶️', cover:'#FFE8E4', category:'冒菜·麻辣烫', rating:4.7, distance:'450m', dNorth:-320, dEast:320, deliveryFee:2, discount:0.8, img:'@r2',
         tags:['满8折','微辣可选'],
         menu:[
           {id:'r2m1', name:'双人冒菜套餐', price:42, desc:'荤素搭配12个菜', emoji:'🍲', img:'@r2m1'},
           {id:'r2m2', name:'肥牛麻辣烫', price:25, desc:'肥牛8片+宽粉', emoji:'🍜', img:'@r2m2'},
           {id:'r2m3', name:'钵钵鸡（10签）', price:20, desc:'藤椒味', emoji:'🍗', img:'@r2m3'}
         ]},
-      { id:'r3', name:'粤味烧腊饭', emoji:'🦆', cover:'#FFF4D6', category:'烧腊·港式', rating:4.9, distance:'580m', deliveryFee:0, discount:0.88, img:'@r3',
+      { id:'r3', name:'粤味烧腊饭', emoji:'🦆', cover:'#FFF4D6', category:'烧腊·港式', rating:4.9, distance:'580m', dNorth:420, dEast:-400, deliveryFee:0, discount:0.88, img:'@r3',
         tags:['满8.8折','免费例汤'],
         menu:[
           {id:'r3m1', name:'深井烧鹅饭', price:32, desc:'皮脆肉嫩配酸梅酱', emoji:'🦆', img:'@r3m1'},
           {id:'r3m2', name:'蜜汁叉烧饭', price:26, desc:'半肥瘦叉烧', emoji:'🍖', img:'@r3m2'},
           {id:'r3m3', name:'白切鸡饭', price:28, desc:'湛江走地鸡', emoji:'🍗', img:'@r3m3'}
         ]},
-      { id:'r4', name:'西北面食坊', emoji:' noodle', cover:'#E8F0FF', category:'面食·西北菜', rating:4.6, distance:'260m', deliveryFee:0, discount:0.9, img:'@r4',
+      { id:'r4', name:'西北面食坊', emoji:' noodle', cover:'#E8F0FF', category:'面食·西北菜', rating:4.6, distance:'260m', dNorth:160, dEast:-200, deliveryFee:0, discount:0.9, img:'@r4',
         tags:['满9折','面量足'],
         menu:[
           {id:'r4m1', name:'油泼biangbiang面', price:20, desc:'裤带宽面+辣子', emoji:'🍜', img:'@r4m1'},
           {id:'r4m2', name:'羊肉泡馍', price:35, desc:'汤浓馍筋', emoji:'🥣', img:'@r4m2'},
           {id:'r4m3', name:'肉夹馍+凉皮套餐', price:24, desc:'陕西经典CP', emoji:'🥙', img:'@r4m3'}
         ]},
-      { id:'r5', name:'轻食沙拉Lab', emoji:'🥗', cover:'#E4F7EA', category:'轻食·健康餐', rating:4.5, distance:'700m', deliveryFee:3, discount:0.85, img:'@r5',
+      { id:'r5', name:'轻食沙拉Lab', emoji:'🥗', cover:'#E4F7EA', category:'轻食·健康餐', rating:4.5, distance:'700m', dNorth:-520, dEast:470, deliveryFee:3, discount:0.85, img:'@r5',
         tags:['满8.5折','低卡'],
         menu:[
           {id:'r5m1', name:'鸡胸牛油果碗', price:30, desc:'460kcal 高蛋白', emoji:'🥑', img:'@r5m1'},
           {id:'r5m2', name:'三文鱼藜麦碗', price:38, desc:'Omega-3 满分', emoji:'🍣', img:'@r5m2'},
           {id:'r5m3', name:'素食彩虹碗', price:26, desc:'7种蔬果', emoji:'🌈', img:'@r5m3'}
         ]},
-      { id:'r6', name:'东北饺子王', emoji:'🥟', cover:'#F3E8FF', category:'饺子·东北菜', rating:4.7, distance:'820m', deliveryFee:0, discount:0.82, img:'@r6',
+      { id:'r6', name:'东北饺子王', emoji:'🥟', cover:'#F3E8FF', category:'饺子·东北菜', rating:4.7, distance:'820m', dNorth:600, dEast:-560, deliveryFee:0, discount:0.82, img:'@r6',
         tags:['满8.2折','手工现包'],
         menu:[
           {id:'r6m1', name:'猪肉白菜水饺(20只)', price:24, desc:'皮薄馅大', emoji:'🥟', img:'@r6m1'},
@@ -651,7 +649,39 @@ const Store = {
   myGroups(){
     const p = this.state.profile;
     if(!p) return [];
-    return this.state.groups.filter(g => g.members.some(m => m.phone === p.phone));
+    return this.state.groups.filter(g =>
+      g.createdBy === p.phone || g.members.some(m => m.phone === p.phone)
+    );
+  },
+  leaveOrCancelGroup(gid){
+    const p = this.state.profile;
+    const g = this.getGroup(gid);
+    if(!p || !g) return { ok:false, msg:'找不到拼团' };
+    if(g.status === 'success') return { ok:false, msg:'拼团已完成，无法退出' };
+    const isMember = g.members.some(m => m.phone === p.phone);
+    const isCreator = g.createdBy === p.phone;
+    if(!isMember && !isCreator) return { ok:false, msg:'你不在这个拼团里' };
+    // 发起人取消：未完成则可整团撤销
+    if(isCreator && (!isMember || g.members.length <= 1)){
+      this.state.groups = this.state.groups.filter(x => x.id !== gid);
+      this.save();
+      return { ok:true, msg:'已取消该拼团' };
+    }
+    if(isMember){
+      g.members = g.members.filter(m => m.phone !== p.phone);
+      // 无人且非他人创建：清理空团
+      if(!g.members.length && (!g.createdBy || g.createdBy === p.phone)){
+        this.state.groups = this.state.groups.filter(x => x.id !== gid);
+        this.save();
+        return { ok:true, msg:'已退出并取消空团' };
+      }
+      this.save();
+      return { ok:true, msg:'已退出拼团' };
+    }
+    // 仅 creator、未加入成员：取消
+    this.state.groups = this.state.groups.filter(x => x.id !== gid);
+    this.save();
+    return { ok:true, msg:'已取消该拼团' };
   },
   myOrders(){
     const gids = new Set(this.myGroups().map(g => g.id));
@@ -847,8 +877,45 @@ function renderMine(){
     <div class="section-title" style="font-size:16px;margin-top:20px">我参与的拼团 <small>${myG.length} 个</small></div>
     ${ myG.length ? myG.slice().reverse().map(g => groupCardHTML(g)).join('')
        : emptyHTML('🤝','还没有参与过拼团') }
+
+    ${ (() => {
+      const mineR = Store.state.restaurants.filter(r => r.mine);
+      if(!mineR.length) return '';
+      return `<div class="section-title" style="font-size:16px;margin-top:20px">我上架的餐厅 <small>${mineR.length}</small></div>` +
+        mineR.map(r => `<div class="order-card" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div><b>${r.name}</b><div style="font-size:12px;color:var(--ink-3);margin-top:2px">${r.category} · ${r.distance}</div></div>
+          <button type="button" class="btn-ghost" data-del-rest="${r.id}" style="flex:none;font-size:12px">下架</button>
+        </div>`).join('');
+    })() }
   `;
   bindGroupCards();
+  body.querySelectorAll('[data-del-order]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const oid = btn.dataset.delOrder;
+      const order = Store.state.orders.find(o => o.id === oid);
+      if(order){
+        Store.state.groups = Store.state.groups.filter(g => g.id !== order.groupId);
+        Store.state.orders = Store.state.orders.filter(o => o.id !== oid);
+        Store.save();
+        toast('已从我的移除', 'ok');
+        renderMine();
+      }
+    });
+  });
+  body.querySelectorAll('[data-del-rest]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rid = btn.dataset.delRest;
+      const hasLive = Store.state.groups.some(g => g.restaurantId === rid && g.status === 'recruiting');
+      if(hasLive){ toast('还有进行中的拼团，先取消后再下架', 'err'); return; }
+      const dropGids = new Set(Store.state.groups.filter(g => g.restaurantId === rid).map(g => g.id));
+      Store.state.groups = Store.state.groups.filter(g => g.restaurantId !== rid);
+      Store.state.orders = Store.state.orders.filter(o => !dropGids.has(o.groupId));
+      Store.state.restaurants = Store.state.restaurants.filter(x => x.id !== rid);
+      Store.save();
+      toast('餐厅已下架', 'ok');
+      renderAll();
+    });
+  });
 }
 
 function orderCardHTML(o){
@@ -867,6 +934,7 @@ function orderCardHTML(o){
       <span class="save">省 ${money(o.original - o.final)}</span>
       <b>${money(o.final + o.deliveryFee)}</b>
     </div>
+    <button type="button" class="btn-ghost" data-del-order="${o.id}" style="width:100%;margin-top:8px;font-size:12px">从我的移除</button>
   </div>`;
 }
 
@@ -892,6 +960,8 @@ function openRestaurant(rid){
   openSheet(`
     <div class="sheet-title">${r.name}</div>
     <div class="sheet-sub">★ ${r.rating} · ${r.distance} · ${r.deliveryFee ? '配送 ¥'+r.deliveryFee : '免配送'} · 满员享 <b style="color:var(--accent-deep)">${(r.discount*10).toFixed(1).replace(/\.0$/,'')}折</b></div>
+    ${r.lat!=null&&window.MashangChuangGeo?`<button type="button" class="btn btn-ghost btn-block" id="btnNavRest" style="margin:10px 0 4px">导航到餐厅</button>`:""}
+    ${r.mine?`<button type="button" class="btn btn-ghost btn-block" id="btnDelRest" style="margin:0 0 8px;color:#c2410c">下架我的餐厅</button>`:""}
     <div class="form-label" style="margin-bottom:8px">选择菜品 <em>*</em></div>
     <div id="menuPick">
       ${r.menu.map(m => `
@@ -928,6 +998,27 @@ function openRestaurant(rid){
 
   // 菜品单选
   let picked = null;
+  const navBtn = document.getElementById('btnNavRest');
+  if(navBtn && r.lat != null && window.MashangChuangGeo){
+    navBtn.addEventListener('click', () => {
+      MashangChuangGeo.openNav({ lat: r.lat, lng: r.lng, name: r.name });
+    });
+  }
+  const delRest = document.getElementById('btnDelRest');
+  if(delRest){
+    delRest.addEventListener('click', () => {
+      const hasLive = Store.state.groups.some(g => g.restaurantId === r.id && g.status === 'recruiting');
+      if(hasLive){ toast('还有进行中的拼团，先取消后再下架', 'err'); return; }
+      const dropGids = new Set(Store.state.groups.filter(g => g.restaurantId === r.id).map(g => g.id));
+      Store.state.groups = Store.state.groups.filter(g => g.restaurantId !== r.id);
+      Store.state.orders = Store.state.orders.filter(o => !dropGids.has(o.groupId));
+      Store.state.restaurants = Store.state.restaurants.filter(x => x.id !== r.id);
+      Store.save();
+      closeSheet();
+      toast('餐厅已下架', 'ok');
+      renderAll();
+    });
+  }
   $('#menuPick').addEventListener('click', e => {
     const item = e.target.closest('.menu-item');
     if(!item) return;
@@ -941,19 +1032,35 @@ function openRestaurant(rid){
       toast('请先选择一道菜品', 'err');
       return;
     }
+    let p = Store.state.profile;
+    if(!p){
+      const name = prompt('发起拼团前先取个昵称（2字以上）', '拼友');
+      if(!name || name.trim().length < 2){ toast('需要昵称才能发起', 'err'); return; }
+      const phone = prompt('填个手机号用于识别（11位）', '13800000000');
+      if(!phone || !/^1[3-9]\d{9}$/.test(phone.trim())){ toast('手机号格式不对', 'err'); return; }
+      p = { name: name.trim(), phone: phone.trim() };
+      Store.state.profile = p;
+    }
     const target = +$('#fTarget').value;
     const hours = +$('#fDeadline').value;
+    const member = { name: p.name, phone: p.phone, qty: 1, remark: '发起人', joinedAt: Date.now() };
     const group = {
       id: uid('g'), restaurantId: r.id, itemId: picked,
-      targetCount: target, members: [],
+      targetCount: target, members: [member],
       deadline: Date.now() + hours * 3600 * 1000,
-      status: 'recruiting', createdAt: Date.now(), orderId: null
+      status: 'recruiting', createdAt: Date.now(), orderId: null,
+      createdBy: p.phone
     };
     Store.state.groups.push(group);
     Store.save();
     closeSheet();
-    toast('🎉 拼团已发起，快去邀请同事吧', 'ok');
-    renderHome();
+    if(group.members.length >= group.targetCount){
+      autoPlaceOrder(group);
+      toast('🎉 满员！订单已自动下单', 'ok');
+    } else {
+      toast('🎉 拼团已发起，你已在团内', 'ok');
+    }
+    renderAll();
   });
 }
 
@@ -980,10 +1087,17 @@ function openGroup(gid){
     </div>`).join('') : '<div class="hint" style="padding:8px 0">暂无成员，等你来当团长</div>';
 
   let footer = '';
+  const p = Store.state.profile;
+  const isMember = !!(p && g.members.some(m => m.phone === p.phone));
+  const isCreator = !!(p && g.createdBy === p.phone);
+  const canLeave = g.status === 'recruiting' && (isMember || isCreator);
+  const leaveLabel = isCreator && (!isMember || g.members.length <= 1) ? '取消拼团' : '退出拼团';
+
   if(g.status === 'recruiting'){
     footer = `
       <div class="countdown" id="sheetCountdown" data-deadline="${g.deadline}" style="text-align:center;font-size:14px;margin-bottom:12px">--:--:--</div>
-      <button class="btn btn-primary btn-block" id="btnJoin">加入拼团 · ${money(+(item.price*rest.discount).toFixed(2))}</button>`;
+      ${canLeave ? `<button class="btn btn-ghost btn-block" id="btnLeave" style="margin-bottom:8px">${leaveLabel}</button>` : ''}
+      ${isMember ? `<div class="hint" style="text-align:center;margin-bottom:10px">你已在团内 · 坐等满员自动下单</div>` : `<button class="btn btn-primary btn-block" id="btnJoin">加入拼团 · ${money(+(item.price*rest.discount).toFixed(2))}</button>`}`;
   }else if(g.status === 'success' && order){
     footer = `
       <div class="success-banner">🎉 拼团成功，系统已自动下单（${order.discountName}）</div>
@@ -998,9 +1112,12 @@ function openGroup(gid){
           <span class="save">省 ${money(order.original - order.final)}</span>
           <b>${money(order.final + order.deliveryFee)}</b>
         </div>
-      </div>`;
+      </div>
+      <button class="btn btn-ghost btn-block" id="btnArchiveGroup" style="margin-top:10px">从我的移除</button>`;
   }else{
-    footer = `<div class="hint" style="text-align:center;padding:12px 0">该拼团已过期，去大厅看看别的团吧</div>`;
+    footer = `
+      <div class="hint" style="text-align:center;padding:12px 0">该拼团已过期，去大厅看看别的团吧</div>
+      <button class="btn btn-ghost btn-block" id="btnArchiveGroup">从我的移除</button>`;
   }
 
   openSheet(`
@@ -1023,6 +1140,23 @@ function openGroup(gid){
 
   const joinBtn = $('#btnJoin');
   if(joinBtn) joinBtn.addEventListener('click', () => openJoinForm(gid));
+  const leaveBtn = $('#btnLeave');
+  if(leaveBtn) leaveBtn.addEventListener('click', () => {
+    const res = Store.leaveOrCancelGroup(gid);
+    if(!res.ok){ toast(res.msg, 'err'); return; }
+    closeSheet();
+    toast(res.msg, 'ok');
+    renderAll();
+  });
+  const archiveBtn = $('#btnArchiveGroup');
+  if(archiveBtn) archiveBtn.addEventListener('click', () => {
+    Store.state.orders = Store.state.orders.filter(o => o.groupId !== gid);
+    Store.state.groups = Store.state.groups.filter(x => x.id !== gid);
+    Store.save();
+    closeSheet();
+    toast('已从我的移除', 'ok');
+    renderAll();
+  });
 }
 
 function openJoinForm(gid){
@@ -1086,6 +1220,7 @@ function openJoinForm(gid){
 
     const member = { name, phone, qty, remark, joinedAt: Date.now() };
     g.members.push(member);
+    if(!g.createdBy) g.createdBy = phone;
     Store.state.profile = { name, phone };
     Store.save();
 
@@ -1226,9 +1361,19 @@ function openAddRestaurant(){
   $('#btnARest').addEventListener('click', () => {
     const name = $('#aName').value.trim();
     const cat = $('#aCat').value;
-    const distLabel = $('#aDist').selectedOptions[0].textContent;
+    let distLabel = $('#aDist').selectedOptions[0].textContent;
     const fee = +$('#aFee').value;
     const discount = +$('#aDisc').value;
+    let restLat = null, restLng = null, restDN = null, restDE = null;
+    if(window.__MSC_USER_POS__ && window.MashangChuangGeo){
+      const meters = +$('#aDist').value || 400;
+      const ang = Math.random() * Math.PI * 2;
+      restDN = Math.cos(ang) * meters;
+      restDE = Math.sin(ang) * meters;
+      const p = MashangChuangGeo.offsetLatLng(window.__MSC_USER_POS__.lat, window.__MSC_USER_POS__.lng, restDN, restDE);
+      restLat = p.lat; restLng = p.lng;
+      distLabel = MashangChuangGeo.formatDist(MashangChuangGeo.haversine(window.__MSC_USER_POS__, p));
+    }
 
     let ok = true;
     $('#aName').classList.toggle('err', name.length < 2);
@@ -1262,7 +1407,8 @@ function openAddRestaurant(){
     const rest = {
       id: uid('r'), name, emoji: meta.emoji, cover: meta.cover,
       category: cat, rating: 5.0, distance: distLabel,
-      deliveryFee: fee, discount, img: uploadedImg,
+      lat: restLat, lng: restLng, dNorth: restDN, dEast: restDE,
+      deliveryFee: fee, discount, img: uploadedImg, mine: true,
       tags: [discLabel, fee ? `配送¥${fee}` : '免配送'],
       menu: dishes.map(d => ({ id: uid('m'), name: d.name, price: d.price, desc: '新上架', emoji: meta.emoji, img: '' }))
     };
@@ -1364,10 +1510,60 @@ function renderAll(){
 /* =========================================================
  * 启动
  * =======================================================*/
-Store.init();
-renderAll();
-setInterval(tickCountdowns, 1000);
-tickCountdowns();
 </script>
+<script src="/apps/_shared/geo.js"></script>
+<script src="/apps/_shared/auth.js"></script>
+
+<script>
+(function(){
+  if(!window.MashangChuangAuth) return;
+  MashangChuangAuth.boot({
+    requireLogin: false,
+    appName: '食堂拼团王',
+    onReady: async function(user){
+      window.__MSC_USER__ = user;
+      document.dispatchEvent(new CustomEvent('msc-auth-ready', { detail: user }));
+      try {
+        var label = MashangChuangAuth.meLabel('我');
+        window.__MSC_ME__ = label;
+      } catch(e) {}
+      Store.init();
+      renderAll();
+      setInterval(tickCountdowns, 1000);
+      tickCountdowns();
+      async function refreshLoc(showToast){
+        if(!window.MashangChuangGeo) return;
+        var btn=document.getElementById("btnRelocate");
+        var hint=document.getElementById("placeHint");
+        if(btn) btn.disabled=true;
+        if(hint) hint.textContent="正在定位…";
+        try {
+          var loc = await MashangChuangGeo.locateWithPlace();
+          window.__MSC_USER_POS__ = loc.pos;
+          window.__MSC_GEO_OK__ = !!loc.ok;
+          window.__MSC_PLACE__ = loc.ok ? (loc.placeLabel||loc.placeShort||"当前位置") : MashangChuangGeo.FALLBACK.label;
+          if(hint) hint.textContent = (loc.ok?"已定位 · ":"默认位置 · ") + window.__MSC_PLACE__;
+          (Store.state.restaurants || []).forEach(function(r){
+            var p = MashangChuangGeo.offsetLatLng(loc.pos.lat, loc.pos.lng, r.dNorth || 300, r.dEast || 200);
+            r.lat = p.lat; r.lng = p.lng;
+            if(r.dNorth == null) r.dNorth = 300;
+            if(r.dEast == null) r.dEast = 200;
+            r.distance = MashangChuangGeo.formatDist(MashangChuangGeo.haversine(loc.pos, { lat: r.lat, lng: r.lng }));
+          });
+          Store.save();
+          renderRestaurants();
+          if(showToast) toast(loc.ok ? ("已重新定位 · " + window.__MSC_PLACE__) : ("定位失败 · " + window.__MSC_PLACE__), loc.ok?'ok':'err');
+        } catch(err) {
+          if(hint) hint.textContent="定位失败";
+        }
+        if(btn) btn.disabled=false;
+      }
+      document.getElementById("btnRelocate")?.addEventListener("click", function(){ refreshLoc(true); });
+      if(window.MashangChuangGeo) await refreshLoc(false);
+    }
+  });
+})();
+</script>
+
 </body>
 </html>

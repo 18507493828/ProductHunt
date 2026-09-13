@@ -149,9 +149,6 @@ export default function Banners() {
   return (
     <>
       <div className="admin-toolbar">
-        <span className="admin-toolbar-hint">
-          首页轮播图会按排序值从小到大展示，共 {banners.length} 张
-        </span>
         <button
           type="button"
           className="add-banner-btn"

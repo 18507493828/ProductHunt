@@ -73,7 +73,7 @@ body{
 .pet-body h3 .star{color:var(--orange);font-size:16px}
 .meta{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
 .story{font-size:13px;line-height:1.65;color:#5c4030;margin-bottom:12px}
-.actions{display:flex;gap:8px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
 .btn{
   border:none;border-radius:12px;padding:10px 14px;font:inherit;font-weight:800;font-size:13px;cursor:pointer;
   background:linear-gradient(135deg,var(--warm),var(--orange));color:#fff;
@@ -114,10 +114,15 @@ body{
 .mine-strip .chips{display:flex;flex-wrap:wrap;gap:6px}
 .mine-chip{
   border:1px solid rgba(232,93,4,.28);background:#fff7ed;color:var(--ink);
-  border-radius:999px;padding:5px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+  border-radius:999px;padding:5px 10px;font:inherit;font-size:12px;font-weight:700;
+  display:inline-flex;align-items:center;gap:6px;
 }
 .mine-chip:hover{background:rgba(232,93,4,.12);border-color:var(--orange)}
 .mine-chip.fav{border-color:rgba(232,93,4,.45)}
+.mine-chip .x{
+  border:none;background:rgba(232,93,4,.14);color:var(--orange);border-radius:999px;
+  width:18px;height:18px;line-height:18px;font:inherit;font-size:11px;font-weight:800;cursor:pointer;padding:0;
+}
 .mine-empty{color:var(--muted);font-size:12px}
 </style>
 </head>
@@ -127,12 +132,14 @@ body{
     <div>
       <h1>流浪助养台</h1>
       <p>为大猫小狗找到临时家与长期助养。卡片墙按状态分流，申请一键对接站长。</p>
+      <p id="placeHint" style="font-size:12px;color:var(--muted);margin-top:6px">定位中…</p>
     </div>
     <div class="pipeline">
       <button class="on" data-f="all">全部</button>
       <button data-f="待助养">待助养</button>
       <button data-f="寄养中">寄养中</button>
       <button data-f="wishlist">心愿单</button>
+      <button type="button" id="relocate-btn">重新定位</button>
     </div>
   </header>
   <div class="mine-strip" id="mine"></div>
@@ -155,25 +162,55 @@ body{
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<script src="/apps/_shared/geo.js"></script>
 <script>
 const PETS=[
-  {id:1,name:"橘子",kind:"中华田园猫",age:"约 1 岁",sex:"公",status:"待助养",story:"被发现时躲在地下车库，绝育已完成，性格黏人，适合有阳台防护的家庭。",emoji:"橘",c1:"#fdba74",c2:"#f97316",h:210},
-  {id:2,name:"豆豆",kind:"串串狗",age:"8 个月",sex:"母",status:"寄养中",story:"目前在志愿者家暂住，需找能每天遛两次的长期助养人。已打疫苗。",emoji:"豆",c1:"#fcd34d",c2:"#f59e0b",h:160},
-  {id:3,name:"芝麻",kind:"狸花猫",age:"3 岁",sex:"母",status:"待助养",story:"带三只刚满月小猫，希望能整窝助养或分开找奶妈家庭。温顺可摸。",emoji:"芝",c1:"#a8a29e",c2:"#78716c",h:240},
-  {id:4,name:"黑炭",kind:"中华田园犬",age:"2 岁",sex:"公",status:"待助养",story:"被遗弃在高速口附近，胆大爱玩，需有院子或常遛狗的家庭。",emoji:"炭",c1:"#44403c",c2:"#1c1917",h:190},
-  {id:5,name:"奶茶",kind:"英短混血",age:"4 个月",sex:"母",status:"寄养中",story:"幼猫寄养中，寻找有成猫经验的家庭过渡到长期助养。",emoji:"茶",c1:"#fecaca",c2:"#fb7185",h:170},
-  {id:6,name:"皮皮",kind:"柯基串",age:"1 岁半",sex:"公",status:"待助养",story:"后腿略跛但不影响活动，已做过手术，医疗费用可协助。",emoji:"皮",c1:"#fde68a",c2:"#ea580c",h:220},
-  {id:7,name:"雪球",kind:"白猫",age:"2 岁",sex:"母",status:"寄养中",story:"怕生但适应后会跟床睡，适合安静的一人居或二人居。",emoji:"雪",c1:"#e7e5e4",c2:"#a8a29e",h:150},
-  {id:8,name:"阿福",kind:"拉布混血",age:"5 岁",sex:"公",status:"待助养",story:"老人搬家无法继续养，温顺会握手，适合有老人的家庭陪伴。",emoji:"福",c1:"#fdba74",c2:"#c2410c",h:200}
+  {id:1,name:"橘子",kind:"中华田园猫",age:"约 1 岁",sex:"公",status:"待助养",story:"被发现时躲在地下车库，绝育已完成，性格黏人，适合有阳台防护的家庭。",emoji:"橘",c1:"#fdba74",c2:"#f97316",h:210,shelter:"翠湖临时救助站",dNorth:320,dEast:-180},
+  {id:2,name:"豆豆",kind:"串串狗",age:"8 个月",sex:"母",status:"寄养中",story:"目前在志愿者家暂住，需找能每天遛两次的长期助养人。已打疫苗。",emoji:"豆",c1:"#fcd34d",c2:"#f59e0b",h:160,shelter:"西城寄养家庭",dNorth:-240,dEast:460},
+  {id:3,name:"芝麻",kind:"狸花猫",age:"3 岁",sex:"母",status:"待助养",story:"带三只刚满月小猫，希望能整窝助养或分开找奶妈家庭。温顺可摸。",emoji:"芝",c1:"#a8a29e",c2:"#78716c",h:240,shelter:"河岸猫舍",dNorth:680,dEast:220},
+  {id:4,name:"黑炭",kind:"中华田园犬",age:"2 岁",sex:"公",status:"待助养",story:"被遗弃在高速口附近，胆大爱玩，需有院子或常遛狗的家庭。",emoji:"炭",c1:"#44403c",c2:"#1c1917",h:190,shelter:"南门犬舍",dNorth:-720,dEast:380},
+  {id:5,name:"奶茶",kind:"英短混血",age:"4 个月",sex:"母",status:"寄养中",story:"幼猫寄养中，寻找有成猫经验的家庭过渡到长期助养。",emoji:"茶",c1:"#fecaca",c2:"#fb7185",h:170,shelter:"志愿者小晴家",dNorth:140,dEast:-520},
+  {id:6,name:"皮皮",kind:"柯基串",age:"1 岁半",sex:"公",status:"待助养",story:"后腿略跛但不影响活动，已做过手术，医疗费用可协助。",emoji:"皮",c1:"#fde68a",c2:"#ea580c",h:220,shelter:"康复中转站",dNorth:-90,dEast:90},
+  {id:7,name:"雪球",kind:"白猫",age:"2 岁",sex:"母",status:"寄养中",story:"怕生但适应后会跟床睡，适合安静的一人居或二人居。",emoji:"雪",c1:"#e7e5e4",c2:"#a8a29e",h:150,shelter:"静安寄养点",dNorth:510,dEast:-340},
+  {id:8,name:"阿福",kind:"拉布混血",age:"5 岁",sex:"公",status:"待助养",story:"老人搬家无法继续养，温顺会握手，适合有老人的家庭陪伴。",emoji:"福",c1:"#fdba74",c2:"#c2410c",h:200,shelter:"夕阳红中转",dNorth:-480,dEast:-260}
 ];
 const KEY="ll-foster-apps-v1";
 const FAV_KEY="ll-favs-v1";
-let apps=JSON.parse(localStorage.getItem(KEY)||"[]");
-let favs=JSON.parse(localStorage.getItem(FAV_KEY)||"[]");
+let apps=[];
+let favs=[];
 let filter="all";
 let current=null;
+let userPos=null;
 function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1700)}
-function saveFavs(){localStorage.setItem(FAV_KEY,JSON.stringify(favs))}
+function saveFavs(){MashangChuangAuth.writeJSON(FAV_KEY,favs)}
+function saveApps(){MashangChuangAuth.writeJSON(KEY,apps)}
+function enrichPets(){
+  const center=userPos||MashangChuangGeo.FALLBACK;
+  PETS.forEach(p=>{
+    const pos=MashangChuangGeo.offsetLatLng(center.lat,center.lng,p.dNorth||0,p.dEast||0);
+    p.lat=pos.lat; p.lng=pos.lng;
+    p.meters=MashangChuangGeo.haversine(center,pos);
+    p.dist=MashangChuangGeo.formatDist(p.meters);
+  });
+}
+async function sharePet(p){
+  const text=`【流浪助养】${p.name} · ${p.kind} · ${p.status}\n${p.shelter||""}${p.dist?" · 距你 "+p.dist:""}\n${p.story}\n来自「流浪助养台」`;
+  try{
+    if(navigator.share){
+      await navigator.share({ title:p.name+" · 助养招募", text });
+      toast("已打开系统分享");
+      return;
+    }
+  }catch(e){
+    if(e && e.name==="AbortError") return;
+  }
+  try{
+    await navigator.clipboard.writeText(text);
+    toast("已复制助养信息");
+  }catch(e2){
+    toast("无法分享，请手动复制");
+  }
+}
 function focusPet(id){
   const card=document.querySelector(`.pet[data-id="${id}"]`);
   if(!card){
@@ -192,15 +229,14 @@ function focusPet(id){
 }
 function renderMine(){
   const el=document.getElementById("mine");
-  if(!apps.length&&!favs.length){el.classList.remove("show");return}
   el.classList.add("show");
   const appChips=apps.length
-    ?apps.map(a=>`<button type="button" class="mine-chip" data-goto="${a.id}">${a.pet}<span style="opacity:.65;font-weight:500"> · ${a.offer}</span></button>`).join("")
+    ?apps.map(a=>`<span class="mine-chip"><button type="button" data-goto="${a.id}" style="border:none;background:none;padding:0;font:inherit;font-weight:700;cursor:pointer;color:inherit">${a.pet}<span style="opacity:.65;font-weight:500"> · ${a.offer}</span></button><button type="button" class="x" data-cancel-app="${a.id}" title="取消申请">×</button></span>`).join("")
     :`<span class="mine-empty">暂无申请</span>`;
   const favChips=favs.length
     ?favs.map(id=>{
       const p=PETS.find(x=>x.id===id);
-      return p?`<button type="button" class="mine-chip fav" data-goto="${p.id}">★ ${p.name}</button>`:"";
+      return p?`<span class="mine-chip fav"><button type="button" data-goto="${p.id}" style="border:none;background:none;padding:0;font:inherit;font-weight:700;cursor:pointer;color:inherit">★ ${p.name}</button><button type="button" class="x" data-cancel-fav="${p.id}" title="移出心愿">×</button></span>`:"";
     }).join("")
     :`<span class="mine-empty">心愿单为空</span>`;
   el.innerHTML=`
@@ -232,11 +268,13 @@ function render(){
         </div>
         <div class="pet-body">
           <h3>${p.name}${isFav?`<span class="star">★</span>`:""}</h3>
-          <div class="meta"><span>${p.age}</span><span>${p.sex}</span><span>${p.status}</span></div>
-          <p class="story">${p.story}</p>
+          <div class="meta"><span>${p.age}</span><span>${p.sex}</span><span>${p.status}</span><span>${p.dist||"—"}</span></div>
+          <p class="story">${p.story}${p.shelter?`<br><span style="color:var(--muted);font-size:12px">${p.shelter}</span>`:""}</p>
           <div class="actions">
             <button class="btn" data-apply="${p.id}" ${applied?"disabled":""}>${applied?"已申请":"我要助养"}</button>
             <button class="btn ghost${isFav?" on":""}" data-fav="${p.id}">${isFav?"已收藏 ★":"收藏"}</button>
+            <button class="btn ghost" data-share="${p.id}">分享</button>
+            ${p.lat!=null&&p.lng!=null?`<button class="btn ghost" data-nav="${p.id}">导航到救助点</button>`:""}
           </div>
         </div>
       </article>`;
@@ -251,12 +289,44 @@ document.querySelector(".pipeline").onclick=e=>{
   render();
 };
 document.getElementById("mine").onclick=e=>{
+  const cancelApp=e.target.closest("[data-cancel-app]");
+  if(cancelApp){
+    const id=+cancelApp.dataset.cancelApp;
+    apps=apps.filter(a=>a.id!==id);
+    saveApps();
+    toast("已取消申请");
+    render();
+    return;
+  }
+  const cancelFav=e.target.closest("[data-cancel-fav]");
+  if(cancelFav){
+    const id=+cancelFav.dataset.cancelFav;
+    favs=favs.filter(x=>x!==id);
+    saveFavs();
+    toast("已移出心愿单");
+    render();
+    return;
+  }
   const chip=e.target.closest("[data-goto]");if(!chip)return;
   focusPet(+chip.dataset.goto);
 };
 document.getElementById("board").onclick=e=>{
   const apply=e.target.closest("[data-apply]");
   const fav=e.target.closest("[data-fav]");
+  const share=e.target.closest("[data-share]");
+  const nav=e.target.closest("[data-nav]");
+  if(nav){
+    const p=PETS.find(x=>x.id===+nav.dataset.nav);
+    if(p && p.lat != null && window.MashangChuangGeo){
+      MashangChuangGeo.openNav({ lat:p.lat, lng:p.lng, name:p.shelter||p.name });
+    }
+    return;
+  }
+  if(share){
+    const p=PETS.find(x=>x.id===+share.dataset.share);
+    if(p) sharePet(p);
+    return;
+  }
   if(fav){
     const id=+fav.dataset.fav;
     if(favs.includes(id)){
@@ -273,7 +343,7 @@ document.getElementById("board").onclick=e=>{
   if(!apply||apply.disabled)return;
   current=PETS.find(p=>p.id===+apply.dataset.apply);
   document.getElementById("m-title").textContent="申请助养 · "+current.name;
-  document.getElementById("m-sub").textContent=current.kind+" · "+current.status+" · "+current.age;
+  document.getElementById("m-sub").textContent=current.kind+" · "+current.status+" · "+current.age+(current.dist?" · "+current.dist:"");
   document.getElementById("modal").classList.add("open");
 };
 document.getElementById("m-cancel").onclick=()=>document.getElementById("modal").classList.remove("open");
@@ -283,12 +353,51 @@ document.getElementById("m-ok").onclick=()=>{
   const contact=document.getElementById("m-contact").value.trim();
   if(!name||!contact)return toast("请填写称呼与联系方式");
   apps.unshift({id:current.id,pet:current.name,offer:document.getElementById("m-offer").value,name,contact,msg:document.getElementById("m-msg").value,at:Date.now()});
-  localStorage.setItem(KEY,JSON.stringify(apps));
+  saveApps();
   document.getElementById("modal").classList.remove("open");
   toast("申请已提交，站长将联系你");
   render();
 };
-render();
 </script>
+<script src="/apps/_shared/auth.js"></script>
+
+<script>
+(function(){
+  if(!window.MashangChuangAuth) return;
+  MashangChuangAuth.boot({
+    requireLogin: false,
+    appName: '流浪助养台',
+    onReady: async function(user){
+      window.__MSC_USER__ = user;
+      document.dispatchEvent(new CustomEvent('msc-auth-ready', { detail: user }));
+      try {
+        var label = MashangChuangAuth.meLabel('我');
+        window.__MSC_ME__ = label;
+      } catch(e) {}
+      apps = MashangChuangAuth.readJSON(KEY, []) || [];
+      favs = MashangChuangAuth.readJSON(FAV_KEY, []) || [];
+      async function refreshLoc(showToast){
+        if(!window.MashangChuangGeo) return;
+        const btn=document.getElementById("relocate-btn");
+        const hint=document.getElementById("placeHint");
+        if(btn) btn.disabled=true;
+        if(hint) hint.textContent="正在定位…";
+        const loc=await MashangChuangGeo.locateWithPlace();
+        userPos=loc.pos;
+        const place=loc.ok?(loc.placeLabel||loc.placeShort||"当前位置"):MashangChuangGeo.FALLBACK.label;
+        if(hint) hint.textContent=(loc.ok?"已定位 · ":"默认位置 · ")+place;
+        enrichPets();
+        if(typeof render === 'function') render();
+        if(btn) btn.disabled=false;
+        if(showToast) toast(loc.ok?("已重新定位 · "+place):("定位失败 · "+place));
+      }
+      document.getElementById("relocate-btn")?.addEventListener("click", function(){ refreshLoc(true); });
+      if(window.MashangChuangGeo) await refreshLoc(false);
+      else if(typeof render === 'function') render();
+    }
+  });
+})();
+</script>
+
 </body>
 </html>

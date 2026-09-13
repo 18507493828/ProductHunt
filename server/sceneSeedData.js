@@ -3,11 +3,11 @@
  * 部署不会拷贝数据库，启动时用 ensureSceneProducts 按此 upsert 名称与落地页。
  */
 export const SCENE_CATEGORY = {
-  campus: "学习成长",
-  social: "趣味生活",
-  charity: "趣味生活",
-  fitness: "趣味生活",
-  outdoor: "趣味生活",
+  campus: "校园",
+  social: "社交",
+  charity: "公益",
+  fitness: "健身",
+  outdoor: "户外",
 };
 
 export const SCENE_COLOR = {

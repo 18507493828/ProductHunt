@@ -1,23 +1,21 @@
 export const PRODUCT_CATEGORIES = [
-  "AI 应用",
-  "开发工具",
-  "开源项目",
-  "效率工具",
-  "创意设计",
-  "学习成长",
-  "趣味生活",
-  "商业服务",
-  "智能硬件",
+  "校园",
+  "社交",
+  "公益",
+  "健身",
+  "户外",
   "其他",
 ];
 
-/** 分类种子（可在后台增删改、排序、启停） */
-export const DEFAULT_CATEGORIES = PRODUCT_CATEGORIES.map((name, index) => ({
-  id: `cat-${index + 1}`,
-  name,
-  sort: index + 1,
-  enabled: true,
-}));
+/** 分类种子：与构建场景对齐（客户端广场筛选同源） */
+export const DEFAULT_CATEGORIES = [
+  { id: "scene-campus", name: "校园", sort: 1, enabled: true },
+  { id: "scene-social", name: "社交", sort: 2, enabled: true },
+  { id: "scene-charity", name: "公益", sort: 3, enabled: true },
+  { id: "scene-fitness", name: "健身", sort: 4, enabled: true },
+  { id: "scene-outdoor", name: "户外", sort: 5, enabled: true },
+  { id: "cat-other", name: "其他", sort: 99, enabled: true },
+];
 
 export const DEFAULT_CATEGORY = "其他";
 

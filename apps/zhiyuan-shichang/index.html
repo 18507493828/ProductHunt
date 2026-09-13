@@ -75,20 +75,26 @@ body{
   content:"";position:absolute;left:28px;top:0;bottom:0;width:2px;background:#e8a0a0;opacity:.7;
 }
 .entry{
-  position:relative;padding:4px 0 12px;min-height:64px;animation:inkIn .35s ease;
+  position:relative;padding:4px 60px 36px 0;min-height:64px;animation:inkIn .35s ease;
 }
 @keyframes inkIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .entry .date{font-size:11px;color:#7a908b;font-family:system-ui,sans-serif;margin-bottom:2px}
-.entry .title{font-size:16px;font-weight:700;line-height:32px}
+.entry .title{font-size:16px;font-weight:700;line-height:32px;padding-right:4px}
 .entry .note{font-size:13px;color:#4d6661;line-height:32px}
+.entry .geo{font-size:11px;color:#7a908b;font-family:system-ui,sans-serif;line-height:1.4;margin-top:2px}
 .entry .stamp{
   position:absolute;right:0;top:8px;width:52px;height:52px;border:2px solid var(--stamp);color:var(--stamp);
   border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:700;transform:rotate(-18deg);
-  opacity:.85;letter-spacing:.04em;background:rgba(196,92,74,.04);
+  opacity:.85;letter-spacing:.04em;background:rgba(196,92,74,.04);pointer-events:none;
 }
 .entry .hours-tag{
   display:inline-block;font-family:system-ui,sans-serif;font-size:12px;font-weight:700;
   color:var(--teal-deep);margin-left:6px;
+}
+.entry .entry-del{
+  position:absolute;right:12px;bottom:10px;z-index:2;
+  border:1px solid rgba(13,148,136,.25);background:#fff;color:#0f766e;
+  font:inherit;font-size:11px;font-weight:700;padding:4px 8px;border-radius:999px;cursor:pointer;
 }
 .empty-hint{color:#8aa19c;font-size:14px;padding:40px 8px;text-align:center;line-height:1.8}
 .dock{
@@ -119,11 +125,18 @@ body{
 }
 .acts{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;max-height:50vh;overflow:auto}
 .act{
-  text-align:left;border:1px solid #d5cbb4;background:#fffef8;border-radius:12px;padding:12px;cursor:pointer;font:inherit;
+  display:flex;gap:8px;align-items:stretch;border:1px solid #d5cbb4;background:#fffef8;border-radius:12px;padding:0;
 }
-.act.signed{opacity:.55;pointer-events:none}
-.act b{display:block;font-size:14px}.act span{font-size:12px;color:#6b817c}
-.act .tag{display:inline-block;margin-top:6px;font-size:11px;font-weight:700;color:var(--amber);font-family:system-ui,sans-serif}
+.act-main{
+  flex:1;text-align:left;border:none;background:transparent;border-radius:12px;padding:12px;cursor:pointer;font:inherit;
+}
+.act.signed .act-main{opacity:.55;pointer-events:none}
+.act-main b{display:block;font-size:14px}.act-main span{font-size:12px;color:#6b817c}
+.act-main .tag{display:inline-block;margin-top:6px;font-size:11px;font-weight:700;color:var(--amber);font-family:system-ui,sans-serif}
+.act-nav{
+  flex:none;align-self:center;margin-right:10px;border:1px solid #b7d4cf;background:#fff;color:var(--teal-deep);
+  border-radius:10px;padding:8px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+}
 .sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .sheet-actions button{border:none;border-radius:12px;padding:12px;font:inherit;font-weight:700;cursor:pointer}
 .sheet-actions .ok{background:var(--teal);color:#fff}
@@ -142,6 +155,8 @@ body{
     <div class="seal">公益<br>认证</div>
     <h1>志愿时长本</h1>
     <p>报名进待参加 · 签到才记入时长</p>
+    <p id="placeHint" style="font-size:12px;opacity:.85;margin-top:6px">定位中…</p>
+    <button type="button" class="secondary" id="relocate-btn" style="margin-top:8px;padding:6px 12px;font-size:12px;border-radius:999px;border:1px solid #b7d4cf;background:#fff;color:var(--teal-deep);cursor:pointer">重新定位</button>
     <div class="hours-big"><b id="total">0.0</b><span>累计小时</span></div>
     <section class="pending" id="pending-box">
       <h2>待参加<em id="pending-n">0 场</em></h2>
@@ -177,26 +192,64 @@ body{
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<script src="/apps/_shared/geo.js"></script>
 <script>
 const LOG_KEY="zy-notebook-v3-logs";
 const PEND_KEY="zy-notebook-v3-pending";
+const CHECK_RADIUS_M=800;
 const ACTS=[
-  {id:"a1",name:"图书馆导览志愿",time:"本周六 09:00-12:00",hours:3,feel:"带读者熟悉馆藏分区"},
-  {id:"a2",name:"流浪猫喂养",time:"每日晚间 19:00",hours:1,feel:"清理食盆并补充猫粮"},
-  {id:"a3",name:"马拉松补给点",time:"下周日 07:00-11:00",hours:4,feel:"为选手递水与能量胶"},
-  {id:"a4",name:"敬老院陪伴阅读",time:"周四下午 14:00-16:00",hours:2,feel:"朗读报纸与聊天"}
+  {id:"a1",name:"图书馆导览志愿",time:"本周六 09:00-12:00",hours:3,feel:"带读者熟悉馆藏分区",venue:"市图书馆北门",dNorth:420,dEast:-260},
+  {id:"a2",name:"流浪猫喂养",time:"每日晚间 19:00",hours:1,feel:"清理食盆并补充猫粮",venue:"翠湖小区车库口",dNorth:-180,dEast:540},
+  {id:"a3",name:"马拉松补给点",time:"下周日 07:00-11:00",hours:4,feel:"为选手递水与能量胶",venue:"滨江大道 3 号补给站",dNorth:980,dEast:320},
+  {id:"a4",name:"敬老院陪伴阅读",time:"周四下午 14:00-16:00",hours:2,feel:"朗读报纸与聊天",venue:"夕阳红敬老院大厅",dNorth:-640,dEast:-420}
 ];
-let logs=JSON.parse(localStorage.getItem(LOG_KEY)||"[]");
-let pending=JSON.parse(localStorage.getItem(PEND_KEY)||"[]");
+let logs=[];
+let pending=[];
 let highlightPend=null;
+let userPos=null;
+let userPlaceLabel="";
 
-function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1600)}
-function saveLogs(){localStorage.setItem(LOG_KEY,JSON.stringify(logs.slice(0,40)))}
-function savePending(){localStorage.setItem(PEND_KEY,JSON.stringify(pending.slice(0,20)))}
+function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1800)}
+function saveLogs(){MashangChuangAuth.writeJSON(LOG_KEY,logs.slice(0,40))}
+function savePending(){MashangChuangAuth.writeJSON(PEND_KEY,pending.slice(0,20))}
 function nowStr(){return new Date().toLocaleString("zh-CN",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})}
-function addLog(name,hours,feel){
-  logs.unshift({name,hours:+hours,feel:feel||"服务完成",time:nowStr()});
+function venuePos(act,center){
+  const c=center||userPos||MashangChuangGeo.FALLBACK;
+  return MashangChuangGeo.offsetLatLng(c.lat,c.lng,act.dNorth||0,act.dEast||0);
+}
+function distToAct(act){
+  if(!act||!userPos) return null;
+  return MashangChuangGeo.haversine(userPos,venuePos(act,userPos));
+}
+function distLabel(act){
+  const m=distToAct(act);
+  if(m==null) return "距离待定位";
+  return "距你 "+MashangChuangGeo.formatDist(m);
+}
+function addLog(name,hours,feel,extra){
+  const row=Object.assign({id:"l"+Date.now(),name,hours:+hours,feel:feel||"服务完成",time:nowStr()},extra||{});
+  logs.unshift(row);
   saveLogs();
+}
+async function ensureLocate(){
+  const loc=await MashangChuangGeo.locateWithPlace();
+  userPos=loc.pos;
+  userPlaceLabel=loc.ok?(loc.placeLabel||loc.placeShort||"当前位置"):MashangChuangGeo.FALLBACK.label;
+  const hint=document.getElementById("placeHint");
+  if(hint) hint.textContent=(loc.ok?"已定位 · ":"默认位置 · ")+userPlaceLabel;
+  return loc;
+}
+async function refreshLocation(showToast){
+  const btn=document.getElementById("relocate-btn");
+  if(btn) btn.disabled=true;
+  const loc=await ensureLocate();
+  ACTS.forEach(a=>{
+    if(a.timeRaw==null) a.timeRaw=a.time;
+    a.time=MashangChuangGeo.resolveSchedule(a.timeRaw);
+  });
+  if(typeof render==="function") render();
+  if(btn) btn.disabled=false;
+  if(showToast) toast(loc.ok?("已重新定位 · "+userPlaceLabel):("定位失败 · "+userPlaceLabel));
 }
 function focusPending(id){
   highlightPend=id;
@@ -215,63 +268,111 @@ function renderPending(){
     box.innerHTML='<div class="pending-empty">暂无报名。点「可报名活动」加入待参加。</div>';
     return;
   }
-  box.innerHTML=pending.map(p=>`
+  box.innerHTML=pending.map(p=>{
+    const act=ACTS.find(a=>a.id===p.actId);
+    const dist=act?distLabel(act):(p.venue?("活动点 · "+p.venue):"");
+    return `
     <div class="pend-item${p.id===highlightPend?" hi":""}" data-pend="${p.id}">
       <b>${p.name}</b>
-      <div class="m">${p.time}<br>预计 ${p.hours} 小时</div>
+      <div class="m">${p.time}<br>预计 ${p.hours} 小时${dist?" · "+dist:""}${p.venue?"<br>"+p.venue:""}</div>
       <div class="actions">
         <button type="button" class="check" data-check="${p.id}">签到入账</button>
         <button type="button" class="drop" data-drop="${p.id}">取消报名</button>
       </div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 }
 function renderJournal(){
   const total=logs.reduce((s,l)=>s+(+l.hours||0),0);
   document.getElementById("total").textContent=total.toFixed(1);
   const box=document.getElementById("journal");
   if(!logs.length){box.innerHTML='<div class="empty-hint">本子还是空白的<br>签到或从「待参加」完成服务后会出现在这里</div>';return}
-  box.innerHTML=logs.map(l=>`
+  box.innerHTML=logs.map((l,i)=>{
+    const geoBits=[];
+    if(l.checkNote) geoBits.push(l.checkNote);
+    if(l.distLabel) geoBits.push(l.distLabel);
+    if(l.placeLabel) geoBits.push(l.placeLabel);
+    else if(l.venue) geoBits.push(l.venue);
+    return `
     <article class="entry">
       <div class="date">${l.time}</div>
       <div class="title">${l.name}<span class="hours-tag">+${l.hours}h</span></div>
       <div class="note">${l.feel}</div>
+      ${geoBits.length?`<div class="geo">${geoBits.join(" · ")}</div>`:""}
       <div class="stamp">已认证<br>${l.hours}H</div>
-    </article>`).join("");
+      <button type="button" class="entry-del" data-del-idx="${i}">撤销这条</button>
+    </article>`;
+  }).join("");
 }
 function renderActs(){
   const signed=new Set(pending.map(p=>p.actId));
   document.getElementById("acts").innerHTML=ACTS.map(a=>{
     const done=signed.has(a.id);
-    return `<button class="act${done?" signed":""}" data-act="${a.id}">
-      <b>${a.name}</b>
-      <span>${a.time} · 预计 ${a.hours} 小时</span>
-      <div class="tag">${done?"已报名 · 见待参加":"点按报名"}</div>
-    </button>`;
+    return `<div class="act${done?" signed":""}">
+      <button type="button" class="act-main" data-act="${a.id}">
+        <b>${a.name}</b>
+        <span>${a.time} · 预计 ${a.hours} 小时<br>${a.venue||""} · ${distLabel(a)}</span>
+        <div class="tag">${done?"已报名 · 见待参加":"点按报名"}</div>
+      </button>
+      <button type="button" class="act-nav" data-nav="${a.id}">导航</button>
+    </div>`;
   }).join("");
 }
 function render(){renderPending();renderJournal();renderActs()}
 
+document.getElementById("journal").onclick=e=>{
+  const del=e.target.closest("[data-del-idx]");
+  if(!del) return;
+  const idx=+del.dataset.delIdx;
+  if(!Number.isFinite(idx)||idx<0||idx>=logs.length) return;
+  logs.splice(idx,1);
+  saveLogs();
+  toast("已撤销该条时长");
+  render();
+};
+
 document.getElementById("acts").onclick=e=>{
+  const nav=e.target.closest("[data-nav]");
+  if(nav){
+    const a=ACTS.find(x=>x.id===nav.dataset.nav);if(!a||!window.MashangChuangGeo)return;
+    const v=venuePos(a,userPos);
+    MashangChuangGeo.openNav({lat:v.lat,lng:v.lng,name:a.venue||a.name});
+    return;
+  }
   const b=e.target.closest("[data-act]");if(!b)return;
   const a=ACTS.find(x=>x.id===b.dataset.act);if(!a)return;
   if(pending.some(p=>p.actId===a.id)){toast("已在待参加列表");return}
   const id="p"+Date.now();
-  pending.unshift({id,actId:a.id,name:a.name,time:a.time,hours:a.hours,feel:a.feel});
+  pending.unshift({id,actId:a.id,name:a.name,time:a.time,hours:a.hours,feel:a.feel,venue:a.venue,dNorth:a.dNorth,dEast:a.dEast});
   savePending();
   document.getElementById("sheet-acts").classList.remove("open");
   toast("报名成功 · 已加入待参加");
   render();
   focusPending(id);
 };
-document.getElementById("pending-list").onclick=e=>{
+document.getElementById("pending-list").onclick=async e=>{
   const check=e.target.closest("[data-check]");
   const drop=e.target.closest("[data-drop]");
   if(check){
     const p=pending.find(x=>x.id===check.dataset.check);if(!p)return;
-    addLog(p.name,p.hours,p.feel);
+    check.disabled=true;
+    toast("正在定位签到…");
+    const loc=await ensureLocate();
+    const act=ACTS.find(a=>a.id===p.actId)||p;
+    const venue=venuePos(act,userPos);
+    const meters=MashangChuangGeo.haversine(userPos,venue);
+    const near=Number.isFinite(meters)&&meters<=CHECK_RADIUS_M;
+    const checkNote=near?"定位签到成功":"未在活动点附近";
+    const distLabelStr="距活动点 "+MashangChuangGeo.formatDist(meters);
+    addLog(p.name,p.hours,p.feel,{
+      checkNote,
+      distLabel:distLabelStr,
+      placeLabel:userPlaceLabel||undefined,
+      venue:p.venue||act.venue
+    });
     pending=pending.filter(x=>x.id!==p.id);
     savePending();
-    toast("已签到 · 时长写入日记本");
+    toast(near?"定位签到成功 · 时长已入账":"未在活动点附近 · 已记入（注明）");
     render();
     document.getElementById("journal").scrollIntoView({behavior:"smooth",block:"nearest"});
     return;
@@ -287,17 +388,47 @@ document.getElementById("btn-check").onclick=()=>document.getElementById("sheet-
 document.getElementById("btn-acts").onclick=()=>{renderActs();document.getElementById("sheet-acts").classList.add("open")};
 document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>b.closest(".sheet").classList.remove("open"));
 document.querySelectorAll(".sheet").forEach(s=>s.addEventListener("click",e=>{if(e.target===s)s.classList.remove("open")}));
-document.getElementById("save-check").onclick=()=>{
+document.getElementById("save-check").onclick=async ()=>{
   const name=document.getElementById("name").value.trim();
   if(!name)return toast("请填写活动名称");
-  addLog(name,document.getElementById("hours").value,document.getElementById("feel").value.trim());
+  const loc=await ensureLocate();
+  addLog(name,document.getElementById("hours").value,document.getElementById("feel").value.trim(),{
+    checkNote:loc.ok?"定位签到成功":"定位不可用",
+    placeLabel:userPlaceLabel||undefined
+  });
   document.getElementById("sheet-check").classList.remove("open");
   document.getElementById("name").value="";document.getElementById("feel").value="";
-  toast("已盖章记入时长本");
+  toast(loc.ok?"已盖章记入时长本":"已盖章（无定位）");
   render();
   document.getElementById("journal").scrollIntoView({behavior:"smooth",block:"nearest"});
 };
-render();
 </script>
+
+<script src="/apps/_shared/auth.js"></script>
+<script>
+(function(){
+  if(!window.MashangChuangAuth) return;
+  MashangChuangAuth.boot({
+    requireLogin: false,
+    appName: '志愿时长本',
+    onReady: async function(user){
+      window.__MSC_USER__ = user;
+      document.dispatchEvent(new CustomEvent('msc-auth-ready', { detail: user }));
+      try {
+        window.__MSC_ME__ = MashangChuangAuth.meLabel('我');
+      } catch(e) {}
+      logs = MashangChuangAuth.readJSON(LOG_KEY, []) || [];
+      pending = MashangChuangAuth.readJSON(PEND_KEY, []) || [];
+      document.getElementById("relocate-btn")?.addEventListener("click", function(){ refreshLocation(true); });
+      if(window.MashangChuangGeo){
+        await refreshLocation(false);
+      } else if(typeof render === 'function') {
+        render();
+      }
+    }
+  });
+})();
+</script>
+
 </body>
 </html>

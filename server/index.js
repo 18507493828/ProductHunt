@@ -7,7 +7,6 @@ import crypto from "crypto";
 import { fileURLToPath } from "url";
 import {
   PRODUCT_CATEGORIES,
-  DEFAULT_CATEGORIES,
   DEFAULT_CATEGORY,
   DEFAULT_CAMPAIGNS,
   DEFAULT_CAMPAIGN_ZONE,
@@ -69,6 +68,8 @@ import {
   writeShareConfig,
   readIncentiveConfig,
   writeIncentiveConfig,
+  readBuildConfig,
+  writeBuildConfig,
   readShares,
   writeShares,
   readTopics,
@@ -235,6 +236,7 @@ try {
   try {
     // 对齐样例应用的名称、落地页 /apps/...、形态（不覆盖投票；全量覆盖设 SEED_SCENES_REPLACE=1）
     await ensureSceneProducts();
+    await syncCategoriesFromBuildScenes();
     await syncAppLandings({ force: true });
   } catch (err) {
     console.warn("[ensure-scenes] skipped:", err.message || err);
@@ -590,10 +592,15 @@ async function getCampaignStatsMap() {
     const bucket = map[campaignId];
     bucket.productCount += 1;
     const status = product.status || "approved";
-    if (status === "approved") bucket.approvedCount += 1;
     if (status === "pending") bucket.pendingCount += 1;
-    bucket.voteCount += Array.isArray(product.voters) ? product.voters.length : 0;
-    if (product.submittedBy) bucket.submitters.add(product.submittedBy);
+    // 与客户端展示一致：作品数 / 创作者 / 点赞只统计已上架
+    if (status === "approved") {
+      bucket.approvedCount += 1;
+      bucket.voteCount += Array.isArray(product.voters)
+        ? product.voters.length
+        : 0;
+      if (product.submittedBy) bucket.submitters.add(product.submittedBy);
+    }
   }
 
   const result = {};
@@ -620,8 +627,10 @@ function withCampaignStats(campaign, statsMap = {}, { includePending = false } =
   const base = toPublicCampaign(campaign);
   return {
     ...base,
-    productCount: includePending ? stats.productCount : stats.approvedCount,
+    // 客户端「作品」= 已上架数；管理端额外带全部/待审
+    productCount: stats.approvedCount,
     approvedCount: stats.approvedCount,
+    totalCount: stats.productCount,
     pendingCount: includePending ? stats.pendingCount : undefined,
     voteCount: stats.voteCount,
     participantCount: stats.participantCount,
@@ -633,8 +642,12 @@ async function getCampaignById(id) {
   return campaigns.find((item) => item.id === id) || null;
 }
 
-function isKnownCampaign(id) {
-  return Boolean(id && campaignCache.ids.includes(id));
+function isKnownCampaign(id, { requireEnabled = false } = {}) {
+  if (!id) return false;
+  const campaign = campaignCache.list.find((item) => item.id === id);
+  if (!campaign) return false;
+  if (requireEnabled && campaign.enabled === false) return false;
+  return true;
 }
 
 /* ---------------- 活动专区容器配置 ---------------- */
@@ -679,22 +692,101 @@ async function refreshCategoryCache(list) {
 }
 
 async function initCategories() {
-  const existing = await readCategories();
-  if (existing.length > 0) {
-    await refreshCategoryCache(existing);
-    return;
+  // 旧库可能残留 PH 分类（AI 应用等）；一律与构建场景对齐
+  await syncCategoriesFromBuildScenes();
+}
+
+/**
+ * 分类与客户端构建场景对齐：清除残留旧分类，并回写应用分类字段。
+ */
+async function syncCategoriesFromBuildScenes() {
+  const { DEFAULT_BUILD_SCENES, inferSceneNameFromConfig } = await import(
+    "./buildOpsConfig.js"
+  );
+  let scenes = DEFAULT_BUILD_SCENES;
+  try {
+    const build = await readBuildConfig();
+    if (Array.isArray(build?.scenes) && build.scenes.length) {
+      scenes = build.scenes.filter((s) => s.enabled !== false && s.name);
+    }
+  } catch {
+    /* build_config 未就绪时用默认场景 */
   }
 
   const now = new Date().toISOString();
-  const seed = DEFAULT_CATEGORIES.map((item, index) => ({
-    id: item.id || `cat-${index + 1}`,
-    name: item.name,
-    sort: Number(item.sort) || index + 1,
-    enabled: item.enabled !== false,
-    createdAt: now,
-    updatedAt: now,
-  }));
-  await writeCategories(seed);
+  const existing = await readCategories();
+  const byName = Object.fromEntries(
+    existing.map((c) => [c.name, c]),
+  );
+
+  const next = scenes.map((s, index) => {
+    const prev = byName[s.name];
+    return {
+      id: prev?.id || `scene-${s.id}`,
+      name: s.name,
+      sort: Number.isFinite(Number(s.sort)) ? Number(s.sort) : index + 1,
+      enabled: true,
+      createdAt: prev?.createdAt || now,
+      updatedAt: now,
+    };
+  });
+
+  if (!next.some((c) => c.name === "其他")) {
+    const prevOther = byName["其他"];
+    next.push({
+      id: prevOther?.id || "cat-other",
+      name: "其他",
+      sort: 99,
+      enabled: true,
+      createdAt: prevOther?.createdAt || now,
+      updatedAt: now,
+    });
+  }
+
+  await writeCategories(next);
+  console.log(
+    `[storage] categories synced from scenes (${next.map((c) => c.name).join("、")})`,
+  );
+
+  // 应用分类回写为场景名，与客户端广场筛选一致
+  try {
+    const [products, topics] = await Promise.all([
+      listProducts(),
+      readTopics(),
+    ]);
+    const topicMap = Object.fromEntries(
+      topics.map((t) => [t.id, t.name || ""]),
+    );
+    let remapped = 0;
+    for (const product of products) {
+      const sceneName = inferSceneNameFromConfig(
+        product,
+        topicMap[product.topicId] || "",
+        scenes,
+      );
+      const category = sceneName && sceneName !== "其他" ? sceneName : "其他";
+      const prevCats = Array.isArray(product.categories)
+        ? product.categories
+        : [];
+      const same =
+        product.category === category &&
+        prevCats.length === 1 &&
+        prevCats[0] === category;
+      if (same) continue;
+      product.category = category;
+      product.categories = [category];
+      await writeProduct(product);
+      remapped += 1;
+    }
+    if (remapped > 0) {
+      console.log(`[storage] remapped ${remapped} product categories → scenes`);
+    }
+  } catch (err) {
+    console.warn(
+      "[storage] product category remap skipped:",
+      err.message || err,
+    );
+  }
 }
 
 function toPublicCategory(category) {
@@ -970,7 +1062,10 @@ function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = nu
     rejectReason: product.rejectReason || "",
     reviewedAt: product.reviewedAt || "",
     campaign: isKnownCampaign(product.campaign) ? product.campaign : "",
-    campaignLabel: campaignCache.labels[product.campaign] || "",
+    campaignLabel:
+      campaignCache.rankLabels[product.campaign] ||
+      campaignCache.labels[product.campaign] ||
+      "",
     isSpecial: isKnownCampaign(product.campaign) || product.isSpecial === true,
   };
   if (includeComments) {
@@ -1414,8 +1509,14 @@ app.post("/api/admin/banners", requireAdmin, async (req, res) => {
     if (trimmedImageUrl.length > 500) {
       return res.status(400).json({ error: "图片地址过长" });
     }
-    if (trimmedLinkUrl && !URL_PATTERN.test(trimmedLinkUrl)) {
-      return res.status(400).json({ error: "跳转链接需以 http:// 或 https:// 开头" });
+    if (
+      trimmedLinkUrl &&
+      !URL_PATTERN.test(trimmedLinkUrl) &&
+      trimmedLinkUrl !== "/"
+    ) {
+      return res
+        .status(400)
+        .json({ error: "跳转链接需为 http(s) 地址或站内路径" });
     }
 
     const now = new Date().toISOString();
@@ -1441,35 +1542,60 @@ app.post("/api/admin/banners", requireAdmin, async (req, res) => {
   }
 });
 
-// 管理员：更新轮播图
+// 管理员：更新轮播图（支持只改 enabled 等部分字段）
 app.put("/api/admin/banners/:id", requireAdmin, async (req, res) => {
   try {
-    const { title, subtitle, imageUrl, linkUrl, sort, enabled } = req.body || {};
+    const body = req.body || {};
     const banner = await getBannerById(req.params.id);
     if (!banner) {
       return res.status(404).json({ error: "轮播图不存在" });
     }
 
-    const trimmedTitle = (title ?? banner.title).toString().trim();
-    const trimmedImageUrl = (imageUrl ?? banner.imageUrl).toString().trim();
-    const trimmedLinkUrl = (linkUrl ?? banner.linkUrl).toString().trim();
+    const has = (key) => Object.prototype.hasOwnProperty.call(body, key);
 
-    if (!trimmedTitle) {
-      return res.status(400).json({ error: "请填写轮播图标题" });
-    }
-    if (!trimmedImageUrl) {
-      return res.status(400).json({ error: "请填写图片地址" });
-    }
-    if (trimmedLinkUrl && !URL_PATTERN.test(trimmedLinkUrl)) {
-      return res.status(400).json({ error: "跳转链接需以 http:// 或 https:// 开头" });
+    if (has("title")) {
+      const trimmedTitle = String(body.title || "").trim();
+      if (!trimmedTitle) {
+        return res.status(400).json({ error: "请填写轮播图标题" });
+      }
+      banner.title = trimmedTitle;
     }
 
-    banner.title = trimmedTitle;
-    banner.subtitle = (subtitle ?? banner.subtitle).toString().trim();
-    banner.imageUrl = trimmedImageUrl;
-    banner.linkUrl = trimmedLinkUrl;
-    banner.sort = Number(sort ?? banner.sort) || 0;
-    banner.enabled = enabled === undefined ? banner.enabled : enabled !== false;
+    if (has("subtitle")) {
+      banner.subtitle = String(body.subtitle || "").trim();
+    }
+
+    if (has("imageUrl")) {
+      const trimmedImageUrl = String(body.imageUrl || "").trim();
+      if (!trimmedImageUrl) {
+        return res.status(400).json({ error: "请填写图片地址" });
+      }
+      banner.imageUrl = trimmedImageUrl;
+    }
+
+    if (has("linkUrl")) {
+      const trimmedLinkUrl = String(body.linkUrl || "").trim();
+      // 允许空链接；有值时需 http(s) 或站内路径
+      if (
+        trimmedLinkUrl &&
+        !URL_PATTERN.test(trimmedLinkUrl) &&
+        trimmedLinkUrl !== "/"
+      ) {
+        return res
+          .status(400)
+          .json({ error: "跳转链接需为 http(s) 地址或站内路径" });
+      }
+      banner.linkUrl = trimmedLinkUrl;
+    }
+
+    if (has("sort")) {
+      banner.sort = Number(body.sort) || 0;
+    }
+
+    if (has("enabled")) {
+      banner.enabled = body.enabled !== false;
+    }
+
     banner.updatedAt = new Date().toISOString();
 
     const banners = await readBanners();
@@ -1981,7 +2107,7 @@ app.post("/api/products", requireAuth, async (req, res) => {
     }
 
     const requestedCampaign = (campaign || "").trim();
-    if (requestedCampaign && !isKnownCampaign(requestedCampaign)) {
+    if (requestedCampaign && !isKnownCampaign(requestedCampaign, { requireEnabled: true })) {
       return res.status(400).json({ error: "所选活动不存在或已下线" });
     }
 
@@ -2122,7 +2248,7 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     }
 
     const requestedCampaign = (campaign || "").trim();
-    if (requestedCampaign && !isKnownCampaign(requestedCampaign)) {
+    if (requestedCampaign && !isKnownCampaign(requestedCampaign, { requireEnabled: true })) {
       return res.status(400).json({ error: "所选活动不存在或已下线" });
     }
 
@@ -2839,41 +2965,138 @@ app.get("/api/admin/incentive-config", requireAdmin, async (_req, res) => {
   }
 });
 
+app.get("/api/incentive-config", async (_req, res) => {
+  try {
+    const config = await readIncentiveConfig();
+    res.json({
+      type: config.type,
+      weekTop1: config.weekTop1,
+      weekTop2: config.weekTop2,
+      weekTop3: config.weekTop3,
+      monthTop1: config.monthTop1,
+      quarterTop1: config.quarterTop1,
+      maodao: config.maodao,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.put("/api/admin/incentive-config", requireAdmin, async (req, res) => {
   try {
     const next = await writeIncentiveConfig(req.body || {});
+    // 与构建工具赞助激励单源同步
+    try {
+      const build = await readBuildConfig();
+      const tools = (build.tools || []).map((t) =>
+        t.sponsored || t.id === "madao"
+          ? { ...t, sponsored: true, incentive: next.maodao }
+          : t,
+      );
+      await writeBuildConfig({ ...build, tools });
+    } catch {
+      /* build_config 未就绪时忽略 */
+    }
     res.json({ message: "激励配置已保存并生效", config: next });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get("/api/admin/ops-overview", requireAdmin, async (_req, res) => {
+app.get("/api/build-config", async (_req, res) => {
   try {
-    const { BUILD_SCENES, inferSceneName } = await import("./buildScenes.js");
-    const [products, topics, shares, incentive] = await Promise.all([
-      listProducts(),
-      readTopics(),
-      readShares(),
-      readIncentiveConfig(),
-    ]);
+    const { publicBuildConfig } = await import("./buildOpsConfig.js");
+    const config = await readBuildConfig();
+    res.json(publicBuildConfig(config));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/build-config", requireAdmin, async (_req, res) => {
+  try {
+    res.json(await readBuildConfig());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/admin/build-config", requireAdmin, async (req, res) => {
+  try {
+    const next = await writeBuildConfig(req.body || {});
+    // 赞助工具激励回写榜单激励里的码道金额
+    const sponsored = (next.tools || []).find(
+      (t) => t.sponsored && Number(t.incentive) > 0,
+    );
+    if (sponsored) {
+      try {
+        const incentive = await readIncentiveConfig();
+        if (Number(incentive.maodao) !== Number(sponsored.incentive)) {
+          await writeIncentiveConfig({
+            ...incentive,
+            maodao: sponsored.incentive,
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    // 分类与构建场景保持一致
+    try {
+      await syncCategoriesFromBuildScenes();
+    } catch (err) {
+      console.warn("[storage] category sync after build-config:", err.message);
+    }
+    res.json({ message: "构建配置已保存并生效", config: next });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/ops-overview", requireAdmin, async (req, res) => {
+  try {
+    const { inferSceneNameFromConfig } = await import("./buildOpsConfig.js");
+    const rangeRaw = String(req.query.range || "week").toLowerCase();
+    const range = ["week", "month", "quarter"].includes(rangeRaw)
+      ? rangeRaw
+      : "week";
+    const rangeDays = range === "month" ? 30 : range === "quarter" ? 90 : 7;
+    const rangeLabel =
+      range === "month" ? "近 30 天" : range === "quarter" ? "近 90 天" : "近 7 天";
+
+    const [products, topics, shares, incentive, buildConfig] =
+      await Promise.all([
+        listProducts(),
+        readTopics(),
+        readShares(),
+        readIncentiveConfig(),
+        readBuildConfig(),
+      ]);
     const topicMap = Object.fromEntries(
       topics.map((t) => [t.id, t.name || ""]),
     );
-    const weekAgo = new Date(Date.now() - 7 * DAY_MS).toISOString();
+    const rangeAgo = new Date(Date.now() - rangeDays * DAY_MS).toISOString();
     const dayAgo = new Date(Date.now() - DAY_MS).toISOString();
+    const scenes = buildConfig.scenes || [];
 
     let pending = 0;
     let approved = 0;
     let rejected = 0;
-    let weekSubmitted = 0;
-    let weekApproved = 0;
-    let weekViews = 0;
+    const totalViews = products
+      .filter((p) => (p.status || "approved") === "approved")
+      .reduce((sum, p) => sum + (p.viewCount || 0), 0);
+
+    let periodSubmitted = 0;
+    let periodApproved = 0;
     let todaySubmitters = new Set();
     let maodaoHits = 0;
-    const sceneCounts = Object.fromEntries(
-      [...BUILD_SCENES.map((s) => [s.name, 0]), ["其他", 0]],
-    );
+    const sceneCounts = Object.fromEntries([
+      ...scenes.map((s) => [s.name, 0]),
+      ["其他", 0],
+    ]);
+    const madaoCodes = (buildConfig.tools || [])
+      .filter((t) => t.sponsored || t.id === "madao")
+      .flatMap((t) => [t.inviteCode, t.name].filter(Boolean));
 
     for (const product of products) {
       const status = product.status || "approved";
@@ -2882,30 +3105,39 @@ app.get("/api/admin/ops-overview", requireAdmin, async (_req, res) => {
       else if (status === "approved") approved += 1;
 
       const submittedAt = product.submittedAt || "";
-      if (submittedAt >= weekAgo) {
-        weekSubmitted += 1;
-        if (status === "approved") weekApproved += 1;
+      if (submittedAt >= rangeAgo) {
+        periodSubmitted += 1;
+        if (status === "approved") periodApproved += 1;
       }
       if (submittedAt >= dayAgo && product.submittedBy) {
         todaySubmitters.add(product.submittedBy);
       }
       if (status === "approved") {
-        weekViews += product.viewCount || 0;
-        const scene = inferSceneName(product, topicMap[product.topicId] || "");
+        const scene = inferSceneNameFromConfig(
+          product,
+          topicMap[product.topicId] || "",
+          scenes,
+        );
         sceneCounts[scene] = (sceneCounts[scene] || 0) + 1;
         const blob = `${product.description || ""}\n${product.tagline || ""}\n${product.name || ""}`;
-        if (blob.includes("华为码道") || blob.includes("CSDN-MD-004") || blob.includes("码道")) {
+        if (
+          madaoCodes.some((code) => code && blob.includes(code)) ||
+          blob.includes("华为码道") ||
+          blob.includes("码道")
+        ) {
           maodaoHits += 1;
         }
       }
     }
 
-    const weekShares = shares.filter((s) => (s.createdAt || "") >= weekAgo).length;
+    const periodShares = shares.filter(
+      (s) => (s.createdAt || "") >= rangeAgo,
+    ).length;
     const funnel = {
-      build: weekSubmitted,
-      publish: weekApproved,
-      experience: weekViews,
-      share: weekShares,
+      build: periodSubmitted,
+      publish: periodApproved,
+      experience: totalViews,
+      share: periodShares,
     };
 
     const sceneDistribution = Object.entries(sceneCounts)
@@ -2932,13 +3164,18 @@ app.get("/api/admin/ops-overview", requireAdmin, async (_req, res) => {
       }));
 
     res.json({
+      range,
+      rangeDays,
+      rangeLabel,
       kpis: {
         activeBuildersToday: todaySubmitters.size,
-        weekNewApps: weekSubmitted,
+        periodNewApps: periodSubmitted,
+        weekNewApps: periodSubmitted,
         pending,
         approved,
         rejected,
-        avgDailyViews: Math.round(weekViews / 7),
+        totalViews,
+        avgDailyViews: Math.round(totalViews / Math.max(1, approved)),
         maodaoConversions: maodaoHits,
         incentivePaid: incentive.paid,
         incentivePool: incentive.pool,

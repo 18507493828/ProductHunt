@@ -10,60 +10,76 @@
   --orange:#f97316;--amber:#fb923c;--ink:#1c1917;--muted:#78716c;--bg:#1a120c;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%}
+html,body{min-height:100%}
 body{
   font-family:"Noto Sans SC",system-ui,sans-serif;color:#fff;
   background:var(--bg);display:flex;justify-content:center;
+  overflow-x:hidden;
 }
-#app{width:100%;max-width:430px;min-height:100vh;display:flex;flex-direction:column;padding-bottom:24px}
+#app{width:100%;max-width:430px;min-height:100vh;display:flex;flex-direction:column;padding-bottom:max(24px,env(safe-area-inset-bottom))}
 .viewfinder{
-  position:relative;margin:16px 16px 0;aspect-ratio:3/4;border-radius:28px;overflow:hidden;
+  position:relative;margin:16px 16px 0;aspect-ratio:3/4;max-height:min(58vh,480px);
+  width:calc(100% - 32px);margin-left:auto;margin-right:auto;
+  border-radius:28px;overflow:hidden;
   background:
     radial-gradient(circle at 30% 30%,rgba(251,146,60,.25),transparent 40%),
     linear-gradient(160deg,#3f2a1e,#1c1410 55%,#2a1a12);
   box-shadow:0 20px 50px rgba(0,0,0,.45),inset 0 0 0 2px rgba(255,255,255,.08);
+  display:flex;flex-direction:column;
 }
 .vf-grid{
   position:absolute;inset:18px;border:1px solid rgba(255,255,255,.18);border-radius:18px;
   background:
     linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px) 0 0/100% 33.33%,
     linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px) 0 0/33.33% 100%;
-  pointer-events:none;
+  pointer-events:none;z-index:1;
 }
-.corner{position:absolute;width:28px;height:28px;border:3px solid var(--orange)}
+.corner{position:absolute;width:28px;height:28px;border:3px solid var(--orange);z-index:2}
 .corner.tl{left:22px;top:22px;border-right:none;border-bottom:none;border-radius:6px 0 0 0}
 .corner.tr{right:22px;top:22px;border-left:none;border-bottom:none;border-radius:0 6px 0 0}
 .corner.bl{left:22px;bottom:22px;border-right:none;border-top:none;border-radius:0 0 0 6px}
 .corner.br{right:22px;bottom:22px;border-left:none;border-top:none;border-radius:0 0 6px 0}
 .hud-top{
   position:absolute;left:0;right:0;top:14px;display:flex;justify-content:space-between;padding:0 28px;
-  font-size:11px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.7);z-index:2;
+  font-size:11px;font-weight:700;letter-spacing:.12em;color:rgba(255,255,255,.7);z-index:3;
+}
+.cam-feed{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  opacity:.42;z-index:0;pointer-events:none;background:#1c1410;
 }
 .dish-stage{
-  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  z-index:1;padding:40px 24px;text-align:center;
+  position:relative;flex:1;min-height:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:6px;
+  z-index:2;padding:44px 20px 8px;text-align:center;
 }
 .plate{
-  width:160px;height:160px;border-radius:50%;
-  background:radial-gradient(circle at 40% 35%,#fff7ed,#fdba74 45%,#c2410c);
+  width:132px;height:132px;border-radius:50%;flex:none;
+  background:radial-gradient(circle at 40% 35%,rgba(255,247,237,.88),rgba(253,186,116,.82) 45%,rgba(194,65,12,.78));
   box-shadow:0 16px 40px rgba(0,0,0,.35),inset 0 0 30px rgba(255,255,255,.25);
-  display:grid;place-items:center;font-size:64px;margin-bottom:18px;
+  display:grid;place-items:center;font-size:54px;margin-bottom:6px;
   transition:transform .35s cubic-bezier(.2,.8,.2,1);
+  backdrop-filter:blur(2px);
+}
+.dish-name,.dish-sub{
+  text-shadow:0 1px 8px rgba(0,0,0,.55);
+  background:rgba(0,0,0,.35);padding:4px 12px;border-radius:999px;
+  max-width:100%;
 }
 .plate.snap{animation:shutter .45s ease}
 @keyframes shutter{0%{transform:scale(1)}40%{transform:scale(.92)}100%{transform:scale(1)}}
-.dish-name{font-size:22px;font-weight:900;margin-bottom:4px}
-.dish-sub{font-size:12px;color:rgba(255,255,255,.65)}
+.dish-name{font-size:20px;font-weight:900}
+.dish-sub{font-size:12px;color:rgba(255,255,255,.72);line-height:1.35}
 .gauge-wrap{
-  position:absolute;left:0;right:0;bottom:24px;display:flex;justify-content:center;z-index:2;
+  position:relative;flex:none;display:flex;justify-content:center;z-index:2;
+  padding:4px 0 18px;
 }
-.gauge{width:150px;height:150px;position:relative}
-.gauge svg{transform:rotate(-90deg)}
+.gauge{width:118px;height:118px;position:relative}
+.gauge svg{width:100%;height:100%;transform:rotate(-90deg);display:block}
 .gauge .read{
   position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
 }
-.gauge .read b{font-family:"Bebas Neue",sans-serif;font-size:42px;line-height:1;color:#fff}
-.gauge .read span{font-size:11px;color:rgba(255,255,255,.7);letter-spacing:.1em}
+.gauge .read b{font-family:"Bebas Neue",sans-serif;font-size:34px;line-height:1;color:#fff}
+.gauge .read span{font-size:10px;color:rgba(255,255,255,.7);letter-spacing:.1em}
 .shutter-bar{
   display:flex;align-items:center;justify-content:center;gap:28px;padding:18px 16px 8px;
 }
@@ -78,29 +94,56 @@ body{
 .shutter i{display:block;width:56px;height:56px;border-radius:50%;background:linear-gradient(145deg,var(--amber),var(--orange));box-shadow:0 0 24px rgba(249,115,22,.45)}
 .shutter:active i{transform:scale(.92)}
 .tray{
-  padding:8px 16px 0;display:flex;gap:8px;overflow:auto;
+  padding:8px 16px 0;display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
 }
+.tray::-webkit-scrollbar{display:none}
 .chip{
   flex:none;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);
   color:#fff;border-radius:999px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;
 }
 .chip.on{background:rgba(249,115,22,.2);border-color:rgba(249,115,22,.6);color:#fdba74}
-.macros{
-  margin:14px 16px 0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+.result-card{
+  margin:14px 16px 0;border-radius:18px;padding:14px 14px 12px;
+  background:linear-gradient(160deg,rgba(249,115,22,.18),rgba(255,255,255,.05));
+  border:1px solid rgba(249,115,22,.35);
+  scroll-margin-top:12px;
 }
-.macro{
-  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px 8px;text-align:center;
+.result-card .rc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+.result-card .rc-label{font-size:11px;letter-spacing:.1em;color:rgba(255,255,255,.55);font-weight:700}
+.result-card .rc-name{font-size:18px;font-weight:900;margin-top:2px}
+.result-card .rc-kcal{font-family:"Bebas Neue",sans-serif;font-size:36px;line-height:1;color:#fdba74}
+.result-card .rc-kcal small{font-size:12px;font-family:"Noto Sans SC",sans-serif;color:rgba(255,255,255,.55);margin-left:4px}
+.result-card .rc-tip{font-size:12px;color:rgba(255,255,255,.65);margin-bottom:12px;line-height:1.5}
+.result-card .rc-macros{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.result-card .rc-macro{
+  background:rgba(0,0,0,.22);border-radius:12px;padding:10px 8px;text-align:center;
+  border:1px solid rgba(255,255,255,.08);
 }
-.macro b{display:block;font-family:"Bebas Neue",sans-serif;font-size:24px}
-.macro span{font-size:11px;color:rgba(255,255,255,.55)}
+.result-card .rc-macro b{display:block;font-family:"Bebas Neue",sans-serif;font-size:22px}
+.result-card .rc-macro span{font-size:11px;color:rgba(255,255,255,.5)}
+.result-card.idle{opacity:.72;border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.04)}
+.result-card.idle .rc-kcal{color:rgba(255,255,255,.35)}
+.log-btn{
+  width:100%;border:none;border-radius:12px;padding:13px;font:inherit;font-weight:800;cursor:pointer;
+  background:linear-gradient(135deg,var(--amber),var(--orange));color:#1c1917;
+}
+.log-btn:disabled{opacity:.45;cursor:not-allowed;background:rgba(255,255,255,.12);color:rgba(255,255,255,.45)}
 .history{
   margin:14px 16px 0;background:rgba(255,255,255,.04);border-radius:16px;padding:12px 14px;
-  border:1px solid rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.06);scroll-margin-top:12px;
 }
 .history h3{font-size:12px;color:rgba(255,255,255,.5);letter-spacing:.08em;margin-bottom:8px;font-weight:700}
-.hist-row{display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.hist-row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.hist-row span{flex:1;min-width:0}
 .hist-row:last-child{border-bottom:none}
 .hist-row b{font-weight:700}
+.hist-row .del{
+  border:none;background:rgba(255,255,255,.08);color:rgba(255,255,255,.55);
+  border-radius:8px;padding:4px 8px;font:inherit;font-size:11px;font-weight:700;cursor:pointer;
+}
+.hist-day{font-size:11px;font-weight:800;color:#fb923c;margin:10px 0 4px}
+.hist-empty{font-size:12px;color:rgba(255,255,255,.4);padding:6px 0}
 .toast{
   position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
   background:rgba(255,247,237,.95);color:#1c1917;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:700;
@@ -122,6 +165,7 @@ body{
     <div style="font-size:11px;font-weight:800;color:#fb923c" id="today">今日 0 kcal</div>
   </div>
   <div class="viewfinder">
+    <video id="cam" class="cam-feed" playsinline muted autoplay></video>
     <div class="hud-top"><span>ISO 食堂</span><span id="clock">12:00</span><span>AF·AUTO</span></div>
     <div class="vf-grid"></div>
     <div class="corner tl"></div><div class="corner tr"></div>
@@ -129,7 +173,7 @@ body{
     <div class="dish-stage">
       <div class="plate" id="plate">🍜</div>
       <div class="dish-name" id="dname">红烧排骨饭</div>
-      <div class="dish-sub" id="dsub">点击快门识别热量</div>
+      <div class="dish-sub" id="dsub">实况取景 · 快门匹配菜品库热量</div>
     </div>
     <div class="gauge-wrap">
       <div class="gauge">
@@ -143,18 +187,29 @@ body{
     </div>
   </div>
   <div class="shutter-bar">
-    <button class="icon-btn" id="prev">‹</button>
-    <button class="shutter" id="shutter" aria-label="快门"><i></i></button>
-    <button class="icon-btn" id="next">›</button>
+    <button class="icon-btn" id="prev" type="button">‹</button>
+    <button class="shutter" id="shutter" type="button" aria-label="识别"><i></i></button>
+    <button class="icon-btn" id="next" type="button">›</button>
   </div>
   <div class="tray" id="tray"></div>
-  <div class="macros">
-    <div class="macro"><b id="carb">—</b><span>碳水 g</span></div>
-    <div class="macro"><b id="pro">—</b><span>蛋白 g</span></div>
-    <div class="macro"><b id="fat">—</b><span>脂肪 g</span></div>
-  </div>
-  <div class="history">
-    <h3>今日拍摄记录</h3>
+  <section class="result-card idle" id="result">
+    <div class="rc-top">
+      <div>
+        <div class="rc-label" id="rc-label">识别结果</div>
+        <div class="rc-name" id="rc-name">尚未识别</div>
+      </div>
+      <div class="rc-kcal" id="rc-kcal">—<small>kcal</small></div>
+    </div>
+    <div class="rc-tip" id="rc-tip">对准菜品，按下快门完成识别后，可记入今日。</div>
+    <div class="rc-macros">
+      <div class="rc-macro"><b id="carb">—</b><span>碳水 g</span></div>
+      <div class="rc-macro"><b id="pro">—</b><span>蛋白 g</span></div>
+      <div class="rc-macro"><b id="fat">—</b><span>脂肪 g</span></div>
+    </div>
+    <button type="button" class="log-btn" id="log-btn" disabled>记入今日</button>
+  </section>
+  <div class="history" id="history">
+    <h3>热量记录</h3>
     <div id="hist"></div>
   </div>
 </div>
@@ -170,9 +225,44 @@ const DISHES=[
 ];
 const KEY="rl-shots-v1";
 let idx=0, revealed=false;
-let shots=JSON.parse(localStorage.getItem(KEY)||"[]");
+let shots=[];
+let camStream=null;
+let camLive=false;
 const day=new Date().toDateString();
-shots=shots.filter(s=>s.day===day);
+function todayShots(){return shots.filter(s=>s.day===day)}
+function saveShots(){MashangChuangAuth.writeJSON(KEY,shots.slice(0,60))}
+function stopCam(){
+  if(!camStream) return;
+  camStream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});
+  camStream=null;
+  const v=document.getElementById("cam");
+  if(v) v.srcObject=null;
+}
+async function startCam(){
+  const sub=document.getElementById("dsub");
+  const titleSub=document.querySelector(".title-bar p");
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    camLive=false;
+    if(titleSub) titleSub.textContent="摄像头未授权，使用菜品库";
+    if(sub&&!revealed) sub.textContent="摄像头未授权，使用菜品库";
+    return;
+  }
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false});
+    const v=document.getElementById("cam");
+    v.srcObject=camStream;
+    await v.play().catch(()=>{});
+    camLive=true;
+    if(titleSub) titleSub.textContent="实况取景 · 选菜估热量";
+    if(sub&&!revealed) sub.textContent="实况取景 · 选菜估热量";
+  }catch(e){
+    camLive=false;
+    stopCam();
+    if(titleSub) titleSub.textContent="摄像头未授权，使用菜品库";
+    if(sub&&!revealed) sub.textContent="摄像头未授权，使用菜品库";
+  }
+}
+window.addEventListener("pagehide",stopCam);
 
 function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1600)}
 function setClock(){
@@ -186,39 +276,86 @@ function setArc(kcal){
   const color=kcal<300?"#4ade80":kcal<550?"#f97316":"#ef4444";
   document.getElementById("kcal-arc").setAttribute("stroke",color);
 }
+function renderResult(){
+  const card=document.getElementById("result");
+  const btn=document.getElementById("log-btn");
+  card.classList.toggle("idle",!revealed);
+  btn.disabled=!revealed;
+  if(!revealed){
+    document.getElementById("rc-label").textContent="识别结果";
+    document.getElementById("rc-name").textContent="尚未识别";
+    document.getElementById("rc-kcal").innerHTML='—<small>kcal</small>';
+    document.getElementById("rc-tip").textContent="对准菜品，按下快门完成识别后，可记入今日。";
+    document.getElementById("carb").textContent="—";
+    document.getElementById("pro").textContent="—";
+    document.getElementById("fat").textContent="—";
+    return;
+  }
+  const d=DISHES[idx];
+  document.getElementById("rc-label").textContent="菜品库估算";
+  document.getElementById("rc-name").textContent=d.emoji+" "+d.name;
+  document.getElementById("rc-kcal").innerHTML=d.kcal+'<small>kcal</small>';
+  document.getElementById("rc-tip").textContent=d.tip+"（非 AI 视觉识别，取自本地菜品热量库）";
+  document.getElementById("carb").textContent=d.carb;
+  document.getElementById("pro").textContent=d.pro;
+  document.getElementById("fat").textContent=d.fat;
+}
 function showDish(scan){
   const d=DISHES[idx];
   document.getElementById("plate").textContent=d.emoji;
   document.getElementById("dname").textContent=d.name;
-  document.getElementById("dsub").textContent=scan?d.tip:"对准菜品，按下快门";
+  const idleSub=camLive?"实况取景 · 选菜估热量":"摄像头未授权，使用菜品库";
+  document.getElementById("dsub").textContent=scan?d.tip:idleSub;
   if(scan){
     document.getElementById("kcal").textContent=d.kcal;
-    document.getElementById("carb").textContent=d.carb;
-    document.getElementById("pro").textContent=d.pro;
-    document.getElementById("fat").textContent=d.fat;
     setArc(d.kcal);
   }else{
     document.getElementById("kcal").textContent="—";
-    document.getElementById("carb").textContent="—";
-    document.getElementById("pro").textContent="—";
-    document.getElementById("fat").textContent="—";
     setArc(0);
   }
   document.querySelectorAll(".chip").forEach((c,i)=>c.classList.toggle("on",i===idx));
+  renderResult();
 }
 function renderTray(){
   document.getElementById("tray").innerHTML=DISHES.map((d,i)=>
-    `<button class="chip${i===idx?" on":""}" data-i="${i}">${d.emoji} ${d.name}</button>`).join("");
+    `<button type="button" class="chip${i===idx?" on":""}" data-i="${i}">${d.emoji} ${d.name}</button>`).join("");
+}
+function dayLabel(d){
+  if(d===day) return "今日";
+  try{
+    const dt=new Date(d);
+    if(!Number.isNaN(dt.getTime())) return `${dt.getMonth()+1}/${dt.getDate()}`;
+  }catch{}
+  return d;
+}
+function deleteShot(at){
+  shots=shots.filter(s=>s.at!==at);
+  saveShots();
+  renderHist();
+  toast("已删除该条记录");
 }
 function renderHist(){
-  const total=shots.reduce((s,x)=>s+x.kcal,0);
+  const todays=todayShots();
+  const total=todays.reduce((s,x)=>s+x.kcal,0);
   document.getElementById("today").textContent="今日 "+total+" kcal";
   const box=document.getElementById("hist");
-  if(!shots.length){box.innerHTML='<div class="hist-row"><span>还没有拍摄记录</span></div>';return}
-  box.innerHTML=shots.slice(0,6).map(s=>`<div class="hist-row"><span>${s.name}</span><b>${s.kcal} kcal</b></div>`).join("");
+  if(!shots.length){box.innerHTML='<div class="hist-empty">还没有记录 · 识别后点「记入今日」</div>';return}
+  const byDay={};
+  shots.forEach(s=>{(byDay[s.day]=byDay[s.day]||[]).push(s)});
+  const days=Object.keys(byDay).sort((a,b)=>{
+    if(a===day) return -1; if(b===day) return 1;
+    return (byDay[b][0]?.at||0)-(byDay[a][0]?.at||0);
+  });
+  box.innerHTML=days.map(d=>{
+    const list=byDay[d];
+    const sum=list.reduce((s,x)=>s+x.kcal,0);
+    return `<div class="hist-day">${dayLabel(d)} · ${sum} kcal</div>`+list.map(s=>
+      `<div class="hist-row"><span>${s.name}</span><b>${s.kcal} kcal</b><button type="button" class="del" data-del="${s.at}">删除</button></div>`
+    ).join("");
+  }).join("");
 }
-function select(i,reset=true){
-  idx=i;revealed=false;showDish(false);if(reset)renderTray();
+function select(i){
+  idx=i;revealed=false;showDish(false);renderTray();
 }
 document.getElementById("tray").onclick=e=>{
   const b=e.target.closest("[data-i]");if(!b)return;select(+b.dataset.i);
@@ -226,15 +363,48 @@ document.getElementById("tray").onclick=e=>{
 document.getElementById("prev").onclick=()=>select((idx-1+DISHES.length)%DISHES.length);
 document.getElementById("next").onclick=()=>select((idx+1)%DISHES.length);
 document.getElementById("shutter").onclick=()=>{
-  const d=DISHES[idx];
   const plate=document.getElementById("plate");
   plate.classList.remove("snap");void plate.offsetWidth;plate.classList.add("snap");
   revealed=true;showDish(true);
-  shots.unshift({name:d.name,kcal:d.kcal,day,at:Date.now()});
-  localStorage.setItem(KEY,JSON.stringify(shots.slice(0,30)));
-  renderHist();toast("识别完成 · "+d.kcal+" kcal");
+  toast("识别完成 · "+DISHES[idx].kcal+" kcal");
+  document.getElementById("result").scrollIntoView({behavior:"smooth",block:"nearest"});
 };
-renderTray();showDish(false);renderHist();setClock();setInterval(setClock,30000);
+document.getElementById("log-btn").onclick=()=>{
+  if(!revealed)return;
+  const d=DISHES[idx];
+  shots.unshift({name:d.name,kcal:d.kcal,day,at:Date.now()});
+  saveShots();
+  renderHist();
+  toast("已记入今日 · "+d.kcal+" kcal");
+  document.getElementById("history").scrollIntoView({behavior:"smooth",block:"nearest"});
+};
+document.getElementById("hist").onclick=e=>{
+  const b=e.target.closest("[data-del]");if(!b)return;
+  deleteShot(+b.dataset.del);
+};
 </script>
+
+<script src="/apps/_shared/auth.js"></script>
+<script>
+(function(){
+  if(!window.MashangChuangAuth) return;
+  MashangChuangAuth.boot({
+    requireLogin: false,
+    appName: '热量一眼过',
+    onReady: function(user){
+      window.__MSC_USER__ = user;
+      document.dispatchEvent(new CustomEvent('msc-auth-ready', { detail: user }));
+      try {
+        window.__MSC_ME__ = MashangChuangAuth.meLabel('我');
+      } catch(e) {}
+      shots = MashangChuangAuth.readJSON(KEY, []) || [];
+      renderTray();showDish(false);renderHist();setClock();
+      setInterval(setClock,30000);
+      startCam();
+    }
+  });
+})();
+</script>
+
 </body>
 </html>

@@ -14,6 +14,10 @@ import {
   DEFAULT_INCENTIVE_CONFIG,
   normalizeIncentiveConfig,
 } from "./incentiveConfig.js";
+import {
+  DEFAULT_BUILD_CONFIG,
+  normalizeBuildConfig,
+} from "./buildOpsConfig.js";
 
 const BATCH_SIZE = 500;
 
@@ -389,6 +393,42 @@ export async function writeIncentiveConfig(config) {
   const normalized = normalizeIncentiveConfig(config);
   await query(
     `INSERT INTO incentive_config (id, payload)
+     VALUES (1, ?)
+     ON DUPLICATE KEY UPDATE payload = VALUES(payload)`,
+    [JSON.stringify(normalized)],
+  );
+  return normalized;
+}
+
+export async function readBuildConfig() {
+  try {
+    const rows = await query(
+      "SELECT payload FROM build_config WHERE id = 1 LIMIT 1",
+    );
+    if (!rows[0]) {
+      return normalizeBuildConfig(DEFAULT_BUILD_CONFIG);
+    }
+    let payload = rows[0].payload;
+    if (typeof payload === "string") {
+      try {
+        payload = JSON.parse(payload);
+      } catch {
+        payload = {};
+      }
+    }
+    return normalizeBuildConfig(payload || {});
+  } catch (err) {
+    if (err && (err.code === "ER_NO_SUCH_TABLE" || err.errno === 1146)) {
+      return normalizeBuildConfig(DEFAULT_BUILD_CONFIG);
+    }
+    throw err;
+  }
+}
+
+export async function writeBuildConfig(config) {
+  const normalized = normalizeBuildConfig(config);
+  await query(
+    `INSERT INTO build_config (id, payload)
      VALUES (1, ?)
      ON DUPLICATE KEY UPDATE payload = VALUES(payload)`,
     [JSON.stringify(normalized)],

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchProducts } from "../api";
+import { fetchIncentiveConfig, fetchProducts } from "../api";
 import EmptyState from "./EmptyState";
-import { periodHeatScore } from "../buildConfig";
+import { compareRankItems, periodHeatScore } from "../buildConfig";
 
 const TABS = [
   { key: "week", label: "周榜" },
@@ -12,30 +12,50 @@ const TABS = [
 
 const TOP_N = 10;
 
+function rewardFor(tab, incentive) {
+  if (!incentive) return null;
+  if (tab === "week") {
+    return [
+      incentive.weekTop1,
+      incentive.weekTop2,
+      incentive.weekTop3,
+    ].filter((n) => Number(n) > 0);
+  }
+  if (tab === "month" && Number(incentive.monthTop1) > 0) {
+    return [incentive.monthTop1];
+  }
+  if (tab === "quarter" && Number(incentive.quarterTop1) > 0) {
+    return [incentive.quarterTop1];
+  }
+  return [];
+}
+
 export default function PeriodRankBoard({
   title = "🔥 码上创榜单",
   compact = false,
 }) {
   const [tab, setTab] = useState("week");
   const [items, setItems] = useState([]);
+  const [incentive, setIncentive] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchIncentiveConfig()
+      .then((data) => setIncentive(data || null))
+      .catch(() => setIncentive(null));
+  }, []);
 
   useEffect(() => {
     let ignore = false;
     setLoading(true);
     setError("");
-    // 周期榜应对「已上架应用」按周期热度排序，不能按提交时间硬过滤
-    // （否则超过 7 天提交的应用会让周榜整页为空）
     fetchProducts({ category: "全部", range: "all" })
       .then((list) => {
         if (ignore) return;
         const ranked = (list || [])
           .map((item) => ({ ...item, _heat: periodHeatScore(item, tab) }))
-          .sort(
-            (a, b) =>
-              b._heat - a._heat || (b.voteCount || 0) - (a.voteCount || 0),
-          )
+          .sort((a, b) => compareRankItems(a, b, tab))
           .slice(0, TOP_N);
         setItems(ranked);
       })
@@ -50,6 +70,8 @@ export default function PeriodRankBoard({
     };
   }, [tab]);
 
+  const rewards = rewardFor(tab, incentive);
+
   return (
     <section
       className={"ph-period-rank" + (compact ? " ph-period-rank--sidebar" : "")}
@@ -58,6 +80,13 @@ export default function PeriodRankBoard({
       <div className="ph-period-rank-head">
         <div>
           <h2>{title}</h2>
+          {!compact && rewards?.length > 0 && (
+            <p className="ph-period-rank-reward">
+              {tab === "week"
+                ? `激励 Top1–3：¥${rewards.join(" / ")}`
+                : `激励 Top1：¥${rewards[0]}`}
+            </p>
+          )}
         </div>
         <div className="ph-period-rank-tabs" role="tablist">
           {TABS.map((t) => (
@@ -101,10 +130,15 @@ export default function PeriodRankBoard({
                   {index + 1}
                 </span>
                 <div className="ph-period-rank-main">
-                  <Link to={`/resource/${item.id}`}>{item.name}</Link>
+                  <Link to={`/resource/${item.id}`}>
+                    {item.rankPinned ? "📌 " : ""}
+                    {item.name}
+                  </Link>
                   <p>
                     {item.submittedNickname || item.submittedBy || "构建者"}
-                    {compact ? "" : ` · ${item.topicName || item.tagline || "场景应用"}`}
+                    {compact
+                      ? ""
+                      : ` · ${item.topicName || item.tagline || "场景应用"}`}
                   </p>
                 </div>
                 <div className="ph-period-rank-stats">

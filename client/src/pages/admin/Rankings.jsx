@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import EmptyState from "../../components/EmptyState";
 import {
   fetchAdminRankings,
-  fetchCampaigns,
+  fetchAdminCampaigns,
   updateProductRank,
 } from "../../api";
 
@@ -31,7 +31,7 @@ export default function Rankings() {
 
   useEffect(() => {
     loadRankings();
-    fetchCampaigns()
+    fetchAdminCampaigns()
       .then((list) => setCampaigns(Array.isArray(list) ? list : []))
       .catch(() => setCampaigns([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -69,13 +69,11 @@ export default function Rankings() {
               {campaigns.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.rankLabel || item.title}
+                  {item.enabled === false ? "（已隐藏）" : ""}
                 </option>
               ))}
             </select>
           </label>
-          <p className="admin-hint">
-            排序：置顶 → 权重 → 综合评分 → 评分人数 → 提交时间。隐藏后不出现在前台榜单。
-          </p>
         </div>
       </div>
 

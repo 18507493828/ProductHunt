@@ -52,7 +52,7 @@ function StatsSkeleton() {
   );
 }
 
-export default function EcosystemStats({ onCategoryClick, onTopicClick }) {
+export default function EcosystemStats({ onCategoryClick, onTopicClick, compact = false }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -83,7 +83,9 @@ export default function EcosystemStats({ onCategoryClick, onTopicClick }) {
       value: stats.totalResources,
       hint: stats.recentResources7d
         ? `近 7 日 +${stats.recentResources7d}`
-        : "已收录资源",
+        : compact
+          ? null
+          : "已收录资源",
       icon: Box,
       tone: "purple",
     },
@@ -102,21 +104,23 @@ export default function EcosystemStats({ onCategoryClick, onTopicClick }) {
       hint:
         stats.avgRating > 0
           ? `均分 ${stats.avgRating} · ${stats.ratingCount ?? 0} 次`
-          : "累计评分人次",
+          : compact
+            ? null
+            : "累计评分人次",
       icon: ThumbsUp,
       tone: "blue",
     },
     {
       label: "浏览互动",
       value: stats.totalViews,
-      hint: "资源 + 话题浏览",
+      hint: compact ? null : "资源 + 话题浏览",
       icon: Eye,
       tone: "green",
     },
     {
       label: "评论留言",
       value: stats.totalComments,
-      hint: "全站讨论量",
+      hint: compact ? null : "全站讨论量",
       icon: MessageCircle,
       tone: "pink",
     },
@@ -125,7 +129,9 @@ export default function EcosystemStats({ onCategoryClick, onTopicClick }) {
       value: stats.totalFollowers ?? 0,
       hint: stats.totalTopicLikes
         ? `${formatCount(stats.totalTopicLikes)} 次点赞`
-        : "社区关注度",
+        : compact
+          ? null
+          : "社区关注度",
       icon: Users,
       tone: "violet",
     },
@@ -137,18 +143,25 @@ export default function EcosystemStats({ onCategoryClick, onTopicClick }) {
 
   return (
     <section className="ph-eco-dashboard" aria-label="生态总览">
-      <div className="ph-eco-dashboard-head">
-        <div>
-          <h2 className="ph-eco-dashboard-title">生态总览</h2>
-          <p className="ph-eco-dashboard-sub">
-            实时汇总 Agent 生态资源、话题讨论与社区互动数据
-          </p>
+      {!compact && (
+        <div className="ph-eco-dashboard-head">
+          <div>
+            <h2 className="ph-eco-dashboard-title">生态总览</h2>
+            <p className="ph-eco-dashboard-sub">
+              实时汇总 Agent 生态资源、话题讨论与社区互动数据
+            </p>
+          </div>
+          <div className="ph-eco-dashboard-badge">
+            <TrendingUp size={14} aria-hidden="true" />
+            数据看板
+          </div>
         </div>
-        <div className="ph-eco-dashboard-badge">
-          <TrendingUp size={14} aria-hidden="true" />
-          数据看板
+      )}
+      {compact && (
+        <div className="ph-eco-dashboard-head">
+          <h2 className="ph-eco-dashboard-title">生态</h2>
         </div>
-      </div>
+      )}
 
       <div className="ph-eco-metrics">
         {metrics.map((item) => {
@@ -161,7 +174,9 @@ export default function EcosystemStats({ onCategoryClick, onTopicClick }) {
               <div className="ph-eco-metric-body">
                 <span className="ph-eco-metric-value">{formatCount(item.value)}</span>
                 <span className="ph-eco-metric-label">{item.label}</span>
-                <span className="ph-eco-metric-hint">{item.hint}</span>
+                {item.hint ? (
+                  <span className="ph-eco-metric-hint">{item.hint}</span>
+                ) : null}
               </div>
             </div>
           );

@@ -13,6 +13,8 @@ const PLATFORM_THEME = {
   wechat: { color: "#07C160" },
   xiaohongshu: { color: "#FF2442" },
   csdn: { color: "#FC5531" },
+  weibo: { color: "#E6162D" },
+  bilibili: { color: "#00A1D6" },
   link: { color: "#6B8CFF" },
 };
 
@@ -156,12 +158,6 @@ export default function Shares() {
 
   return (
     <div className="admin-share-page">
-      <div className="admin-toolbar">
-        <p className="admin-toolbar-hint">
-          控制霸榜中心可用分享渠道：渠道需完成商务授权后开启。可配置小红书 / 抖音 / 微信 / CSDN 博客文案模板。
-        </p>
-      </div>
-
       <form className="admin-share-config" onSubmit={handleSaveConfig}>
         <div className="admin-share-globals">
           <label className="admin-filter-field">
@@ -192,10 +188,6 @@ export default function Shares() {
         </div>
 
         <div className="admin-share-perm-card">
-          <div className="admin-share-perm-head">
-            <strong>渠道推广许可</strong>
-            <p>控制霸榜中心可用分享渠道；需完成商务授权后再开启</p>
-          </div>
           <div className="admin-share-perm-list" role="list">
             {SHARE_PLATFORMS.map((tab) => {
               const theme = PLATFORM_THEME[tab.id];

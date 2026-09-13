@@ -126,9 +126,6 @@ export default function Categories() {
   return (
     <>
       <div className="admin-toolbar">
-        <p className="admin-toolbar-hint">
-          配置首页分类筛选，以及发布应用时可选的分类。
-        </p>
         <button type="button" className="add-banner-btn" onClick={() => openModal()}>
           新增分类
         </button>

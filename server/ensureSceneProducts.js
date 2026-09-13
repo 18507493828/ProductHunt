@@ -100,7 +100,7 @@ export async function ensureSceneProducts() {
   for (const block of SEED_APPS) {
     const scene = BUILD_SCENES.find((s) => s.id === block.sceneId);
     if (!scene) continue;
-    const category = SCENE_CATEGORY[scene.id] || "趣味生活";
+    const category = SCENE_CATEGORY[scene.id] || scene.name || "其他";
     const color = SCENE_COLOR[scene.id] || "#625cfc";
 
     for (let i = 0; i < block.apps.length; i += 1) {
@@ -135,8 +135,8 @@ export async function ensureSceneProducts() {
             : prev.description || description,
           url,
           appPlatform: platform,
-          categories: prev.categories?.length ? prev.categories : [category],
-          category: prev.category || category,
+          categories: [category],
+          category,
           topicId: prev.topicId || topic.id,
           topicIds: prev.topicIds?.length ? prev.topicIds : [topic.id],
           color: prev.color || color,

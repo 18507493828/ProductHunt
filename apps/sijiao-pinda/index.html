@@ -152,6 +152,7 @@ body{
     </div>
     <div class="slots" id="slots"></div>
     <button class="cta" id="join">立即参团</button>
+    <button class="cta" id="sharePack" style="margin-top:8px;background:transparent;border:1px solid rgba(239,35,60,.45);box-shadow:none;color:#fecaca">分享邀请</button>
     <div class="joined" id="joined"></div>
   </section>
 
@@ -172,8 +173,9 @@ const PACKS=[
   {id:4,coach:"小林",av:"L",tags:"女性力量 · 产后恢复 · 轻氧馆",need:2,joined:0,price:219,origin:360,slots:["周六 14:00","周日 16:00"]}
 ];
 const KEY="sj-join-v1";
+const DEFAULT_STATE={"active":1,"joinedIds":[],"joinedSlots":{}};
 function loadState(){
-  const raw=JSON.parse(localStorage.getItem(KEY)||'{"active":1,"joinedIds":[],"joinedSlots":{}}');
+  const raw=MashangChuangAuth.readJSON(KEY, null) || Object.assign({}, DEFAULT_STATE, {joinedIds:[], joinedSlots:{}});
   if(!raw.joinedSlots) raw.joinedSlots={};
   if(!Array.isArray(raw.joinedIds)) raw.joinedIds=[];
   // migrate: fill missing slot labels for already-joined packs
@@ -185,11 +187,43 @@ function loadState(){
   });
   return raw;
 }
-let state=loadState();
+let state={active:1,joinedIds:[],joinedSlots:{}};
 let slotIdx=0;
 
-function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function save(){MashangChuangAuth.writeJSON(KEY,state)}
 function toast(m){const el=document.getElementById("toast");el.textContent=m;el.classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove("show"),1600)}
+function inviteText(p,slot){
+  const place=(p.tags||"").split("·").pop().trim()||"健身房";
+  return `【私教拼搭】教练 · ${p.coach}\n时段：${slot}\n地点：${place}\n拼团价 ¥${p.price}/人（原价 ¥${p.origin}）\n进度 ${effectiveJoined(p)}/${p.need}\n来「私教拼搭」一起成团`;
+}
+async function shareInvite(p,slot){
+  const text=inviteText(p,slot);
+  try{
+    if(navigator.share){
+      await navigator.share({ title:"私教拼团 · "+p.coach, text });
+      toast("已打开系统分享");
+      return;
+    }
+  }catch(e){ if(e&&e.name==="AbortError") return; }
+  try{
+    await navigator.clipboard.writeText(text);
+    toast("邀请文案已复制");
+  }catch(e2){ toast("复制失败，请手动分享"); }
+}
+function maybeNotify(title,body){
+  try{
+    if(!("Notification" in window)) return;
+    const show=()=>{
+      if(Notification.permission==="granted"){
+        try{ new Notification(title,{ body }); }catch(e){}
+      }
+    };
+    if(Notification.permission==="granted") show();
+    else if(Notification.permission!=="denied"){
+      Notification.requestPermission().then(p=>{ if(p==="granted") show(); }).catch(()=>{});
+    }
+  }catch(e){}
+}
 function circ(joined,need){
   const C=2*Math.PI*52;
   const off=C*(1-Math.min(joined,need)/need);
@@ -327,10 +361,39 @@ document.getElementById("join").onclick=()=>{
   state.joinedSlots[p.id]=slotLabel;
   save();
   toast("参团成功");
+  const j=effectiveJoined(p);
+  maybeNotify("参团成功", `${p.coach} · ${slotLabel}`);
+  if(j>=p.need) maybeNotify("拼团已满员", `${p.coach} · ${slotLabel} · 等待开课`);
   render();
   scrollToMine();
 };
-render();
+document.getElementById("sharePack").onclick=()=>{
+  const p=getPack();
+  const slot=state.joinedSlots[p.id]||p.slots[slotIdx];
+  shareInvite(p,slot);
+};
 </script>
+<script src="/apps/_shared/auth.js"></script>
+
+<script>
+(function(){
+  if(!window.MashangChuangAuth) return;
+  MashangChuangAuth.boot({
+    requireLogin: false,
+    appName: '私教拼搭',
+    onReady: function(user){
+      window.__MSC_USER__ = user;
+      document.dispatchEvent(new CustomEvent('msc-auth-ready', { detail: user }));
+      try {
+        var label = MashangChuangAuth.meLabel('我');
+        window.__MSC_ME__ = label;
+      } catch(e) {}
+      state = loadState();
+      if(typeof render === 'function') render();
+    }
+  });
+})();
+</script>
+
 </body>
 </html>

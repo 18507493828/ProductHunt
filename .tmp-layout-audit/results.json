@@ -1,0 +1,326 @@
+{
+  "fandazi": {
+    "title": "饭搭子计划 · 同城拼饭",
+    "vw": 390,
+    "vh": 844,
+    "docH": 844,
+    "rootTag": "phone",
+    "rootH": 844,
+    "rootScrollH": 1624,
+    "clipped": true,
+    "issues": [
+      {
+        "type": "stack-overlap",
+        "parent": "card-stack",
+        "a": "swipe-card",
+        "b": "swipe-card",
+        "ta": "邀约 跳过 🍜 阿杰 想吃 螺蛳粉 / 麻辣烫 螺蛳粉 麻辣烫 — 今",
+        "tb": "邀约 跳过 🍣 南南 想吃 日料 / 寿司 日料 寿司 — 周六中午 ",
+        "ia": 136984
+      },
+      {
+        "type": "stack-overlap",
+        "parent": "card-stack",
+        "a": "swipe-card",
+        "b": "swipe-card",
+        "ta": "邀约 跳过 🍜 阿杰 想吃 螺蛳粉 / 麻辣烫 螺蛳粉 麻辣烫 — 今",
+        "tb": "邀约 跳过 🍔 小周 想吃 汉堡 / 炸鸡 汉堡 炸鸡 — 今天 12",
+        "ia": 125796
+      },
+      {
+        "type": "stack-overlap",
+        "parent": "card-stack",
+        "a": "swipe-card",
+        "b": "swipe-card",
+        "ta": "邀约 跳过 🍣 南南 想吃 日料 / 寿司 日料 寿司 — 周六中午 ",
+        "tb": "邀约 跳过 🍔 小周 想吃 汉堡 / 炸鸡 汉堡 炸鸡 — 今天 12",
+        "ia": 126621
+      }
+    ],
+    "off": [
+      {
+        "cls": "H2",
+        "text": "我的邀约"
+      }
+    ]
+  },
+  "zhaoling-radar": {
+    "title": "招领雷达 · 校园失物",
+    "vw": 390,
+    "vh": 844,
+    "docH": 1102,
+    "rootTag": "phone",
+    "rootH": 1102,
+    "rootScrollH": 1102,
+    "clipped": false,
+    "issues": [],
+    "off": []
+  },
+  "landa": {
+    "title": "篮搭一下 · 校园约球",
+    "vw": 390,
+    "vh": 844,
+    "docH": 1064,
+    "rootTag": "phone",
+    "rootH": 1064,
+    "rootScrollH": 1064,
+    "clipped": false,
+    "issues": [],
+    "off": []
+  },
+  "liuchong": {
+    "title": "遛宠圈 · 同城搭子",
+    "vw": 390,
+    "vh": 844,
+    "docH": 1161,
+    "rootTag": "phone",
+    "rootH": 1161,
+    "rootScrollH": 1161,
+    "clipped": false,
+    "issues": [],
+    "off": []
+  },
+  "bensha": {
+    "title": "本杀开黑台 · 组局",
+    "vw": 390,
+    "vh": 844,
+    "docH": 844,
+    "rootTag": "phone",
+    "rootH": 844,
+    "rootScrollH": 844,
+    "clipped": false,
+    "issues": [],
+    "off": []
+  },
+  "sijiao-pinda": {
+    "title": "私教拼搭",
+    "vw": 390,
+    "vh": 844,
+    "docH": 844,
+    "rootTag": "app",
+    "rootH": 844,
+    "rootScrollH": 844,
+    "clipped": false,
+    "issues": [],
+    "off": []
+  },
+  "zhiyuan-shichang": {
+    "title": "志愿时长本",
+    "vw": 390,
+    "vh": 844,
+    "docH": 844,
+    "rootTag": "app",
+    "rootH": 844,
+    "rootScrollH": 844,
+    "clipped": false,
+    "issues": [],
+    "off": []
+  },
+  "shitang-pintuan": {
+    "title": "食堂拼团王 · 周边餐厅凑单拼团",
+    "vw": 390,
+    "vh": 844,
+    "docH": 844,
+    "rootTag": "app",
+    "rootH": 844,
+    "rootScrollH": 844,
+    "clipped": false,
+    "issues": [],
+    "off": []
+  },
+  "reliang": {
+    "title": "热量一眼过",
+    "vw": 390,
+    "vh": 844,
+    "docH": 1087,
+    "rootTag": "app",
+    "rootH": 1087,
+    "rootScrollH": 1087,
+    "clipped": false,
+    "issues": [
+      {
+        "type": "stack-overlap",
+        "parent": "viewfinder",
+        "a": "cam-feed",
+        "b": "hud-top",
+        "ta": "",
+        "tb": "ISO 食堂 19:16 AF·AUTO",
+        "ia": 5728
+      },
+      {
+        "type": "stack-overlap",
+        "parent": "viewfinder",
+        "a": "cam-feed",
+        "b": "dish-stage",
+        "ta": "",
+        "tb": "🍖 红烧排骨饭 摄像头未授权，使用菜品库",
+        "ia": 120763
+      },
+      {
+        "type": "stack-overlap",
+        "parent": "viewfinder",
+        "a": "cam-feed",
+        "b": "gauge-wrap",
+        "ta": "",
+        "tb": "— KCAL",
+        "ia": 50120
+      },
+      {
+        "type": "stack-overlap",
+        "parent": "viewfinder",
+        "a": "hud-top",
+        "b": "vf-grid",
+        "ta": "ISO 食堂 19:16 AF·AUTO",
+        "tb": "",
+        "ia": 3864
+      },
+      {
+        "type": "stack-overlap",
+        "parent": "viewfinder",
+        "a": "hud-top",
+        "b": "dish-stage",
+        "ta": "ISO 食堂 19:16 AF·AUTO",
+        "tb": "🍖 红烧排骨饭 摄像头未授权，使用菜品库",
+        "ia": 5728
+      },
+      {
+        "type": "stack-overlap",
+        "parent": "viewfinder",
+        "a": "vf-grid",
+        "b": "dish-stage",
+        "ta": "",
+        "tb": "🍖 红烧排骨饭 摄像头未授权，使用菜品库",
+        "ia": 102824
+      },
+      {
+        "type": "stack-overlap",
+        "parent": "viewfinder",
+        "a": "vf-grid",
+        "b": "gauge-wrap",
+        "ta": "",
+        "tb": "— KCAL",
+        "ia": 39284
+      }
+    ],
+    "off": [
+      {
+        "cls": "log-btn",
+        "text": "记入今日"
+      }
+    ]
+  },
+  "shushi-radar": {
+    "title": "书市雷达 · 校园二手书",
+    "vw": 390,
+    "vh": 844,
+    "docH": 3206,
+    "rootTag": "workspace",
+    "rootH": 3170,
+    "rootScrollH": 3170,
+    "clipped": false,
+    "issues": [],
+    "off": []
+  },
+  "jiuwu-juanzeng": {
+    "title": "旧物捐赠地图",
+    "vw": 390,
+    "vh": 844,
+    "docH": 844,
+    "rootTag": "app",
+    "rootH": 844,
+    "rootScrollH": 844,
+    "clipped": false,
+    "issues": [],
+    "off": []
+  },
+  "liulang-zhuyang": {
+    "title": "流浪助养台",
+    "vw": 390,
+    "vh": 844,
+    "docH": 4053,
+    "rootTag": "app",
+    "rootH": 4053,
+    "rootScrollH": 4053,
+    "clipped": false,
+    "issues": [],
+    "off": []
+  },
+  "paoxian": {
+    "title": "跑线推荐",
+    "vw": 390,
+    "vh": 844,
+    "docH": 1475,
+    "rootTag": "app",
+    "rootH": 1475,
+    "rootScrollH": 1475,
+    "clipped": false,
+    "issues": [],
+    "off": []
+  },
+  "tubo": {
+    "title": "徒步组队社",
+    "vw": 390,
+    "vh": 844,
+    "docH": 3711,
+    "rootTag": "app",
+    "rootH": 3711,
+    "rootScrollH": 3711,
+    "clipped": false,
+    "issues": [],
+    "off": [
+      {
+        "cls": "H2",
+        "text": "雾灵山脊穿越"
+      },
+      {
+        "cls": "H2",
+        "text": "西山森林步道"
+      },
+      {
+        "cls": "H2",
+        "text": "黄山鲫鱼背观景"
+      },
+      {
+        "cls": "H2",
+        "text": "莫干竹海慢行"
+      },
+      {
+        "cls": "H2",
+        "text": "太白山南坡营地"
+      }
+    ]
+  },
+  "luying-zhuangbei": {
+    "title": "露营装备单",
+    "vw": 390,
+    "vh": 844,
+    "docH": 1815,
+    "rootTag": "app",
+    "rootH": 1815,
+    "rootScrollH": 1815,
+    "clipped": false,
+    "issues": [],
+    "off": []
+  },
+  "qixing": {
+    "title": "骑行城市线",
+    "vw": 390,
+    "vh": 844,
+    "docH": 1725,
+    "rootTag": "app",
+    "rootH": 1725,
+    "rootScrollH": 1725,
+    "clipped": false,
+    "issues": [],
+    "off": [
+      {
+        "cls": "H2",
+        "text": "河岸绿道环线"
+      },
+      {
+        "cls": "H2",
+        "text": "补给站"
+      }
+    ]
+  }
+}

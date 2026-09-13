@@ -16,21 +16,32 @@
     background: #f0d4dc; min-height: 100vh; display: flex; justify-content: center; color: var(--ink);
   }
   #phone {
-    width: 100%; max-width: 430px; min-height: 100vh;
+    width: 100%; max-width: 430px; height: 100dvh; min-height: 100dvh; max-height: 100dvh;
     background:
       radial-gradient(ellipse at 20% 0%, #ffd6e2 0%, transparent 45%),
       radial-gradient(ellipse at 100% 20%, #ffe8c8 0%, transparent 40%),
       var(--cream);
-    display: flex; flex-direction: column; position: relative; overflow: hidden;
+    display: flex; flex-direction: column; position: relative;
+    overflow-x: hidden; overflow-y: auto;
   }
   .brand {
-    padding: 20px 20px 8px; text-align: center;
+    padding: 16px 20px 6px; text-align: center; position: relative; flex: none;
   }
   .brand h1 {
-    font-family: "ZCOOL XiaoWei", serif; font-size: 28px; font-weight: 400; color: var(--pink);
-    letter-spacing: .06em;
+    font-family: "ZCOOL XiaoWei", serif; font-size: 26px; font-weight: 400; color: var(--pink);
+    letter-spacing: .06em; padding: 0 72px;
   }
   .brand p { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .brand .geo-row {
+    display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .brand .relocate {
+    border: none; background: rgba(255,255,255,.75); color: var(--pink);
+    font: inherit; font-size: 12px; font-weight: 700;
+    padding: 6px 12px; border-radius: 999px; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(255,77,122,.12);
+  }
   .progress {
     display: flex; justify-content: center; gap: 5px; margin: 6px 0 10px;
   }
@@ -40,10 +51,14 @@
   .progress i.done { background: var(--pink); }
 
   .stack-area {
-    flex: 1; position: relative; padding: 8px 22px 0; display: flex; align-items: center; justify-content: center;
-    min-height: 420px;
+    flex: 1; position: relative; padding: 4px 22px 0; display: flex; align-items: center; justify-content: center;
+    min-height: 0;
   }
-  .card-stack { position: relative; width: 100%; max-width: 340px; height: 440px; }
+  .card-stack {
+    position: relative; width: 100%; max-width: 340px;
+    height: min(440px, calc(100vh - 260px));
+    min-height: 280px;
+  }
   .swipe-card {
     position: absolute; inset: 0; border-radius: 24px; background: #fff;
     box-shadow: 0 16px 40px rgba(255,77,122,.18), 0 2px 8px rgba(0,0,0,.04);
@@ -102,8 +117,9 @@
     box-shadow: 0 10px 28px rgba(255,77,122,.4); width: 72px; height: 72px; font-size: 15px;
   }
   .ctrl.mine {
-    position: absolute; top: 18px; right: 16px; width: auto; height: auto; padding: 8px 12px;
-    border-radius: 999px; background: rgba(255,255,255,.75); font-size: 12px; font-weight: 700;
+    position: absolute; top: 16px; right: 14px; z-index: 5;
+    width: auto; height: auto; padding: 8px 12px;
+    border-radius: 999px; background: rgba(255,255,255,.85); font-size: 12px; font-weight: 700;
     color: var(--pink); box-shadow: 0 2px 8px rgba(255,77,122,.15);
   }
 
@@ -226,12 +242,24 @@
     color: #c47a20; background: #fff6e8; padding: 4px 8px; border-radius: 999px;
     margin-bottom: 10px;
   }
-  .invite-row .cancel-btn {
-    width: 100%; border: 1px solid #f0c8d4; background: #fff; color: var(--muted);
+  .invite-row .status.ok { color: var(--ok); background: #e8f7ef; }
+  .invite-row .status.cancelled { color: var(--muted); background: #f3f0f1; }
+  .invite-row .row-actions { display: flex; gap: 8px; }
+  .invite-row .cancel-btn, .invite-row .ok-btn {
+    flex: 1; border: 1px solid #f0c8d4; background: #fff; color: var(--muted);
     padding: 9px 12px; border-radius: 999px; font: inherit; font-size: 13px;
     font-weight: 600; cursor: pointer;
   }
+  .invite-row .ok-btn { border-color: #b8e0c8; color: var(--ok); }
+  .invite-row .ok-btn:active { background: #e8f7ef; }
   .invite-row .cancel-btn:active { background: #fff0f4; color: var(--pink); }
+  .invite-row .cancel-btn.solo { width: 100%; flex: none; }
+  .invite-row .nav-btn {
+    width: 100%; border: 1px solid #b8e0c8; background: #f3faf6; color: var(--ok);
+    padding: 9px 12px; border-radius: 999px; font: inherit; font-size: 13px;
+    font-weight: 600; cursor: pointer; margin-bottom: 8px;
+  }
+  .invite-row .nav-btn:active { background: #e8f7ef; }
   .sheet-empty {
     text-align: center; padding: 48px 24px; color: var(--muted);
   }
@@ -249,10 +277,14 @@
 </head>
 <body>
 <div id="phone">
-  <button class="ctrl mine" id="btnInvites">我的邀约<span class="badge" id="inviteBadge">0</span></button>
   <div class="brand">
+    <button class="ctrl mine" id="btnInvites" type="button">我的邀约<span class="badge" id="inviteBadge">0</span></button>
     <h1>饭搭子计划</h1>
     <p>按口味 · 距离 · 时间 匹配周末拼饭</p>
+    <div class="geo-row">
+      <p id="placeHint" style="font-size:12px;color:var(--muted);margin:0">定位中…</p>
+      <button type="button" class="relocate" id="relocate-btn">重新定位</button>
+    </div>
   </div>
   <div class="progress" id="progress"></div>
   <div class="toast" id="toast"></div>
@@ -283,25 +315,65 @@
   </div>
 </div>
 <script>
+function mscMe(){ return (window.MashangChuangAuth && MashangChuangAuth.meLabel()) || window.__MSC_ME__ || "我"; }
 const FOODS = [
-  { id:"f1", name:"阿杰", emoji:"🍜", taste:["螺蛳粉","麻辣烫"], dist:"0.8 km", time:"今晚 18:30", bio:"想吃点辣的，图书馆北门集合，AA。", color:"#ff6b8a" },
-  { id:"f2", name:"南南", emoji:"🍣", taste:["日料","寿司"], dist:"1.2 km", time:"周六中午", bio:"新开的回转寿司想尝尝，两人刚好。", color:"#ff9a6b" },
-  { id:"f3", name:"小周", emoji:"🍔", taste:["汉堡","炸鸡"], dist:"0.5 km", time:"今天 12:00", bio:"下课直接冲南门，速战速决党。", color:"#f5a623" },
-  { id:"f4", name:"米米", emoji:"🥗", taste:["轻食","沙拉"], dist:"1.5 km", time:"周日brunch", bio:"健身日想吃干净一点，咖啡店也行。", color:"#7bc96f" },
-  { id:"f5", name:"老王", emoji:"🍲", taste:["火锅","串串"], dist:"2.0 km", time:"周五晚上", bio:"人多热闹，3–4 人局，欢迎加一。", color:"#e85d4c" },
-  { id:"f6", name:"橙子", emoji:"🍰", taste:["甜品","下午茶"], dist:"0.9 km", time:"明天 15:00", bio:"想拍照打卡一家新店，聊聊天也好。", color:"#ff8fab" },
-  { id:"f7", name:"阿龙", emoji:"🍛", taste:["咖喱","泰餐"], dist:"1.8 km", time:"周六晚上", bio:"最近迷上泰式，拼个双人套餐。", color:"#c9a227" },
-  { id:"f8", name:"小雨", emoji:"🥟", taste:["饺子","家常菜"], dist:"0.6 km", time:"今晚 19:00", bio:"食堂对面饺子馆，暖和又快。", color:"#6bb3ff" },
+  { id:"f1", name:"阿杰", emoji:"🍜", taste:["螺蛳粉","麻辣烫"], dNorth:560, dEast:560, time:"今晚 18:30", bio:"想吃点辣的，图书馆北门集合，AA。", color:"#ff6b8a" },
+  { id:"f2", name:"南南", emoji:"🍣", taste:["日料","寿司"], dNorth:-800, dEast:900, time:"周六中午", bio:"新开的回转寿司想尝尝，两人刚好。", color:"#ff9a6b" },
+  { id:"f3", name:"小周", emoji:"🍔", taste:["汉堡","炸鸡"], dNorth:350, dEast:-350, time:"今天 12:00", bio:"下课直接冲南门，速战速决党。", color:"#f5a623" },
+  { id:"f4", name:"米米", emoji:"🥗", taste:["轻食","沙拉"], dNorth:1100, dEast:-1000, time:"周日brunch", bio:"健身日想吃干净一点，咖啡店也行。", color:"#7bc96f" },
+  { id:"f5", name:"老王", emoji:"🍲", taste:["火锅","串串"], dNorth:-1400, dEast:1400, time:"周五晚上", bio:"人多热闹，3–4 人局，欢迎加一。", color:"#e85d4c" },
+  { id:"f6", name:"橙子", emoji:"🍰", taste:["甜品","下午茶"], dNorth:-600, dEast:-650, time:"明天 15:00", bio:"想拍照打卡一家新店，聊聊天也好。", color:"#ff8fab" },
+  { id:"f7", name:"阿龙", emoji:"🍛", taste:["咖喱","泰餐"], dNorth:1200, dEast:1300, time:"周六晚上", bio:"最近迷上泰式，拼个双人套餐。", color:"#c9a227" },
+  { id:"f8", name:"小雨", emoji:"🥟", taste:["饺子","家常菜"], dNorth:-420, dEast:420, time:"今晚 19:00", bio:"食堂对面饺子馆，暖和又快。", color:"#6bb3ff" },
 ];
+FOODS.forEach(f => { if(!f.dist) f.dist = "—"; });
 
 const LS_IDX = "fandazi-idx";
 const LS_INV = "fandazi-invites";
-let idx = +localStorage.getItem(LS_IDX) || 0;
-let invites = JSON.parse(localStorage.getItem(LS_INV) || "[]");
+let idx = 0;
+let invites = [];
 let drag = null;
+let userPos = null;
+let userPlaceLabel = "";
+
+async function locateFoods(showToast){
+  if(!window.MashangChuangGeo) return;
+  const btn = document.getElementById("relocate-btn");
+  const hint = document.getElementById("placeHint");
+  if(btn) btn.disabled = true;
+  if(hint) hint.textContent = "正在定位…";
+  const loc = await MashangChuangGeo.locateWithPlace();
+  userPos = loc.pos;
+  userPlaceLabel = loc.ok
+    ? (loc.placeLabel || loc.placeShort || "当前位置")
+    : MashangChuangGeo.FALLBACK.label;
+  if(hint) hint.textContent = (loc.ok ? "已定位 · " : "默认位置 · ") + userPlaceLabel;
+  const placed = MashangChuangGeo.placeNear(userPos, FOODS.map(f => ({
+    id: f.id, dNorth: f.dNorth, dEast: f.dEast
+  })));
+  const byId = Object.fromEntries(placed.map(p => [p.id, p]));
+  FOODS.forEach(f => {
+    const p = byId[f.id];
+    if(!p) return;
+    f.lat = p.lat; f.lng = p.lng;
+    f.dist = p.dist;
+    if(f.timeRaw == null) f.timeRaw = f.time;
+    f.time = MashangChuangGeo.resolveSchedule(f.timeRaw);
+  });
+  invites.forEach(inv => {
+    const f = FOODS.find(x => x.id === inv.id);
+    if(!f) return;
+    if(f.dist) inv.dist = f.dist;
+    if(f.lat != null){ inv.lat = f.lat; inv.lng = f.lng; }
+    if(f.time) inv.time = f.time;
+  });
+  if(typeof render === 'function') render();
+  if(btn) btn.disabled = false;
+  if(showToast) toast(loc.ok ? ("已重新定位 · " + userPlaceLabel) : ("定位失败 · " + userPlaceLabel));
+}
 
 const $=id=>document.getElementById(id);
-const save=()=>{ localStorage.setItem(LS_IDX, String(idx)); localStorage.setItem(LS_INV, JSON.stringify(invites)); };
+const save=()=>{ MashangChuangAuth.writeJSON(LS_IDX, idx); MashangChuangAuth.writeJSON(LS_INV, invites); };
 const toast=m=>{ const t=$("toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); };
 
 function remaining(){ return FOODS.slice(idx); }
@@ -317,7 +389,10 @@ function relTime(ts){
 
 function updateInviteBadge(){
   const badge=$("inviteBadge");
-  const n=invites.length;
+  const n=invites.filter(i=>{
+    const st=i.status||"pending";
+    return st==="pending"||st==="accepted";
+  }).length;
   badge.textContent=n>99?"99+":String(n);
   badge.classList.toggle("show", n>0);
 }
@@ -345,10 +420,23 @@ function showMatch(person){
   $("match").classList.add("show");
 }
 
+function statusLabel(st){
+  if(st==="accepted") return "对方已同意";
+  if(st==="cancelled") return "已取消";
+  return "已发送·待对方确认";
+}
+function statusClass(st){
+  if(st==="accepted") return "ok";
+  if(st==="cancelled") return "cancelled";
+  return "";
+}
+
 function renderInviteSheet(){
   const list=$("sheetList");
+  const pending=invites.filter(i=>(i.status||"pending")==="pending").length;
+  const accepted=invites.filter(i=>i.status==="accepted").length;
   $("sheetSub").textContent = invites.length
-    ? `共 ${invites.length} 条邀约 · 等待对方确认中`
+    ? `共 ${invites.length} 条 · 待确认 ${pending} · 已同意 ${accepted}`
     : "";
   if(!invites.length){
     list.innerHTML=`<div class="sheet-empty">
@@ -359,7 +447,18 @@ function renderInviteSheet(){
     $("keepSwipe").onclick=()=>closeInviteSheet();
     return;
   }
-  list.innerHTML=invites.map((inv,i)=>`
+  list.innerHTML=invites.map((inv,i)=>{
+    const st=inv.status||"pending";
+    const navBtn = inv.lat != null && inv.lng != null
+      ? `<button type="button" class="nav-btn" data-nav="${i}">导航集合点</button>`
+      : "";
+    const actions = st==="pending"
+      ? `<div class="row-actions">
+          <button type="button" class="ok-btn" data-accept="${i}">对方已同意</button>
+          <button type="button" class="cancel-btn" data-cancel="${i}">取消</button>
+        </div>`
+      : `<button type="button" class="cancel-btn solo" data-remove="${i}">移除记录</button>`;
+    return `
     <div class="invite-row" data-idx="${i}">
       <div class="row-top">
         <span class="iname">${inv.name}</span>
@@ -367,19 +466,50 @@ function renderInviteSheet(){
       </div>
       <div class="taste">${(inv.taste||[]).join(" · ")||"口味待定"}</div>
       <div class="itime">约定时间：${inv.time||"待商议"}</div>
-      <div class="idist">距离：${inv.dist||"—"}</div>
-      <div class="status">已发送·待对方确认</div>
-      <button type="button" class="cancel-btn" data-cancel="${i}">取消邀约</button>
-    </div>`).join("");
+      <div class="idist">距离：${inv.dist||"—"}${inv.fromName?` · 发起人 ${inv.fromName}`:""}</div>
+      <div class="status ${statusClass(st)}">${statusLabel(st)}</div>
+      ${navBtn}
+      ${actions}
+    </div>`;
+  }).join("");
+  list.querySelectorAll("[data-nav]").forEach(btn=>{
+    btn.onclick=()=>{
+      const i=+btn.dataset.nav;
+      const inv=invites[i];
+      if(!inv || inv.lat == null || !window.MashangChuangGeo) return;
+      MashangChuangGeo.openNav({ lat:inv.lat, lng:inv.lng, name:inv.name+" · 集合点" });
+    };
+  });
+  list.querySelectorAll("[data-accept]").forEach(btn=>{
+    btn.onclick=()=>{
+      const i=+btn.dataset.accept;
+      if(!invites[i]) return;
+      invites[i].status="accepted";
+      save();
+      updateInviteBadge();
+      renderInviteSheet();
+      toast(`${invites[i].name} · 已标记对方同意`);
+    };
+  });
   list.querySelectorAll("[data-cancel]").forEach(btn=>{
     btn.onclick=()=>{
       const i=+btn.dataset.cancel;
-      const name=invites[i]?.name;
+      if(!invites[i]) return;
+      const name=invites[i].name;
       invites.splice(i,1);
       save();
       updateInviteBadge();
       renderInviteSheet();
-      if(name) toast(`已取消与 ${name} 的邀约`);
+      toast(`已取消与 ${name} 的邀约`);
+    };
+  });
+  list.querySelectorAll("[data-remove]").forEach(btn=>{
+    btn.onclick=()=>{
+      const i=+btn.dataset.remove;
+      invites.splice(i,1);
+      save();
+      updateInviteBadge();
+      renderInviteSheet();
     };
   });
 }
@@ -473,7 +603,8 @@ function fly(dir){
   if(invite){
     invites.unshift({
       id:person.id, name:person.name, taste:person.taste,
-      time:person.time, dist:person.dist, at:Date.now()
+      time:person.time, dist:person.dist, lat:person.lat, lng:person.lng,
+      at:Date.now(), status:"pending", fromName: mscMe()
     });
     updateInviteBadge();
     showMatch(person);
@@ -495,7 +626,32 @@ $("sheetClose").onclick = () => closeInviteSheet();
 $("sheetBg").onclick = () => closeInviteSheet();
 
 function render(){ renderStack(); updateInviteBadge(); }
-render();
 </script>
+<script src="/apps/_shared/geo.js"></script>
+<script src="/apps/_shared/auth.js"></script>
+
+<script>
+(function(){
+  if(!window.MashangChuangAuth) return;
+  MashangChuangAuth.boot({
+    requireLogin: false,
+    appName: '饭搭子计划',
+    onReady: async function(user){
+      window.__MSC_USER__ = user;
+      document.dispatchEvent(new CustomEvent('msc-auth-ready', { detail: user }));
+      try {
+        var label = MashangChuangAuth.meLabel('我');
+        window.__MSC_ME__ = label;
+      } catch(e) {}
+      idx = MashangChuangAuth.readJSON(LS_IDX, 0) || 0;
+      invites = MashangChuangAuth.readJSON(LS_INV, []) || [];
+      if(typeof render === 'function') render();
+      document.getElementById("relocate-btn")?.addEventListener("click", function(){ locateFoods(true); });
+      if(typeof locateFoods === 'function') await locateFoods(false);
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
