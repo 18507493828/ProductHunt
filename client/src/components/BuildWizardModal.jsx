@@ -9,6 +9,7 @@ import {
   upsertBuildDraft,
 } from "../buildConfig";
 import useBuildCatalog from "../useBuildCatalog";
+import { getSceneIcon } from "../sceneIcons";
 
 export default function BuildWizardModal({
   open,
@@ -131,7 +132,9 @@ export default function BuildWizardModal({
         <div className="modal-body ph-build-body">
           {step === 1 && (
             <div className="ph-build-grid">
-              {BUILD_SCENES.map((s) => (
+              {BUILD_SCENES.map((s) => {
+                const Icon = getSceneIcon(s.id || s.name);
+                return (
                 <button
                   key={s.id}
                   type="button"
@@ -140,20 +143,21 @@ export default function BuildWizardModal({
                   }
                   onClick={() => selectScene(s.id)}
                 >
-                  <span className="ph-build-card-emoji" aria-hidden="true">
-                    {s.emoji}
+                  <span className="ph-build-card-icon" aria-hidden="true">
+                    <Icon size={22} strokeWidth={2.2} />
                   </span>
                   <strong>{s.name}</strong>
                   <span>{s.topics.length} 个预置话题</span>
                 </button>
-              ))}
+                );
+              })}
             </div>
           )}
 
           {step === 2 && (
             <div>
               <p className="ph-build-hint">
-                场景：{scene?.emoji} {scene?.name} · 每个场景预置 3~5 个实用话题
+                场景：{scene?.name} · 每个场景预置 3~5 个实用话题
               </p>
               <div className="ph-build-topics">
                 {topics.map((t) => (
@@ -205,7 +209,7 @@ export default function BuildWizardModal({
                       </strong>
                       {t.sponsored && (
                         <span className="ph-build-badge">
-                          官方赞助 · ¥{t.incentive} 激励
+                          活动赞助 · ¥{t.incentive} 激励
                         </span>
                       )}
                     </div>
@@ -239,9 +243,7 @@ export default function BuildWizardModal({
               <div className="ph-build-brief-card">
                 <div className="ph-build-brief-row">
                   <span>场景</span>
-                  <strong>
-                    {scene.emoji} {scene.name}
-                  </strong>
+                  <strong>{scene.name}</strong>
                 </div>
                 <div className="ph-build-brief-row">
                   <span>场景话题</span>

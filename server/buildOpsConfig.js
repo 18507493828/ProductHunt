@@ -74,6 +74,20 @@ export const DEFAULT_BUILD_SCENES = [
 
 export const DEFAULT_BUILD_TOOLS = [
   {
+    id: "madao",
+    name: "华为码道",
+    emoji: "🔥",
+    desc: "华为云开发者工具 · 本期活动赞助",
+    downloadUrl:
+      "https://developer.huaweicloud.com/codeartsco.html?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
+    inviteCode: "CSDN-MD-004",
+    recommended: false,
+    sponsored: true,
+    incentive: 9.9,
+    enabled: true,
+    sort: 1,
+  },
+  {
     id: "workbuddy",
     name: "WorkBuddy",
     emoji: "🤖",
@@ -84,7 +98,7 @@ export const DEFAULT_BUILD_TOOLS = [
     sponsored: false,
     incentive: 0,
     enabled: true,
-    sort: 1,
+    sort: 2,
   },
   {
     id: "trae",
@@ -97,7 +111,7 @@ export const DEFAULT_BUILD_TOOLS = [
     sponsored: false,
     incentive: 0,
     enabled: true,
-    sort: 2,
+    sort: 3,
   },
   {
     id: "qwen",
@@ -110,20 +124,6 @@ export const DEFAULT_BUILD_TOOLS = [
     recommended: false,
     sponsored: false,
     incentive: 0,
-    enabled: true,
-    sort: 3,
-  },
-  {
-    id: "madao",
-    name: "华为码道",
-    emoji: "🔥",
-    desc: "华为云开发者工具 · 本期官方赞助",
-    downloadUrl:
-      "https://developer.huaweicloud.com/codeartsco.html?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
-    inviteCode: "CSDN-MD-004",
-    recommended: false,
-    sponsored: true,
-    incentive: 9.9,
     enabled: true,
     sort: 4,
   },
@@ -193,14 +193,21 @@ function normalizeTool(raw, index = 0) {
     id,
     name: String(input.name || "").trim(),
     emoji: String(input.emoji || "🛠️").trim() || "🛠️",
-    desc: String(input.desc || "").trim(),
+    desc: String(input.desc || "")
+      .trim()
+      .replace(/官方赞助/g, "活动赞助"),
     downloadUrl,
     inviteCode: String(input.inviteCode || "").trim(),
     recommended: Boolean(input.recommended),
     sponsored: Boolean(input.sponsored),
     incentive: Number.isFinite(incentive) && incentive >= 0 ? incentive : 0,
     enabled: input.enabled !== false,
-    sort: Number.isFinite(Number(input.sort)) ? Number(input.sort) : index + 1,
+    sort:
+      id === "madao"
+        ? 0
+        : Number.isFinite(Number(input.sort))
+          ? Number(input.sort)
+          : index + 1,
   };
 }
 
@@ -219,7 +226,12 @@ export function normalizeBuildConfig(raw) {
   const tools = toolsSource
     .map((t, i) => normalizeTool(t, i))
     .filter((t) => t.name)
-    .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name, "zh"));
+    .sort((a, b) => {
+      const aFirst = a.id === "madao" ? 0 : 1;
+      const bFirst = b.id === "madao" ? 0 : 1;
+      if (aFirst !== bFirst) return aFirst - bFirst;
+      return a.sort - b.sort || a.name.localeCompare(b.name, "zh");
+    });
   return { scenes, tools };
 }
 

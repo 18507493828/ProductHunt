@@ -21,6 +21,24 @@ function fmt(n) {
   return Number(n || 0).toLocaleString("zh-CN");
 }
 
+function formatDraftCreatedAt(draft) {
+  let raw = draft?.createdAt || "";
+  if (!raw && typeof draft?.id === "string" && draft.id.startsWith("draft-")) {
+    const ts = Number(draft.id.slice(6));
+    if (Number.isFinite(ts) && ts > 0) raw = new Date(ts).toISOString();
+  }
+  if (!raw) return "";
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function platformOf(product) {
   return (
     product?.appPlatformLabel ||
@@ -317,35 +335,45 @@ export default function MyWorkspace({
         <section className="ph-my-drafts">
           <h3>待发布的构建任务书</h3>
           <div className="ph-my-draft-list">
-            {drafts.map((d) => (
-              <article key={d.id} className="ph-my-draft">
-                <div>
-                  <strong>
-                    {d.sceneName} · {d.topic}
-                  </strong>
-                  <p>
-                    {d.toolName} · 推广码 {d.inviteCode}
-                    {d.sponsored ? " · 赞助激励" : ""}
-                  </p>
-                </div>
-                <div className="ph-my-draft-actions">
-                  <button
-                    type="button"
-                    className="ph-btn-primary"
-                    onClick={() => publishFromDraft(d)}
-                  >
-                    去发布
-                  </button>
-                  <button
-                    type="button"
-                    className="ph-btn-secondary ph-my-draft-delete"
-                    onClick={() => deleteDraft(d)}
-                  >
-                    删除
-                  </button>
-                </div>
-              </article>
-            ))}
+            {drafts.map((d) => {
+              const createdLabel = formatDraftCreatedAt(d);
+              return (
+                <article key={d.id} className="ph-my-draft">
+                  <div className="ph-my-draft-body">
+                    <strong>
+                      {d.sceneName} · {d.topic}
+                    </strong>
+                    <p className="ph-my-draft-meta">
+                      {d.toolName}
+                      {d.inviteCode ? ` · 推广码 ${d.inviteCode}` : ""}
+                      {d.sponsored ? " · 赞助激励" : ""}
+                    </p>
+                    {d.taskBrief ? (
+                      <p className="ph-my-draft-brief">{d.taskBrief}</p>
+                    ) : null}
+                    {createdLabel ? (
+                      <p className="ph-my-draft-time">创建于 {createdLabel}</p>
+                    ) : null}
+                  </div>
+                  <div className="ph-my-draft-actions">
+                    <button
+                      type="button"
+                      className="ph-btn-primary"
+                      onClick={() => publishFromDraft(d)}
+                    >
+                      去发布
+                    </button>
+                    <button
+                      type="button"
+                      className="ph-btn-secondary ph-my-draft-delete"
+                      onClick={() => deleteDraft(d)}
+                    >
+                      删除
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
       )}

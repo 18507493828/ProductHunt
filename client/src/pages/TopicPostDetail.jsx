@@ -12,7 +12,7 @@ import { useToast } from "../Toast";
 import EmptyState from "../components/EmptyState";
 import CachedImage from "../components/CachedImage";
 import TopicRichText from "../components/TopicRichText";
-import BrandLogo from "../components/BrandLogo";
+import SiteHeader from "../components/SiteHeader";
 import { buildTopicHomePath, formatTopicName } from "../topicUtils";
 
 function formatDate(value) {
@@ -113,13 +113,7 @@ export default function TopicPostDetail() {
 
   return (
     <div className="ph-page ph-detail-page">
-      <header className="ph-detail-nav">
-        <div className="ph-section-inner ph-detail-nav-inner">
-          <Link to="/" className="ph-logo ph-detail-logo">
-            <BrandLogo />
-          </Link>
-        </div>
-      </header>
+      <SiteHeader activeView={null} />
 
       <main className="ph-section">
         <div className="ph-section-inner ph-detail-wrap">

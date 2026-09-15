@@ -4,6 +4,7 @@ import { fetchProducts, fetchStats } from "../api";
 import { inferSceneIdFromText, compareHeatItems } from "../buildConfig";
 import useBuildCatalog from "../useBuildCatalog";
 import ProductCard, { ProductCardSkeleton } from "./ProductCard";
+import { getSceneIcon } from "../sceneIcons";
 
 function formatCount(n) {
   const num = Number(n) || 0;
@@ -227,16 +228,22 @@ export default function PortalHome({
                 >
                   全部
                 </button>
-                {BUILD_SCENES.map((s) => (
+                {BUILD_SCENES.map((s) => {
+                  const Icon = getSceneIcon(s.id);
+                  return (
                   <button
                     key={s.id}
                     type="button"
                     className={"ph-filter" + (sceneFilter === s.id ? " active" : "")}
                     onClick={() => setSceneFilter(s.id)}
                   >
-                    {s.emoji} {s.name}
+                    <span className="ph-filter-icon" aria-hidden="true">
+                      <Icon size={14} strokeWidth={2.2} />
+                    </span>
+                    {s.name}
                   </button>
-                ))}
+                  );
+                })}
               </div>
               <div className="ph-period-rank-tabs" role="tablist" aria-label="排序">
                 {[

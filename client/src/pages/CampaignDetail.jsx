@@ -5,7 +5,7 @@ import { fetchCampaign, fetchProducts, voteProduct } from "../api";
 import { useAuth } from "../AuthContext";
 import { redirectToLogin } from "../authRedirect";
 import { useToast } from "../Toast";
-import BrandLogo from "../components/BrandLogo";
+import SiteHeader from "../components/SiteHeader";
 import CachedImage from "../components/CachedImage";
 import EmptyState from "../components/EmptyState";
 import ProductCard, { ProductCardSkeleton } from "../components/ProductCard";
@@ -221,13 +221,7 @@ export default function CampaignDetail() {
 
   return (
     <div className="ph-page ph-detail-page ph-campaign-detail-page">
-      <header className="ph-detail-nav">
-        <div className="ph-section-inner ph-detail-nav-inner">
-          <Link to="/" className="ph-logo ph-detail-logo">
-            <BrandLogo />
-          </Link>
-        </div>
-      </header>
+      <SiteHeader activeView={null} />
 
       <main className="ph-section">
         <div className="ph-section-inner">

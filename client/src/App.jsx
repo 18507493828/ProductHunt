@@ -35,7 +35,8 @@ import TopicPostCard, {
 import TopicPostUploadModal from "./components/TopicPostUploadModal";
 import ResourceSearchBar from "./components/ResourceSearchBar";
 import CampaignZone from "./components/CampaignZone";
-import MainViewSwitch, { MainViewTabNav } from "./components/MainViewSwitch";
+import MainViewSwitch from "./components/MainViewSwitch";
+import SiteHeader from "./components/SiteHeader";
 import BrandLogo from "./components/BrandLogo";
 import PortalHome from "./components/PortalHome";
 import MyWorkspace from "./components/MyWorkspace";
@@ -45,7 +46,7 @@ import PeriodRankBoard from "./components/PeriodRankBoard";
 import { applyBuildConfig, getSceneById, getToolById, compareHeatItems, inferSceneIdFromText } from "./buildConfig";
 import useBuildCatalog from "./useBuildCatalog";
 import Carousel from "./components/Carousel";
-import SiteCmsNav from "./components/SiteCmsNav";
+import { getSceneIcon } from "./sceneIcons";
 import {
   APP_PLATFORMS,
   DEFAULT_APP_PLATFORM,
@@ -137,7 +138,7 @@ function StarField() {
 
 /* 通用空状态组件：图标在上、文案在下，可带操作按钮 */
 export default function App() {
-  const { user, isAdmin, logout, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -400,6 +401,20 @@ export default function App() {
       redirectToLogin(navigate, "/?view=my");
     }
   }, [activeView, user, navigate, authLoading]);
+
+  // 详情页「我要构建」跳回首页时带 ?build=1
+  useEffect(() => {
+    if (authLoading) return;
+    if (searchParams.get("build") !== "1") return;
+    if (!user) {
+      redirectToLogin(navigate, "/?build=1");
+      return;
+    }
+    setShowBuildWizard(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("build");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, user, authLoading, navigate, setSearchParams]);
 
   // 切换视图（首页/话题/我的提交）时滚动回顶部，配合入场动画
   useEffect(() => {
@@ -1136,18 +1151,6 @@ export default function App() {
     }
   }
 
-  function handleMainViewChange(viewId) {
-    if (viewId === "square") {
-      setSearchParams({ view: "square" });
-    } else if (viewId === "topics") {
-      setSearchParams({ view: "topics" });
-    } else if (viewId === "my") {
-      setSearchParams({ view: "my" });
-    } else {
-      setSearchParams({});
-    }
-  }
-
   function openTopicPostModal() {
     if (!requireLogin()) return;
     if (!activeTopicId) return;
@@ -1302,52 +1305,10 @@ export default function App() {
     <div className="ph-page">
       {/* 浅色紫白主题下不再使用星空背景 */}
 
-      <header className="ph-nav">
-        <div className="ph-nav-inner">
-          <div className="ph-logo" aria-label="码上创 vibe building">
-            <BrandLogo />
-          </div>
-
-          <MainViewTabNav
-            activeView={activeView}
-            loggedIn={!!user}
-            onChange={handleMainViewChange}
-          />
-
-          <SiteCmsNav />
-
-          <div className="ph-nav-actions">
-            {user ? (
-              <>
-                <span className="ph-user-badge">
-                  {user.nickname || user.username}
-                </span>
-                {isAdmin && (
-                  <Link to="/admin" className="ph-nav-ghost">
-                    ⚙ 运营端
-                  </Link>
-                )}
-                <button type="button" className="ph-nav-ghost" onClick={logout}>
-                  退出
-                </button>
-                <button
-                  type="button"
-                  className="ph-nav-primary"
-                  onClick={openBuildWizard}
-                >
-                  我要构建
-                </button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="ph-nav-primary">
-                  注册 / 登录
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+      <SiteHeader
+        activeView={activeView}
+        onBuild={openBuildWizard}
+      />
 
       {/* 运营端轮播配置 → 广场顶部展示 */}
 
@@ -1414,7 +1375,9 @@ export default function App() {
                     >
                       全部
                     </button>
-                    {BUILD_SCENES.map((s) => (
+                    {BUILD_SCENES.map((s) => {
+                      const Icon = getSceneIcon(s.id);
+                      return (
                       <button
                         key={s.id}
                         type="button"
@@ -1424,9 +1387,13 @@ export default function App() {
                         }
                         onClick={() => setSquareScene(s.id)}
                       >
-                        {s.emoji} {s.name}
+                        <span className="ph-filter-icon" aria-hidden="true">
+                          <Icon size={14} strokeWidth={2.2} />
+                        </span>
+                        {s.name}
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div className="ph-period-rank-tabs" role="tablist" aria-label="排序">
                     {[
@@ -1789,7 +1756,17 @@ export default function App() {
                           disabled={submitting}
                           aria-pressed={selected}
                         >
-                          {s.emoji} {s.name}
+                          {(() => {
+                            const Icon = getSceneIcon(s.id || s.name);
+                            return (
+                              <>
+                                <span className="ph-filter-icon" aria-hidden="true">
+                                  <Icon size={14} strokeWidth={2.2} />
+                                </span>
+                                {s.name}
+                              </>
+                            );
+                          })()}
                         </button>
                       );
                     })}

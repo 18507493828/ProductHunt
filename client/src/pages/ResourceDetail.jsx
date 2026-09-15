@@ -10,7 +10,7 @@ import RatingModal from "../components/RatingModal";
 import ProductCard from "../components/ProductCard";
 import CachedImage from "../components/CachedImage";
 import TopicRichText from "../components/TopicRichText";
-import BrandLogo from "../components/BrandLogo";
+import SiteHeader from "../components/SiteHeader";
 import { buildTopicHomePath, formatTopicName } from "../topicUtils";
 import { useShare } from "../ShareContext";
 
@@ -146,13 +146,7 @@ export default function ResourceDetail() {
 
   return (
     <div className="ph-page ph-detail-page">
-      <header className="ph-detail-nav">
-        <div className="ph-section-inner ph-detail-nav-inner">
-          <Link to="/" className="ph-logo ph-detail-logo">
-            <BrandLogo />
-          </Link>
-        </div>
-      </header>
+      <SiteHeader activeView={null} />
 
       <main className="ph-section">
         <div className="ph-section-inner ph-detail-wrap">

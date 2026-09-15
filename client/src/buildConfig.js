@@ -64,6 +64,17 @@ export const BUILD_SCENES = [
 
 export const BUILD_TOOLS = [
   {
+    id: "madao",
+    name: "华为码道",
+    emoji: "🔥",
+    desc: "华为云开发者工具 · 本期活动赞助",
+    downloadUrl:
+      "https://developer.huaweicloud.com/codeartsco.html?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
+    inviteCode: "CSDN-MD-004",
+    sponsored: true,
+    incentive: 9.9,
+  },
+  {
     id: "workbuddy",
     name: "WorkBuddy",
     emoji: "🤖",
@@ -91,17 +102,6 @@ export const BUILD_TOOLS = [
       "https://b.qianwen.com/apps/qkhomepage_twofoufeb/routes/l5Utxkrh6",
     inviteCode: "CSDN-QW-003",
     sponsored: false,
-  },
-  {
-    id: "madao",
-    name: "华为码道",
-    emoji: "🔥",
-    desc: "华为云开发者工具 · 本期官方赞助",
-    downloadUrl:
-      "https://developer.huaweicloud.com/codeartsco.html?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
-    inviteCode: "CSDN-MD-004",
-    sponsored: true,
-    incentive: 9.9,
   },
 ];
 
@@ -145,17 +145,24 @@ export function applyBuildConfig(config) {
     }));
   }
   if (Array.isArray(config?.tools)) {
-    runtimeTools = config.tools.map((t) => ({
-      id: t.id,
-      name: t.name,
-      emoji: t.emoji || "🛠️",
-      desc: t.desc || "",
-      downloadUrl: t.downloadUrl || "",
-      inviteCode: t.inviteCode || "",
-      recommended: Boolean(t.recommended),
-      sponsored: Boolean(t.sponsored),
-      incentive: Number(t.incentive) || 0,
-    }));
+    runtimeTools = config.tools
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        emoji: t.emoji || "🛠️",
+        desc: String(t.desc || "").replace("官方赞助", "活动赞助"),
+        downloadUrl: t.downloadUrl || "",
+        inviteCode: t.inviteCode || "",
+        recommended: Boolean(t.recommended),
+        sponsored: Boolean(t.sponsored),
+        incentive: Number(t.incentive) || 0,
+      }))
+      .sort((a, b) => {
+        const aFirst = a.id === "madao" ? 0 : 1;
+        const bFirst = b.id === "madao" ? 0 : 1;
+        if (aFirst !== bFirst) return aFirst - bFirst;
+        return 0;
+      });
   }
   notifyBuildCatalog();
   return { scenes: runtimeScenes, tools: runtimeTools };

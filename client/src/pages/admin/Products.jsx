@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import EmptyState from "../../components/EmptyState";
+import SubmitProductModal from "../../components/SubmitProductModal";
 import {
   approveProduct,
   deleteProduct,
@@ -40,13 +41,14 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionId, setActionId] = useState("");
+  const [editingProduct, setEditingProduct] = useState(null);
 
   const campaignOptions = [
-    { id: "", label: "不参加活动" },
+    { id: "", label: "无活动" },
     ...campaigns.map((item) => ({
       id: item.id,
       label:
-        item.title + (item.enabled === false ? "（已隐藏）" : ""),
+        item.title + (item.enabled === false ? "（隐）" : ""),
     })),
   ];
 
@@ -283,6 +285,14 @@ export default function Products() {
                 )}
               </div>
               <div className="admin-masonry-actions">
+                <button
+                  type="button"
+                  className="admin-btn admin-btn-ghost"
+                  disabled={actionId === product.id}
+                  onClick={() => setEditingProduct(product)}
+                >
+                  编辑
+                </button>
                 {product.status === "pending" && (
                   <>
                     <button
@@ -343,6 +353,16 @@ export default function Products() {
           ))}
         </div>
       )}
+
+      <SubmitProductModal
+        open={Boolean(editingProduct)}
+        editingProduct={editingProduct}
+        onClose={() => setEditingProduct(null)}
+        onSuccess={async () => {
+          setEditingProduct(null);
+          await loadProducts();
+        }}
+      />
     </>
   );
 }
