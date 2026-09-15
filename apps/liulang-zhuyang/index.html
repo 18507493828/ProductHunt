@@ -25,6 +25,12 @@ body{
 }
 .hero-bar h1{font-family:"ZCOOL XiaoWei",serif;font-size:40px;font-weight:400;color:#9a3412;line-height:1.1}
 .hero-bar p{color:var(--muted);font-size:14px;margin-top:6px;max-width:420px}
+.geo-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+.geo-row #placeHint{margin:0!important;font-size:12px;color:var(--muted)}
+.geo-row #relocate-btn{
+  border:1px solid var(--line);background:#fff;color:var(--orange);
+  border-radius:999px;padding:5px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+}
 .pipeline{
   display:flex;gap:0;background:#fff;border-radius:999px;padding:6px;border:1px solid var(--line);
   box-shadow:0 8px 24px rgba(154,52,18,.06);flex-wrap:wrap;
@@ -132,14 +138,16 @@ body{
     <div>
       <h1>流浪助养台</h1>
       <p>为大猫小狗找到临时家与长期助养。卡片墙按状态分流，申请一键对接站长。</p>
-      <p id="placeHint" style="font-size:12px;color:var(--muted);margin-top:6px">定位中…</p>
+      <div class="geo-row">
+        <p id="placeHint">定位中…</p>
+        <button type="button" id="relocate-btn">重新定位</button>
+      </div>
     </div>
     <div class="pipeline">
       <button class="on" data-f="all">全部</button>
       <button data-f="待助养">待助养</button>
       <button data-f="寄养中">寄养中</button>
       <button data-f="wishlist">心愿单</button>
-      <button type="button" id="relocate-btn">重新定位</button>
     </div>
   </header>
   <div class="mine-strip" id="mine"></div>
@@ -376,12 +384,20 @@ document.getElementById("m-ok").onclick=()=>{
       } catch(e) {}
       apps = MashangChuangAuth.readJSON(KEY, []) || [];
       favs = MashangChuangAuth.readJSON(FAV_KEY, []) || [];
+      if(window.MashangChuangGeo){
+        const prime = MashangChuangGeo.primeLocation();
+        userPos = prime.pos;
+        enrichPets();
+        const hint = document.getElementById("placeHint");
+        if(hint) hint.textContent = "默认位置 · " + prime.placeLabel;
+        if(typeof render === 'function') render();
+      }
       async function refreshLoc(showToast){
         if(!window.MashangChuangGeo) return;
         const btn=document.getElementById("relocate-btn");
         const hint=document.getElementById("placeHint");
         if(btn) btn.disabled=true;
-        if(hint) hint.textContent="正在定位…";
+        if(showToast && hint) hint.textContent="正在定位…";
         const loc=await MashangChuangGeo.locateWithPlace();
         userPos=loc.pos;
         const place=loc.ok?(loc.placeLabel||loc.placeShort||"当前位置"):MashangChuangGeo.FALLBACK.label;

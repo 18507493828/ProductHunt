@@ -42,7 +42,14 @@ body{
 .map-head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .map-head > div:first-child{flex:1;min-width:min(100%,220px)}
 .map-head h2{font-size:15px;font-weight:800}
-.map-head .meta{font-size:12px;color:var(--muted);text-align:left;line-height:1.45;margin-top:4px;word-break:keep-all;overflow-wrap:anywhere}
+.map-head .meta{font-size:12px;color:var(--muted);text-align:left;line-height:1.45;word-break:keep-all;overflow-wrap:anywhere}
+.geo-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px}
+.geo-row .loc-btn{
+  border:1px solid rgba(46,125,50,.25);background:#fff;color:var(--green);
+  font:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:999px;cursor:pointer;
+}
+.geo-row .loc-btn:hover{background:var(--mint)}
+.geo-row .loc-btn:disabled{opacity:.55;cursor:wait}
 .map-tools{display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
 .map-tools .loc-btn{
   border:1px solid rgba(46,125,50,.25);background:#fff;color:var(--green);
@@ -171,11 +178,13 @@ body{
       <div class="map-head">
         <div>
           <h2>附近捐赠点</h2>
-          <div class="meta" id="loc-status">正在请求定位…</div>
+          <div class="geo-row">
+            <div class="meta" id="loc-status">正在请求定位…</div>
+            <button type="button" class="loc-btn" id="locate-btn">重新定位</button>
+          </div>
         </div>
         <div class="map-tools">
           <span id="pin-count">6 个捐赠点</span>
-          <button type="button" class="loc-btn" id="locate-btn">重新定位</button>
         </div>
       </div>
       <div class="map-wrap">
@@ -433,34 +442,39 @@ function locate(showToast){
   const G=Geo();
   const fb=FALLBACK();
   btn.disabled=true;
-  setLocStatus("正在请求定位…");
+  if(showToast) setLocStatus("正在请求定位…");
   if(!G){
-    userPos=null;
-    userPlaceLabel="";
+    userPos={lat:fb.lat,lng:fb.lng};
+    userPlaceLabel=fb.label;
     applyCenter(fb,false);
     btn.disabled=false;
     if(showToast) toast("定位组件未加载");
     return;
   }
   G.locateWithPlace().then(loc=>{
-    if(loc.ok && !loc.fallback){
-      userPos=loc.pos;
-      userPlaceLabel=loc.placeLabel||loc.placeShort||"当前位置";
-      applyCenter(userPos,true);
-      if(showToast) toast("已更新为真实位置");
-    } else {
-      userPos=null;
-      userPlaceLabel="";
-      applyCenter(fb,false);
+    const pos=loc.pos||fb;
+    userPos=pos;
+    const located=!!(loc.ok && !loc.fallback);
+    userPlaceLabel=located
+      ? (loc.placeLabel||loc.placeShort||"当前位置")
+      : (loc.placeLabel||loc.placeShort||fb.label);
+    applyCenter(pos,located);
+    if(!located){
       const tip=loc.error==="denied"?"定位权限被拒绝":loc.error==="unsupported"?"当前环境不支持定位":"定位失败，已用默认区域";
-      setLocStatus(tip+" · 显示 "+fb.label);
+      setLocStatus(tip+" · 显示 "+userPlaceLabel);
       if(showToast) toast(tip);
+    } else if(showToast){
+      toast("已更新为真实位置");
     }
   }).finally(()=>{btn.disabled=false});
 }
 document.getElementById("locate-btn").onclick=()=>locate(true);
 document.getElementById("use-loc-btn").onclick=()=>{
-  if(!userPos){toast("请先完成定位");return}
+  if(!userPos){
+    const fb=FALLBACK();
+    userPos={lat:fb.lat,lng:fb.lng};
+    userPlaceLabel=userPlaceLabel||fb.label;
+  }
   document.getElementById("addr").value=userPlaceLabel
     ?("当前位置 · "+userPlaceLabel)
     :"当前位置附近";
@@ -504,8 +518,18 @@ document.getElementById("nav-btn").onclick=()=>{
   focusRecords(id);
 };
 
-applyCenter(FALLBACK(),false);
-locate(false);
+(function(){
+  const G=Geo();
+  if(G){
+    const prime=G.primeLocation();
+    userPos=prime.pos;
+    userPlaceLabel=prime.placeLabel;
+    applyCenter(prime.pos,false);
+  } else {
+    applyCenter(FALLBACK(),false);
+  }
+  locate(false);
+})();
 </script>
 
 <script src="/apps/_shared/auth.js"></script>

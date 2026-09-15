@@ -19,6 +19,8 @@ body{
 .top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
 .brand h1{font-family:"Barlow Condensed",sans-serif;font-size:36px;font-weight:800;letter-spacing:.02em;color:#1d4ed8}
 .brand p{font-size:13px;color:var(--muted)}
+.geo-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+.geo-row .pace{margin:0}
 .wx-strip{
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   background:#fff;border:1px solid var(--line);border-radius:14px;
@@ -122,8 +124,10 @@ body{
     <div class="brand">
       <h1>跑线推荐</h1>
       <p>按配速与路况挑选城市跑步路线</p>
-      <div class="wx-strip" id="wx-strip" style="margin-top:8px">跑线条件 · 定位中…</div>
-      <button type="button" class="pace" id="relocate-btn" style="margin-top:8px">重新定位</button>
+      <div class="geo-row">
+        <div class="wx-strip" id="wx-strip">跑线条件 · 定位中…</div>
+        <button type="button" class="pace" id="relocate-btn">重新定位</button>
+      </div>
     </div>
     <div class="pace-row" id="paces">
       <button class="pace on" data-p="all">全部配速</button>
@@ -195,7 +199,7 @@ async function refreshLocation(showToast){
   const btn=document.getElementById("relocate-btn");
   if(!Geo){ if(strip) strip.textContent="定位组件未加载"; return; }
   if(btn) btn.disabled=true;
-  if(strip) strip.textContent="跑线条件 · 定位中…";
+  if(showToast && strip) strip.textContent="跑线条件 · 定位中…";
   try{
     const loc=await Geo.locateWithPlace();
     userPos=loc.pos;
@@ -435,6 +439,14 @@ document.getElementById("nav-start").onclick=()=>{
         window.__MSC_ME__ = MashangChuangAuth.meLabel('我');
       } catch(e) {}
       favs = MashangChuangAuth.readJSON(KEY, []);
+      if(window.MashangChuangGeo){
+        const prime = MashangChuangGeo.primeLocation();
+        userPos = prime.pos;
+        userPlaceLabel = prime.placeLabel;
+        enrichRoutes();
+        const strip = document.getElementById("wx-strip");
+        if(strip) strip.textContent = "跑线条件 · 默认位置 · " + userPlaceLabel;
+      }
       if(typeof render === 'function') render();
       if(!window.MashangChuangGeo) return;
       ensureMap();

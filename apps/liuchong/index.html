@@ -49,7 +49,8 @@
     color: #4a7a8c; letter-spacing: -.02em;
   }
   header p { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .geo-hint { font-size: 11px; color: #6a8a9a; margin-top: 4px; min-height: 14px; }
+  .geo-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .geo-hint { font-size: 11px; color: #6a8a9a; min-height: 14px; margin: 0; }
   .nav-walk {
     border: none; background: #e8f2f6; color: #4a7a8c;
     font: inherit; font-size: 12px; font-weight: 700;
@@ -182,8 +183,10 @@
   <header>
     <h1>遛宠圈</h1>
     <p>今天一起出门吸氧吧</p>
-    <div class="geo-hint" id="geoHint">定位中…</div>
-    <button type="button" class="nav-walk" id="relocate-btn" style="margin-top:8px">重新定位</button>
+    <div class="geo-row">
+      <div class="geo-hint" id="geoHint">定位中…</div>
+      <button type="button" class="nav-walk" id="relocate-btn">重新定位</button>
+    </div>
   </header>
   <div class="mine-strip" id="mine-strip"></div>
   <div class="toast" id="toast"></div>
@@ -515,6 +518,14 @@ $("startWalk").onclick = () => {
         userPos = MashangChuangGeo.FALLBACK;
         userPlaceLabel = MashangChuangGeo.FALLBACK.label || "杭州西湖附近";
         applyGeoToWalks(userPos);
+      }
+      if(window.MashangChuangGeo){
+        const prime = MashangChuangGeo.primeLocation();
+        userPos = prime.pos;
+        userPlaceLabel = prime.placeLabel;
+        applyGeoToWalks(userPos);
+        const hint = document.getElementById("geoHint");
+        if(hint) hint.textContent = "默认位置 · " + userPlaceLabel;
       }
       if(typeof render === 'function') render();
       if(typeof ensureMap === 'function'){

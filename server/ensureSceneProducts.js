@@ -125,6 +125,8 @@ export async function ensureSceneProducts() {
 
       const prev = byId.get(id) || byName.get(app.name);
       if (prev) {
+        const seedViews = Number(app.views) || 0;
+        const prevViews = Number(prev.viewCount) || 0;
         const next = {
           ...prev,
           id: prev.id || id,
@@ -140,6 +142,10 @@ export async function ensureSceneProducts() {
           topicId: prev.topicId || topic.id,
           topicIds: prev.topicIds?.length ? prev.topicIds : [topic.id],
           color: prev.color || color,
+          viewCount:
+            platform === "pc"
+              ? Math.max(prevViews, seedViews)
+              : prevViews,
           updatedAt: new Date().toISOString(),
         };
         await writeProduct(next);

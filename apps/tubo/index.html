@@ -23,6 +23,12 @@ body{
 .masthead{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:24px;flex-wrap:wrap;color:#d8f3dc}
 .masthead h1{font-family:"ZCOOL QingKe HuangYou",sans-serif;font-size:44px;letter-spacing:.06em}
 .masthead p{font-size:14px;opacity:.85;max-width:380px;line-height:1.6}
+.geo-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+.geo-row #placeHint{margin:0!important;font-size:12px;opacity:.8}
+.geo-row #relocate-btn{
+  border:1px solid rgba(216,243,220,.35);background:transparent;color:#d8f3dc;
+  border-radius:999px;padding:5px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;
+}
 .filters{display:flex;gap:8px;flex-wrap:wrap}
 .filters button{
   border:1px solid rgba(216,243,220,.35);background:transparent;color:#d8f3dc;
@@ -158,14 +164,16 @@ body{
     <div>
       <h1>徒步组队社</h1>
       <p>周末山径海报墙 · 按难度挑线，一键入队与领队会合。</p>
-      <p id="placeHint" style="font-size:12px;opacity:.8;margin-top:6px">定位中…</p>
+      <div class="geo-row">
+        <p id="placeHint">定位中…</p>
+        <button type="button" id="relocate-btn">重新定位</button>
+      </div>
     </div>
     <div class="filters" id="filters">
       <button class="on" data-d="all">全部难度</button>
       <button data-d="1">入门</button>
       <button data-d="2">进阶</button>
       <button data-d="3">挑战</button>
-      <button type="button" id="relocate-btn">重新定位</button>
     </div>
   </header>
   <div class="joined-bar" id="joined-bar"></div>
@@ -415,6 +423,12 @@ document.getElementById("d-nav").onclick=()=>{
         window.__MSC_ME__ = label;
       } catch(e) {}
       joins = MashangChuangAuth.readJSON(KEY, []) || [];
+      if(window.MashangChuangGeo){
+        const prime = MashangChuangGeo.primeLocation();
+        userPos = prime.pos;
+        const hint = document.getElementById("placeHint");
+        if(hint) hint.textContent = "默认位置 · " + prime.placeLabel;
+      }
       if(typeof render === 'function') render();
       async function refreshLoc(showToast){
         if(!window.MashangChuangGeo) return;

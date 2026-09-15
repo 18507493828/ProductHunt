@@ -32,6 +32,11 @@
   .brand { display: flex; align-items: baseline; gap: 10px; flex: none; }
   .brand h1 { font-family: "Noto Serif SC", serif; font-size: 22px; font-weight: 700; letter-spacing: .02em; }
   .brand span { font-size: 12px; color: var(--muted); }
+  .geo-row {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: none;
+  }
+  .geo-row #placeHint { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .geo-row #relocate-btn { padding: 7px 12px; font-size: 12px; }
   .search-wrap { flex: 1; max-width: 420px; position: relative; }
   .search-wrap input {
     width: 100%; border: 1px solid var(--line); background: #fff; border-radius: 8px;
@@ -193,11 +198,14 @@
       <h1>书市雷达</h1>
       <span>校园二手书当面撮合</span>
     </div>
+    <div class="geo-row">
+      <span id="placeHint">定位中…</span>
+      <button class="btn ghost" id="relocate-btn">重新定位</button>
+    </div>
     <div class="search-wrap">
       <input id="q" type="search" placeholder="搜书名、课程、卖家…" autocomplete="off">
     </div>
     <div class="top-actions">
-      <button class="btn ghost" id="relocate-btn">重新定位</button>
       <button class="btn ghost" id="btnMine">我的</button>
       <button class="btn" id="btnPublish">发布闲书</button>
     </div>
@@ -586,13 +594,22 @@ $("btnMine").onclick=()=>{
         const loc=await MashangChuangGeo.locateWithPlace();
         userPos=loc.pos;
         const place=loc.ok?(loc.placeLabel||loc.placeShort||"当前位置"):MashangChuangGeo.FALLBACK.label;
+        const hint=document.getElementById("placeHint");
+        if(hint) hint.textContent=(loc.ok?"已定位 · ":"默认位置 · ")+place;
         refreshBookDists();
         if(typeof render==='function') render();
         if(btn) btn.disabled=false;
         if(showToast) toast(loc.ok?("已重新定位 · "+place):("定位失败 · "+place));
-        else if(loc.ok) toast("已定位 · "+place);
       }
       document.getElementById("relocate-btn")?.addEventListener("click", function(){ refreshLoc(true); });
+      if(window.MashangChuangGeo){
+        const prime = MashangChuangGeo.primeLocation();
+        userPos = prime.pos;
+        const hint = document.getElementById("placeHint");
+        if(hint) hint.textContent = "默认位置 · " + prime.placeLabel;
+        refreshBookDists();
+        if(typeof render === 'function') render();
+      }
       await refreshLoc(false);
     }
   });

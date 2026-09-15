@@ -27,7 +27,12 @@ body{
   background:linear-gradient(160deg,#5c4033,#8b7355);color:#f5efe4;border-radius:20px;padding:18px;
   box-shadow:0 14px 36px rgba(92,64,51,.25);
 }
-.weather .loc{font-size:12px;opacity:.8;letter-spacing:.04em;line-height:1.45}
+.weather .loc{font-size:12px;opacity:.8;letter-spacing:.04em;line-height:1.45;flex:1;min-width:0}
+.geo-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.geo-row #refresh-wx{
+  border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#f5efe4;
+  border-radius:999px;padding:5px 12px;font:inherit;font-size:11px;font-weight:700;cursor:pointer;flex:none;
+}
 .weather .temp{font-family:"Special Elite",monospace;font-size:56px;line-height:1;margin:8px 0 4px}
 .weather .desc{font-size:14px;margin-bottom:14px}
 .w-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -91,7 +96,10 @@ body{
   </header>
   <div class="layout">
     <aside class="weather">
-      <div class="loc" id="loc">正在定位并拉取天气…</div>
+      <div class="geo-row">
+        <div class="loc" id="loc">正在定位并拉取天气…</div>
+        <button type="button" id="refresh-wx">重新定位</button>
+      </div>
       <div class="temp" id="temp">--°</div>
       <div class="desc" id="wdesc">请稍候</div>
       <div class="w-grid">
@@ -106,7 +114,7 @@ body{
           <input type="number" id="people" min="1" max="12" value="3">
         </div>
         <div>
-          <label>装备情景 <button type="button" id="refresh-wx">重新定位</button></label>
+          <label>装备情景</label>
           <select id="weather">
             <option value="auto">跟随实时天气</option>
             <option value="clear">晴好干燥</option>
@@ -182,7 +190,7 @@ function paintWeatherPanel(){
   document.getElementById("uv").textContent=liveWx.uv;
 }
 async function refreshWeather(showToast){
-  document.getElementById("loc").textContent="正在定位并拉取天气…";
+  if(showToast) document.getElementById("loc").textContent="正在定位并拉取天气…";
   const loc=await MashangChuangGeo.locateWithPlace();
   userPos=loc.pos;
   userPlaceLabel=loc.ok
@@ -282,6 +290,12 @@ document.getElementById("crates").onclick=e=>{
       } catch(e) {}
       checked = new Set(MashangChuangAuth.readJSON(KEY, []) || []);
       loadPrefs();
+      if(window.MashangChuangGeo){
+        const prime = MashangChuangGeo.primeLocation();
+        userPos = prime.pos;
+        userPlaceLabel = prime.placeLabel;
+        document.getElementById("loc").textContent = "默认营地 · " + userPlaceLabel;
+      }
       await refreshWeather(false);
       build(true);
     }

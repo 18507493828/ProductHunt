@@ -78,6 +78,12 @@
     text-align: center; font-family: "IBM Plex Mono", monospace; font-size: 11px;
     color: #6aa8ae; letter-spacing: .12em; margin-bottom: 10px;
   }
+  .geo-row {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    flex-wrap: wrap; margin: -6px 18px 8px;
+  }
+  .geo-row #geoStatus { margin: 0 !important; text-align: left; flex: 1; min-width: 0; }
+  .geo-row .scan-btn { flex: none; }
 
   .list-panel {
     flex: 1; background: linear-gradient(180deg, rgba(232,247,248,.04), #f2fafb 40px);
@@ -174,7 +180,6 @@
       <h1>招领雷达</h1>
       <p>附近失物实时扫描</p>
     </div>
-    <button class="scan-btn" id="rescan">重新定位</button>
   </div>
 
   <div class="radar-wrap" id="radarWrap">
@@ -186,7 +191,10 @@
     </div>
   </div>
   <div class="range-label" id="rangeLabel">扫描半径 · 800m</div>
-  <div class="range-label" id="geoStatus" style="margin-top:-6px;margin-bottom:8px;opacity:.85;font-size:10px;letter-spacing:.06em"></div>
+  <div class="geo-row">
+    <div class="range-label" id="geoStatus" style="margin:0;opacity:.85;font-size:10px;letter-spacing:.06em;text-align:left"></div>
+    <button class="scan-btn" id="rescan">重新定位</button>
+  </div>
 
   <div class="list-panel">
     <div class="list-head">
@@ -585,6 +593,13 @@ $("publish").onclick = e => { if(e.target===$("publish")) e.target.classList.rem
       } catch(e) {}
       items = MashangChuangAuth.readJSON(LS, null) || DEFAULT_ITEMS.map(function(i){ return Object.assign({}, i); });
       selected = null;
+      if(window.MashangChuangGeo){
+        const prime = MashangChuangGeo.primeLocation();
+        userPos = prime.pos;
+        applyGeoToItems(userPos);
+        const st = document.getElementById("geoStatus");
+        if(st) st.textContent = "默认位置 · " + prime.placeLabel;
+      }
       if(typeof render === 'function') render();
       if(typeof locateAndRefresh === 'function') await locateAndRefresh({ silent: true });
       else if(typeof save === 'function') save();

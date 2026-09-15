@@ -23,11 +23,14 @@
     display: flex; flex-direction: column; position: relative; overflow: hidden;
   }
   .status {
-    padding: 12px 16px 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 12px 16px 8px; display: flex; flex-direction: column; gap: 6px;
     background: linear-gradient(180deg, #ff8a3d, #ff6b1a); color: #fff;
   }
+  .status-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; }
   .status h1 { font-family: Outfit, sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -.02em; flex: 1; min-width: 0; }
   .status .live { font-size: 11px; font-weight: 700; background: rgba(0,0,0,.2); padding: 4px 9px; border-radius: 999px; max-width: 100%; }
+  .geo-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; }
+  .geo-row #placeHint { font-size: 11px; opacity: .92; margin: 0; }
   .status .nav-btn {
     border: 1px solid rgba(255,255,255,.45); background: rgba(0,0,0,.18); color: #fff;
     font: inherit; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 999px; cursor: pointer; flex: none;
@@ -199,9 +202,14 @@
 <body>
 <div id="phone">
   <div class="status">
-    <h1>篮搭一下</h1>
-    <div class="live" id="liveCount">今日 3 局进行中</div>
-    <button type="button" class="nav-btn" id="relocate-btn">重新定位</button>
+    <div class="status-main">
+      <h1>篮搭一下</h1>
+      <div class="live" id="liveCount">今日 3 局进行中</div>
+    </div>
+    <div class="geo-row">
+      <span id="placeHint">定位中…</span>
+      <button type="button" class="nav-btn" id="relocate-btn">重新定位</button>
+    </div>
   </div>
   <div class="toast" id="toast"></div>
   <div class="swipe-track" id="track">
@@ -263,25 +271,34 @@ let games = DEFAULT_GAMES.map(g=>({...g, filled:g.filled.slice()}));
 let userPos = null;
 let userPlaceLabel = "";
 
+function setPlaceUI(){
+  const el = document.getElementById("placeHint");
+  if(el) el.textContent = userPlaceLabel ? ("当前位置 · " + userPlaceLabel) : "定位中…";
+}
+function syncGamesGeo(pos, label){
+  if(!window.MashangChuangGeo || !pos) return;
+  userPos = pos;
+  userPlaceLabel = label || MashangChuangGeo.FALLBACK.label;
+  setPlaceUI();
+  games.forEach(g => {
+    const p = MashangChuangGeo.offsetLatLng(userPos.lat, userPos.lng, g.dNorth || 300, g.dEast || 200);
+    g.lat = p.lat; g.lng = p.lng;
+    g.courtDist = MashangChuangGeo.formatDist(MashangChuangGeo.haversine(userPos, { lat: g.lat, lng: g.lng }));
+    if(g.time && /^(今天|明天)/.test(String(g.time))){
+      g.displayTime = MashangChuangGeo.resolveSchedule(g.time);
+    }
+  });
+}
+
 async function locateGames(showToast){
   if(!window.MashangChuangGeo) return;
   const btn = document.getElementById("relocate-btn");
   if(btn) btn.disabled = true;
   const loc = await MashangChuangGeo.locateWithPlace();
-  userPos = loc.pos;
-  userPlaceLabel = loc.ok
-    ? (loc.placeLabel || loc.placeShort || "当前位置")
-    : MashangChuangGeo.FALLBACK.label;
-  games.forEach(g => {
-    // always re-anchor relative to latest GPS
-    const p = MashangChuangGeo.offsetLatLng(userPos.lat, userPos.lng, g.dNorth || 300, g.dEast || 200);
-    g.lat = p.lat; g.lng = p.lng;
-    const meters = MashangChuangGeo.haversine(userPos, { lat: g.lat, lng: g.lng });
-    g.courtDist = MashangChuangGeo.formatDist(meters);
-    if(g.time && /^(今天|明天)/.test(String(g.time))){
-      g.displayTime = MashangChuangGeo.resolveSchedule(g.time);
-    }
-  });
+  syncGamesGeo(
+    loc.pos,
+    loc.ok ? (loc.placeLabel || loc.placeShort || "当前位置") : MashangChuangGeo.FALLBACK.label
+  );
   save();
   if(typeof render === 'function') render();
   if(btn) btn.disabled = false;
@@ -375,9 +392,7 @@ function scrollToCourt(id){
 }
 
 function render(){
-  $("liveCount").textContent = userPlaceLabel
-    ? `今日 ${games.length} 局 · ${userPlaceLabel}`
-    : `今日 ${games.length} 局进行中`;
+  $("liveCount").textContent = `今日 ${games.length} 局进行中`;
   $("courts").innerHTML = games.map((g,idx)=>{
     const dots = Array.from({length:g.slots},(_,i)=>{
       const name = g.filled[i];
@@ -512,6 +527,10 @@ $("track").onscroll = () => {
         window.__MSC_ME__ = label;
       } catch(e) {}
       games = MashangChuangAuth.readJSON(LS, null) || DEFAULT_GAMES.map(function(g){ return Object.assign({}, g, { filled: g.filled.slice() }); });
+      if(window.MashangChuangGeo){
+        const prime = MashangChuangGeo.primeLocation();
+        syncGamesGeo(prime.pos, prime.placeLabel);
+      }
       if(typeof render === 'function') render();
       document.getElementById("relocate-btn")?.addEventListener("click", function(){ locateGames(true); });
       if(typeof locateGames === 'function') await locateGames(false);

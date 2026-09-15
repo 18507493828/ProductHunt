@@ -87,44 +87,92 @@
     return "cool";
   }
 
-  function locate(options) {
-    const opts = Object.assign(
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 },
-      options || {}
-    );
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        resolve({
-          ok: false,
-          pos: { lat: FALLBACK.lat, lng: FALLBACK.lng },
-          error: "unsupported",
-          fallback: true,
-        });
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          resolve({
-            ok: true,
-            pos: {
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-              accuracy: pos.coords.accuracy,
-            },
-            fallback: false,
-          });
+  function withTimeout(promise, ms, fallbackValue) {
+    return new Promise(function (resolve) {
+      var settled = false;
+      var timer = setTimeout(function () {
+        if (!settled) {
+          settled = true;
+          resolve(fallbackValue);
+        }
+      }, ms);
+      Promise.resolve(promise).then(
+        function (value) {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timer);
+            resolve(value);
+          }
         },
-        (err) => {
-          resolve({
-            ok: false,
-            pos: { lat: FALLBACK.lat, lng: FALLBACK.lng },
-            error: err && err.code === 1 ? "denied" : "failed",
-            fallback: true,
-          });
-        },
-        opts
+        function () {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timer);
+            resolve(fallbackValue);
+          }
+        }
       );
     });
+  }
+
+  function fallbackLoc(error) {
+    return {
+      ok: false,
+      pos: { lat: FALLBACK.lat, lng: FALLBACK.lng },
+      error: error || "failed",
+      fallback: true,
+    };
+  }
+
+  /** 启动时先展示默认位置，避免长时间「定位中…」 */
+  function primeLocation() {
+    return {
+      ok: false,
+      pos: { lat: FALLBACK.lat, lng: FALLBACK.lng },
+      placeLabel: FALLBACK.label,
+      placeShort: FALLBACK.label,
+      fallback: true,
+      error: "pending",
+    };
+  }
+
+  function locate(options) {
+    const opts = Object.assign(
+      { enableHighAccuracy: true, timeout: 7000, maximumAge: 120000 },
+      options || {}
+    );
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      return Promise.resolve(fallbackLoc("unsupported"));
+    }
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      return Promise.resolve(fallbackLoc("insecure"));
+    }
+    const hardMs = (opts.timeout || 7000) + 900;
+    return withTimeout(
+      new Promise(function (resolve) {
+        navigator.geolocation.getCurrentPosition(
+          function (pos) {
+            resolve({
+              ok: true,
+              pos: {
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                accuracy: pos.coords.accuracy,
+              },
+              fallback: false,
+            });
+          },
+          function (err) {
+            resolve(
+              fallbackLoc(err && err.code === 1 ? "denied" : "failed")
+            );
+          },
+          opts
+        );
+      }),
+      hardMs,
+      fallbackLoc("timeout")
+    );
   }
 
   function watch(onUpdate, options) {
@@ -537,19 +585,46 @@
     return result;
   }
 
-  /** 定位 + 中文地名 */
+  /** 定位 + 中文地名（逆地理带超时，失败仍返回可用中文标签） */
   async function locateWithPlace(options) {
     const loc = await locate(options);
-    const place = await reverseGeocode(loc.pos.lat, loc.pos.lng);
+    const defaultPlace = {
+      label: FALLBACK.label,
+      short: FALLBACK.label,
+      source: "fallback",
+    };
+    let place = defaultPlace;
+    try {
+      place = await withTimeout(
+        reverseGeocode(loc.pos.lat, loc.pos.lng),
+        5000,
+        loc.ok
+          ? {
+              label: "当前位置附近",
+              short: "当前位置附近",
+              source: "timeout",
+            }
+          : defaultPlace
+      );
+    } catch (e) {
+      place = defaultPlace;
+    }
+    const placeLabel = loc.ok
+      ? place.label || place.short || "当前位置附近"
+      : place.label || place.short || FALLBACK.label;
+    const placeShort = loc.ok
+      ? place.short || place.label || "当前位置"
+      : place.short || place.label || FALLBACK.label;
     return Object.assign({}, loc, {
       place: place,
-      placeLabel: place.label,
-      placeShort: place.short,
+      placeLabel: placeLabel,
+      placeShort: placeShort,
     });
   }
 
   global.MashangChuangGeo = {
     FALLBACK: FALLBACK,
+    primeLocation: primeLocation,
     locate: locate,
     locateWithPlace: locateWithPlace,
     reverseGeocode: reverseGeocode,

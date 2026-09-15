@@ -155,8 +155,10 @@ body{
     <div class="seal">公益<br>认证</div>
     <h1>志愿时长本</h1>
     <p>报名进待参加 · 签到才记入时长</p>
-    <p id="placeHint" style="font-size:12px;opacity:.85;margin-top:6px">定位中…</p>
-    <button type="button" class="secondary" id="relocate-btn" style="margin-top:8px;padding:6px 12px;font-size:12px;border-radius:999px;border:1px solid #b7d4cf;background:#fff;color:var(--teal-deep);cursor:pointer">重新定位</button>
+    <div class="geo-row" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px">
+      <p id="placeHint" style="font-size:12px;opacity:.85;margin:0">定位中…</p>
+      <button type="button" class="secondary" id="relocate-btn" style="padding:6px 12px;font-size:12px;border-radius:999px;border:1px solid #b7d4cf;background:#fff;color:var(--teal-deep);cursor:pointer">重新定位</button>
+    </div>
     <div class="hours-big"><b id="total">0.0</b><span>累计小时</span></div>
     <section class="pending" id="pending-box">
       <h2>待参加<em id="pending-n">0 场</em></h2>
@@ -419,6 +421,14 @@ document.getElementById("save-check").onclick=async ()=>{
       } catch(e) {}
       logs = MashangChuangAuth.readJSON(LOG_KEY, []) || [];
       pending = MashangChuangAuth.readJSON(PEND_KEY, []) || [];
+      if(window.MashangChuangGeo){
+        const prime = MashangChuangGeo.primeLocation();
+        userPos = prime.pos;
+        userPlaceLabel = prime.placeLabel;
+        const hint = document.getElementById("placeHint");
+        if(hint) hint.textContent = "默认位置 · " + userPlaceLabel;
+        if(typeof render === 'function') render();
+      }
       document.getElementById("relocate-btn")?.addEventListener("click", function(){ refreshLocation(true); });
       if(window.MashangChuangGeo){
         await refreshLocation(false);

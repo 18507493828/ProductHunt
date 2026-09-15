@@ -671,10 +671,16 @@ document.getElementById("trip-clear").onclick=()=>{
       } catch(e) {}
       saved = MashangChuangAuth.readJSON(KEY, []) || [];
       trips = MashangChuangAuth.readJSON(TRIP_KEY, []) || [];
+      if(window.MashangChuangGeo){
+        const prime = MashangChuangGeo.primeLocation();
+        userOrigin = prime.pos;
+        userPlaceLabel = prime.placeLabel;
+        enrichRoutes(userOrigin);
+        setPlaceUI();
+        if(typeof render === 'function') render();
+      }
       document.getElementById("relocate-btn")?.addEventListener("click", function(){ refreshLocation(true); });
       if(window.MashangChuangGeo){
-        enrichRoutes(MashangChuangGeo.FALLBACK);
-        if(typeof render === 'function') render();
         refreshLocation(false);
       } else if(typeof render === 'function') {
         render();

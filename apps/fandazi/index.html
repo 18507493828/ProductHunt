@@ -645,6 +645,16 @@ function render(){ renderStack(); updateInviteBadge(); }
       } catch(e) {}
       idx = MashangChuangAuth.readJSON(LS_IDX, 0) || 0;
       invites = MashangChuangAuth.readJSON(LS_INV, []) || [];
+      if(window.MashangChuangGeo){
+        const prime = MashangChuangGeo.primeLocation();
+        userPos = prime.pos;
+        userPlaceLabel = prime.placeLabel;
+        const hint = document.getElementById("placeHint");
+        if(hint) hint.textContent = "默认位置 · " + userPlaceLabel;
+        const placed = MashangChuangGeo.placeNear(userPos, FOODS.map(f => ({ id: f.id, dNorth: f.dNorth, dEast: f.dEast })));
+        const byId = Object.fromEntries(placed.map(p => [p.id, p]));
+        FOODS.forEach(f => { const p = byId[f.id]; if(!p) return; f.lat = p.lat; f.lng = p.lng; f.dist = p.dist; });
+      }
       if(typeof render === 'function') render();
       document.getElementById("relocate-btn")?.addEventListener("click", function(){ locateFoods(true); });
       if(typeof locateFoods === 'function') await locateFoods(false);
