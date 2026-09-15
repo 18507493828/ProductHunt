@@ -1318,7 +1318,7 @@ export default function App() {
           <PortalHome
             onOpenSquare={() => setSearchParams({ view: "square" })}
             onOpenBuild={openBuildWizard}
-            onOpenPublish={() => goMyWorkspace("publish")}
+            onOpenPublish={() => openSubmitModal()}
             onOpenPromote={openPromoteWizard}
             onVote={handleVote}
             votingId={votingId}
@@ -1873,7 +1873,11 @@ export default function App() {
                           aria-pressed={selected}
                         >
                           {t.emoji} {t.name}
-                          {t.sponsored ? " · 赞助" : ""}
+                          {t.sponsored && Number(t.incentive) > 0
+                            ? ` · 活动赞助 ¥${t.incentive} 激励`
+                            : t.sponsored
+                              ? " · 活动赞助"
+                              : ""}
                         </button>
                       );
                     })}
