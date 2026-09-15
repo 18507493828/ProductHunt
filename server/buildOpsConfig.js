@@ -78,7 +78,7 @@ export const DEFAULT_BUILD_TOOLS = [
     name: "WorkBuddy",
     emoji: "🤖",
     desc: "腾讯生态 AI 智能体，对话式全流程构建，适合快速出原型",
-    downloadUrl: "https://www.workbuddy.cn/download",
+    downloadUrl: "https://www.workbuddy.cn/?fromSource=CSDNsmc",
     inviteCode: "CSDN-WB-001",
     recommended: true,
     sponsored: false,
@@ -91,7 +91,7 @@ export const DEFAULT_BUILD_TOOLS = [
     name: "Trae Work",
     emoji: "🧑‍💻",
     desc: "字节 AI IDE，面向工程化开发，适合有代码基础的构建者",
-    downloadUrl: "https://www.trae.ai/download",
+    downloadUrl: "https://www.trae.ai/download?fromSource=CSDNsmc",
     inviteCode: "CSDN-TR-002",
     recommended: false,
     sponsored: false,
@@ -104,7 +104,8 @@ export const DEFAULT_BUILD_TOOLS = [
     name: "千问 Work",
     emoji: "✨",
     desc: "阿里通义生态，模板与插件丰富，多端适配",
-    downloadUrl: "https://qwen.aliyun.com/workbench",
+    downloadUrl:
+      "https://b.qianwen.com/apps/qkhomepage_twofoufeb/routes/l5Utxkrh6",
     inviteCode: "CSDN-QW-003",
     recommended: false,
     sponsored: false,
@@ -176,12 +177,24 @@ function normalizeScene(raw, index = 0) {
 function normalizeTool(raw, index = 0) {
   const input = raw && typeof raw === "object" ? raw : {};
   const incentive = Number(input.incentive);
+  const id = String(input.id || slugify(input.name, `tool-${index + 1}`)).trim();
+  let downloadUrl = String(input.downloadUrl || "").trim();
+  // 旧默认下载链自动升级到最新运营链接（自定义其它地址不覆盖）
+  const legacyUrls = {
+    workbuddy: ["https://www.workbuddy.cn/download"],
+    trae: ["https://www.trae.ai/download"],
+    qwen: ["https://qwen.aliyun.com/workbench"],
+  };
+  const latest = DEFAULT_BUILD_TOOLS.find((t) => t.id === id);
+  if (latest && (legacyUrls[id] || []).includes(downloadUrl)) {
+    downloadUrl = latest.downloadUrl;
+  }
   return {
-    id: String(input.id || slugify(input.name, `tool-${index + 1}`)).trim(),
+    id,
     name: String(input.name || "").trim(),
     emoji: String(input.emoji || "🛠️").trim() || "🛠️",
     desc: String(input.desc || "").trim(),
-    downloadUrl: String(input.downloadUrl || "").trim(),
+    downloadUrl,
     inviteCode: String(input.inviteCode || "").trim(),
     recommended: Boolean(input.recommended),
     sponsored: Boolean(input.sponsored),

@@ -84,6 +84,9 @@ CREATE TABLE IF NOT EXISTS products (
   view_count INT NOT NULL DEFAULT 0,
   share_count INT NOT NULL DEFAULT 0,
   app_platform VARCHAR(32) NOT NULL DEFAULT 'h5',
+  build_tool_id VARCHAR(64) NOT NULL DEFAULT '',
+  build_tool_name VARCHAR(191) NOT NULL DEFAULT '',
+  invite_code VARCHAR(191) NOT NULL DEFAULT '',
   updated_at DATETIME(3) NULL,
   rank_pinned TINYINT(1) NOT NULL DEFAULT 0,
   rank_hidden TINYINT(1) NOT NULL DEFAULT 0,
@@ -204,6 +207,27 @@ CREATE TABLE IF NOT EXISTS share_config (
 CREATE TABLE IF NOT EXISTS incentive_config (
   id INT PRIMARY KEY,
   payload JSON NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS incentive_grants (
+  id VARCHAR(64) PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL DEFAULT '',
+  username VARCHAR(191) NOT NULL DEFAULT '',
+  nickname VARCHAR(191) NOT NULL DEFAULT '',
+  product_id VARCHAR(64) NOT NULL DEFAULT '',
+  product_name VARCHAR(255) NOT NULL DEFAULT '',
+  tool_id VARCHAR(64) NOT NULL DEFAULT '',
+  tool_name VARCHAR(191) NOT NULL DEFAULT '',
+  invite_code VARCHAR(191) NOT NULL DEFAULT '',
+  amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  note VARCHAR(500) NOT NULL DEFAULT '',
+  granted_at DATETIME(3) NULL,
+  paid_at DATETIME(3) NULL,
+  created_at DATETIME(3) NULL,
+  KEY idx_grants_user (username),
+  KEY idx_grants_status (status),
+  KEY idx_grants_tool (tool_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS build_config (

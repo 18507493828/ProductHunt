@@ -8666,6 +8666,91 @@ button.ph-my-pipe:hover {
   font-size: 12px;
   white-space: nowrap;
 }
+.ph-ops-quick-links {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ph-ops-trend {
+  display: grid;
+  gap: 10px;
+}
+.ph-ops-trend-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+.ph-ops-trend-grid {
+  stroke: rgba(148, 163, 184, 0.18);
+  stroke-width: 1;
+}
+.ph-ops-trend-axis {
+  fill: #94a3b8;
+  font-size: 11px;
+}
+.ph-ops-trend-line {
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ph-ops-trend-line.submits { stroke: #38bdf8; }
+.ph-ops-trend-line.approvals { stroke: #34d399; }
+.ph-ops-trend-line.maodao { stroke: #fb923c; }
+.ph-ops-trend-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--ph-muted, #9aa3b5);
+}
+.ph-ops-trend-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.ph-ops-trend-legend i.submits { background: #38bdf8; }
+.ph-ops-trend-legend i.approvals { background: #34d399; }
+.ph-ops-trend-legend i.maodao { background: #fb923c; }
+.dash-card-link { cursor: pointer; }
+.dash-card-link:hover { outline: 1px solid rgba(252, 85, 49, 0.35); }
+.admin-data-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+.admin-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.admin-data-table th,
+.admin-data-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: top;
+}
+.admin-data-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ph-muted, #9aa3b5);
+  white-space: nowrap;
+}
+.admin-data-table tr:last-child td { border-bottom: 0; }
+.admin-data-table .admin-table-center {
+  text-align: center;
+  vertical-align: middle;
+}
+.admin-table-sub {
+  margin-top: 4px;
+  color: var(--ph-muted, #9aa3b5);
+  font-size: 12px;
+}
 .ph-ops-incentive-form { display: grid; gap: 16px; }
 .ph-ops-incentive-grid {
   display: grid;

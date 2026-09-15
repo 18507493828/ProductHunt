@@ -7,6 +7,8 @@ const NAV_GROUPS = [
     items: [
       { to: "/admin", end: true, label: "数据看板" },
       { to: "/admin/products", end: false, label: "应用管理" },
+      { to: "/admin/users", end: false, label: "用户管理" },
+      { to: "/admin/maodao-rewards", end: false, label: "码道发奖" },
       { to: "/admin/topics", end: false, label: "构建场景话题" },
       { to: "/admin/channels", end: false, label: "推广渠道管理" },
       { to: "/admin/rank-incentives", end: false, label: "榜单&激励管理" },

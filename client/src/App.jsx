@@ -780,6 +780,9 @@ export default function App() {
         topicId: submitSelectedTopicId || "",
         topicName: sceneTopic,
         appPlatform: form.appPlatform || DEFAULT_APP_PLATFORM,
+        buildToolId: tool.id,
+        buildToolName: tool.name,
+        inviteCode: tool.inviteCode || "",
       };
       const result = isEditing
         ? await updateProduct(editingProductId, payload)

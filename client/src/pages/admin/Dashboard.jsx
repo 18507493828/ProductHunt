@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { fetchAdminOpsOverview, fetchAdminProducts } from "../../api";
 import EcosystemStats from "../../components/EcosystemStats";
 
@@ -13,6 +13,93 @@ function formatCount(n) {
   const num = Number(n) || 0;
   if (num >= 10000) return `${(num / 10000).toFixed(1).replace(/\.0$/, "")}万`;
   return String(num);
+}
+
+function OpsTrendChart({ trend = [] }) {
+  const chart = useMemo(() => {
+    const rows = Array.isArray(trend) ? trend : [];
+    const W = 640;
+    const H = 220;
+    const pad = { t: 16, r: 16, b: 28, l: 36 };
+    const innerW = W - pad.l - pad.r;
+    const innerH = H - pad.t - pad.b;
+    const maxY = Math.max(
+      1,
+      ...rows.flatMap((d) => [d.submits || 0, d.approvals || 0, d.maodao || 0]),
+    );
+    const n = Math.max(rows.length, 1);
+    const xAt = (i) => pad.l + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+    const yAt = (v) => pad.t + innerH - (Number(v) / maxY) * innerH;
+    const toPath = (key) =>
+      rows
+        .map((d, i) => `${i === 0 ? "M" : "L"}${xAt(i).toFixed(1)},${yAt(d[key] || 0).toFixed(1)}`)
+        .join(" ");
+    const ticks = [0, 0.5, 1].map((t) => Math.round(maxY * t));
+    return { W, H, pad, rows, xAt, yAt, toPath, ticks, maxY };
+  }, [trend]);
+
+  if (!chart.rows.length) {
+    return <div className="admin-empty">暂无趋势数据</div>;
+  }
+
+  return (
+    <div className="ph-ops-trend">
+      <svg
+        className="ph-ops-trend-svg"
+        viewBox={`0 0 ${chart.W} ${chart.H}`}
+        role="img"
+        aria-label="提交、通过与码道趋势"
+      >
+        {chart.ticks.map((tick) => (
+          <g key={tick}>
+            <line
+              x1={chart.pad.l}
+              x2={chart.W - chart.pad.r}
+              y1={chart.yAt(tick)}
+              y2={chart.yAt(tick)}
+              className="ph-ops-trend-grid"
+            />
+            <text
+              x={chart.pad.l - 8}
+              y={chart.yAt(tick) + 4}
+              textAnchor="end"
+              className="ph-ops-trend-axis"
+            >
+              {tick}
+            </text>
+          </g>
+        ))}
+        <path d={chart.toPath("submits")} className="ph-ops-trend-line submits" fill="none" />
+        <path d={chart.toPath("approvals")} className="ph-ops-trend-line approvals" fill="none" />
+        <path d={chart.toPath("maodao")} className="ph-ops-trend-line maodao" fill="none" />
+        {chart.rows.map((d, i) =>
+          i % Math.max(1, Math.ceil(chart.rows.length / 7)) === 0 ||
+          i === chart.rows.length - 1 ? (
+            <text
+              key={d.date}
+              x={chart.xAt(i)}
+              y={chart.H - 8}
+              textAnchor="middle"
+              className="ph-ops-trend-axis"
+            >
+              {(d.date || "").slice(5)}
+            </text>
+          ) : null,
+        )}
+      </svg>
+      <div className="ph-ops-trend-legend">
+        <span>
+          <i className="submits" /> 提交
+        </span>
+        <span>
+          <i className="approvals" /> 通过
+        </span>
+        <span>
+          <i className="maodao" /> 码道
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export default function Dashboard() {
@@ -78,6 +165,14 @@ export default function Dashboard() {
               </button>
             ))}
           </div>
+          <div className="ph-ops-quick-links">
+            <Link to="/admin/users" className="ph-btn-secondary">
+              用户管理
+            </Link>
+            <Link to="/admin/maodao-rewards" className="ph-btn-secondary">
+              码道发奖
+            </Link>
+          </div>
         </div>
 
         {loading ? (
@@ -108,27 +203,52 @@ export default function Dashboard() {
                 {formatCount(kpis?.totalViews ?? kpis?.avgDailyViews ?? 0)}
               </span>
             </div>
-            <div className="dash-card dash-card-primary">
+            <div
+              className="dash-card dash-card-primary dash-card-link"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate("/admin/maodao-rewards")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") navigate("/admin/maodao-rewards");
+              }}
+            >
               <span className="dash-card-label">华为码道转化</span>
               <span className="dash-card-value">
                 {formatCount(kpis?.maodaoConversions ?? 0)}
               </span>
               <span className="dash-card-sub">
-                ¥{kpis?.maodaoReward ?? 9.9}/次
+                {formatCount(kpis?.maodaoUsers ?? 0)} 人 · ¥
+                {kpis?.maodaoReward ?? 9.9}/次
               </span>
             </div>
-            <div className="dash-card dash-card-success">
-              <span className="dash-card-label">已发放 / 激励池</span>
+            <div
+              className="dash-card dash-card-success dash-card-link"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate("/admin/maodao-rewards")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") navigate("/admin/maodao-rewards");
+              }}
+            >
+              <span className="dash-card-label">待发 / 已发</span>
               <span className="dash-card-value">
-                ¥{formatCount(kpis?.incentivePaid ?? 0)}
+                {formatCount(kpis?.grantsPending ?? 0)}
               </span>
               <span className="dash-card-sub">
-                池 ¥{formatCount(kpis?.incentivePool ?? 0)}
+                已发 {formatCount(kpis?.grantsPaid ?? 0)} · 池 ¥
+                {formatCount(kpis?.incentivePool ?? 0)}
               </span>
             </div>
           </div>
         )}
       </div>
+
+      {!loading && ops?.trend?.length > 0 && (
+        <div className="dash-section">
+          <h2 className="dash-section-title">趋势 · {rangeLabel}</h2>
+          <OpsTrendChart trend={ops.trend} />
+        </div>
+      )}
 
       {!loading && funnel && (
         <div className="dash-section">

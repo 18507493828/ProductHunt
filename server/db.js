@@ -124,6 +124,9 @@ async function applySchema(conn) {
   }
   // 存量库兼容：补齐后续新增列
   await ensureColumn(conn, "products", "app_platform", "VARCHAR(32) NOT NULL DEFAULT 'h5'");
+  await ensureColumn(conn, "products", "build_tool_id", "VARCHAR(64) NOT NULL DEFAULT ''");
+  await ensureColumn(conn, "products", "build_tool_name", "VARCHAR(191) NOT NULL DEFAULT ''");
+  await ensureColumn(conn, "products", "invite_code", "VARCHAR(191) NOT NULL DEFAULT ''");
 }
 
 async function ensureColumn(conn, table, column, definition) {

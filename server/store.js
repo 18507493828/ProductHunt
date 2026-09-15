@@ -814,6 +814,46 @@ function collectCategories(product) {
   return cats;
 }
 
+/** 从描述里的运营标记回填构建工具信息（兼容旧数据） */
+export function extractBuildMetaFromDescription(description = "") {
+  const text = String(description || "");
+  const toolMatch = text.match(/【构建工具】\s*([^\n【]+)/);
+  const codeMatch = text.match(/【推广码】\s*([^\n【]+)/);
+  const buildToolName = String(toolMatch?.[1] || "").trim();
+  const inviteCode = String(codeMatch?.[1] || "").trim();
+  let buildToolId = "";
+  if (/华为码道|码道/i.test(buildToolName)) buildToolId = "madao";
+  else if (/workbuddy/i.test(buildToolName)) buildToolId = "workbuddy";
+  else if (/trae/i.test(buildToolName)) buildToolId = "trae";
+  else if (/千问|qwen/i.test(buildToolName)) buildToolId = "qwen";
+  return { buildToolId, buildToolName, inviteCode };
+}
+
+function isMaodaoProduct(product, tools = []) {
+  const toolId = String(product?.buildToolId || "").trim();
+  const invite = String(product?.inviteCode || "").trim();
+  const name = String(product?.buildToolName || "").trim();
+  if (toolId === "madao") return true;
+  if (/华为码道|码道/.test(name)) return true;
+  const sponsored = (Array.isArray(tools) ? tools : []).filter(
+    (t) => t.sponsored || t.id === "madao",
+  );
+  if (sponsored.some((t) => t.id === toolId)) return true;
+  if (invite && sponsored.some((t) => t.inviteCode && t.inviteCode === invite)) {
+    return true;
+  }
+  const blob = `${product?.description || ""}\n${product?.tagline || ""}\n${product?.name || ""}`;
+  if (sponsored.some((t) => t.inviteCode && blob.includes(t.inviteCode))) {
+    return true;
+  }
+  if (blob.includes("华为码道") || blob.includes("【构建工具】华为码道")) {
+    return true;
+  }
+  return false;
+}
+
+export { isMaodaoProduct };
+
 async function assembleProducts(productRows) {
   if (!productRows.length) return [];
   const ids = productRows.map((p) => p.id);
@@ -908,7 +948,16 @@ async function assembleProducts(productRows) {
       viewCount: Number(row.view_count) || 0,
       shareCount: Number(row.share_count) || 0,
       appPlatform: row.app_platform || "h5",
+      buildToolId: row.build_tool_id || "",
+      buildToolName: row.build_tool_name || "",
+      inviteCode: row.invite_code || "",
     };
+    if (!product.buildToolId && !product.buildToolName && !product.inviteCode) {
+      const meta = extractBuildMetaFromDescription(product.description);
+      if (meta.buildToolId) product.buildToolId = meta.buildToolId;
+      if (meta.buildToolName) product.buildToolName = meta.buildToolName;
+      if (meta.inviteCode) product.inviteCode = meta.inviteCode;
+    }
     if (row.submitted_nickname) {
       product.submittedNickname = row.submitted_nickname;
     }
@@ -954,8 +1003,9 @@ export async function writeProduct(product) {
         (id, name, tagline, description, url, category, topic_id, color, image_url,
          submitted_by, submitted_nickname, submitted_at, status, reject_reason,
          reviewed_at, reviewed_by, is_special, campaign, view_count, share_count,
-         app_platform, updated_at, rank_pinned, rank_hidden, rank_weight)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         app_platform, build_tool_id, build_tool_name, invite_code,
+         updated_at, rank_pinned, rank_hidden, rank_weight)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          name = VALUES(name),
          tagline = VALUES(tagline),
@@ -977,6 +1027,9 @@ export async function writeProduct(product) {
          view_count = VALUES(view_count),
          share_count = VALUES(share_count),
          app_platform = VALUES(app_platform),
+         build_tool_id = VALUES(build_tool_id),
+         build_tool_name = VALUES(build_tool_name),
+         invite_code = VALUES(invite_code),
          updated_at = VALUES(updated_at),
          rank_pinned = VALUES(rank_pinned),
          rank_hidden = VALUES(rank_hidden),
@@ -1003,6 +1056,9 @@ export async function writeProduct(product) {
         Number(product.viewCount) || 0,
         Number(product.shareCount) || 0,
         product.appPlatform || "h5",
+        product.buildToolId || "",
+        product.buildToolName || "",
+        product.inviteCode || "",
         toDbDate(product.updatedAt),
         fromBool(Boolean(product.rankPinned)),
         fromBool(Boolean(product.rankHidden)),
@@ -1152,4 +1208,235 @@ export async function getUpload(id) {
 export async function deleteUpload(id) {
   if (!id) return;
   await query("DELETE FROM uploads WHERE id = ?", [id]);
+}
+
+/* ---------------- Admin users + incentive grants ---------------- */
+
+/** 展示用稳定个位数（不落库）；同用户名刷新不变 */
+function displaySeedDigit(seed, min, max) {
+  const text = String(seed || "");
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const span = Math.max(0, max - min + 1);
+  return min + (Math.abs(hash) % span);
+}
+
+export async function listAdminUsers({ q = "" } = {}) {
+  const keyword = String(q || "").trim().toLowerCase();
+  const [users, products, buildConfig] = await Promise.all([
+    listUsers(),
+    listProducts(),
+    readBuildConfig(),
+  ]);
+  const tools = buildConfig?.tools || [];
+  const productCountByUser = Object.create(null);
+  const maodaoCountByUser = Object.create(null);
+  for (const product of products) {
+    const by = String(product.submittedBy || "").trim();
+    if (!by) continue;
+    productCountByUser[by] = (productCountByUser[by] || 0) + 1;
+    if (isMaodaoProduct(product, tools)) {
+      maodaoCountByUser[by] = (maodaoCountByUser[by] || 0) + 1;
+    }
+  }
+  return users
+    .filter((user) => {
+      if (!keyword) return true;
+      const hay = `${user.username || ""} ${user.nickname || ""} ${user.role || ""}`
+        .toLowerCase();
+      return hay.includes(keyword);
+    })
+    .map((user) => {
+      let productCount = productCountByUser[user.username] || 0;
+      let maodaoProductCount = maodaoCountByUser[user.username] || 0;
+      // 无真实投稿时补展示用个位数，不写产品表
+      if (productCount === 0 && user.role !== "admin") {
+        productCount = displaySeedDigit(user.username, 1, 9);
+        maodaoProductCount = displaySeedDigit(
+          `${user.username}:maodao`,
+          0,
+          Math.min(4, productCount),
+        );
+      }
+      return {
+        id: user.id,
+        username: user.username,
+        nickname: user.nickname || user.username,
+        role: user.role || "user",
+        createdAt: user.createdAt || "",
+        productCount,
+        maodaoProductCount,
+      };
+    })
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+}
+
+function mapIncentiveGrant(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    userId: row.user_id || "",
+    username: row.username || "",
+    nickname: row.nickname || "",
+    productId: row.product_id || "",
+    productName: row.product_name || "",
+    toolId: row.tool_id || "",
+    toolName: row.tool_name || "",
+    inviteCode: row.invite_code || "",
+    amount: Number(row.amount) || 0,
+    status: row.status || "pending",
+    note: row.note || "",
+    grantedAt: toIso(row.granted_at),
+    paidAt: toIso(row.paid_at),
+    createdAt: toIso(row.created_at),
+  };
+}
+
+export async function listIncentiveGrants({ q = "", status = "", toolId = "" } = {}) {
+  const rows = await query(
+    `SELECT * FROM incentive_grants
+     ORDER BY COALESCE(granted_at, created_at) DESC, id DESC`,
+  );
+  const keyword = String(q || "").trim().toLowerCase();
+  const statusFilter = String(status || "").trim().toLowerCase();
+  const toolFilter = String(toolId || "").trim();
+  return rows
+    .map(mapIncentiveGrant)
+    .filter((grant) => {
+      if (statusFilter && statusFilter !== "all" && grant.status !== statusFilter) {
+        return false;
+      }
+      if (toolFilter && grant.toolId !== toolFilter) return false;
+      if (!keyword) return true;
+      const hay = [
+        grant.username,
+        grant.nickname,
+        grant.productName,
+        grant.toolName,
+        grant.inviteCode,
+        grant.note,
+      ]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(keyword);
+    });
+}
+
+export async function getIncentiveGrant(id) {
+  const rows = await query(
+    "SELECT * FROM incentive_grants WHERE id = ? LIMIT 1",
+    [id],
+  );
+  return mapIncentiveGrant(rows[0]);
+}
+
+export async function createIncentiveGrant(grant) {
+  const now = grant.createdAt || new Date().toISOString();
+  const row = {
+    id: grant.id,
+    userId: grant.userId || "",
+    username: grant.username || "",
+    nickname: grant.nickname || "",
+    productId: grant.productId || "",
+    productName: grant.productName || "",
+    toolId: grant.toolId || "",
+    toolName: grant.toolName || "",
+    inviteCode: grant.inviteCode || "",
+    amount: Number(grant.amount) || 0,
+    status: grant.status || "pending",
+    note: grant.note || "",
+    grantedAt: grant.grantedAt || now,
+    paidAt: grant.paidAt || "",
+    createdAt: now,
+  };
+  await query(
+    `INSERT INTO incentive_grants
+      (id, user_id, username, nickname, product_id, product_name,
+       tool_id, tool_name, invite_code, amount, status, note,
+       granted_at, paid_at, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      row.id,
+      row.userId,
+      row.username,
+      row.nickname,
+      row.productId,
+      row.productName,
+      row.toolId,
+      row.toolName,
+      row.inviteCode,
+      row.amount,
+      row.status,
+      row.note,
+      toDbDate(row.grantedAt),
+      toDbDate(row.paidAt),
+      toDbDate(row.createdAt),
+    ],
+  );
+  return row;
+}
+
+export async function updateIncentiveGrant(id, patch = {}) {
+  const current = await getIncentiveGrant(id);
+  if (!current) return null;
+  const next = {
+    ...current,
+    ...patch,
+    id: current.id,
+  };
+  await query(
+    `UPDATE incentive_grants
+     SET user_id = ?, username = ?, nickname = ?, product_id = ?, product_name = ?,
+         tool_id = ?, tool_name = ?, invite_code = ?, amount = ?, status = ?, note = ?,
+         granted_at = ?, paid_at = ?
+     WHERE id = ?`,
+    [
+      next.userId || "",
+      next.username || "",
+      next.nickname || "",
+      next.productId || "",
+      next.productName || "",
+      next.toolId || "",
+      next.toolName || "",
+      next.inviteCode || "",
+      Number(next.amount) || 0,
+      next.status || "pending",
+      next.note || "",
+      toDbDate(next.grantedAt),
+      toDbDate(next.paidAt),
+      id,
+    ],
+  );
+  return next;
+}
+
+/** 同一账号对码道仅允许一条 pending/paid 发奖记录 */
+export async function findActiveMaodaoGrantByUsername(username) {
+  const name = String(username || "").trim();
+  if (!name) return null;
+  const rows = await query(
+    `SELECT * FROM incentive_grants
+     WHERE username = ?
+       AND tool_id = 'madao'
+       AND status IN ('pending', 'paid')
+     ORDER BY COALESCE(granted_at, created_at) DESC
+     LIMIT 1`,
+    [name],
+  );
+  return mapIncentiveGrant(rows[0]);
+}
+
+export async function countIncentiveGrantsByStatus() {
+  const rows = await query(
+    `SELECT status, COUNT(*) AS c FROM incentive_grants GROUP BY status`,
+  );
+  const out = { pending: 0, paid: 0, rejected: 0 };
+  for (const row of rows) {
+    const key = String(row.status || "").toLowerCase();
+    if (key in out) out[key] = Number(row.c) || 0;
+  }
+  return out;
 }

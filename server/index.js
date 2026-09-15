@@ -81,6 +81,19 @@ import {
   saveUpload,
   getUpload,
   deleteUpload,
+  listAdminUsers,
+  listIncentiveGrants,
+  getIncentiveGrant,
+  createIncentiveGrant,
+  updateIncentiveGrant,
+  findActiveMaodaoGrantByUsername,
+  countIncentiveGrantsByStatus,
+  isMaodaoProduct,
+  extractBuildMetaFromDescription,
+  listUsers,
+  findUserById,
+  updateUser,
+  countAdmins,
 } from "./store.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1014,6 +1027,68 @@ function toPublicComment(comment, nicknameMap = null) {
   };
 }
 
+async function resolveBuildToolFields(body = {}) {
+  const buildConfig = await readBuildConfig();
+  const tools = Array.isArray(buildConfig.tools) ? buildConfig.tools : [];
+  const fromBodyId = String(body.buildToolId || "").trim();
+  const fromBodyName = String(body.buildToolName || "").trim();
+  const fromBodyCode = String(body.inviteCode || "").trim();
+  const fromDesc = extractBuildMetaFromDescription(body.description || "");
+  let tool =
+    tools.find((t) => t.id === fromBodyId) ||
+    tools.find((t) => t.name === fromBodyName) ||
+    tools.find((t) => t.inviteCode && t.inviteCode === fromBodyCode) ||
+    null;
+  if (!tool && fromDesc.buildToolId) {
+    tool = tools.find((t) => t.id === fromDesc.buildToolId) || null;
+  }
+  return {
+    buildToolId: tool?.id || fromBodyId || fromDesc.buildToolId || "",
+    buildToolName:
+      tool?.name || fromBodyName || fromDesc.buildToolName || "",
+    inviteCode:
+      fromBodyCode ||
+      tool?.inviteCode ||
+      fromDesc.inviteCode ||
+      "",
+    tools,
+  };
+}
+
+async function maybeCreateMaodaoGrant(product, actorUsername = "") {
+  const buildConfig = await readBuildConfig();
+  const tools = buildConfig.tools || [];
+  if (!isMaodaoProduct(product, tools)) return null;
+  const username = String(product.submittedBy || "").trim();
+  if (!username) return null;
+  const existing = await findActiveMaodaoGrantByUsername(username);
+  if (existing) return null;
+  const incentive = await readIncentiveConfig();
+  const sponsored = tools.find((t) => t.id === "madao" || t.sponsored);
+  const amount = Number(
+    sponsored?.incentive ?? incentive.maodao ?? 9.9,
+  );
+  const users = await listUsers();
+  const user = users.find((u) => u.username === username);
+  const now = new Date().toISOString();
+  return createIncentiveGrant({
+    id: crypto.randomUUID().replace(/-/g, "").slice(0, 16),
+    userId: user?.id || "",
+    username,
+    nickname: user?.nickname || product.submittedNickname || username,
+    productId: product.id,
+    productName: product.name || "",
+    toolId: product.buildToolId || "madao",
+    toolName: product.buildToolName || sponsored?.name || "华为码道",
+    inviteCode: product.inviteCode || sponsored?.inviteCode || "",
+    amount,
+    status: "pending",
+    note: actorUsername ? `审核通过自动入账 by ${actorUsername}` : "审核通过自动入账",
+    grantedAt: now,
+    createdAt: now,
+  });
+}
+
 function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = null, { includeComments = false } = {}) {
   const voteCount = Array.isArray(product.voters) ? product.voters.length : 0;
   const { avgRating, ratingCount, avgRatings } = computeRating(product);
@@ -1046,6 +1121,9 @@ function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = nu
     shareCount: Number(product.shareCount) || 0,
     appPlatform: normalizeAppPlatform(product.appPlatform) || DEFAULT_APP_PLATFORM,
     appPlatformLabel: appPlatformLabel(product.appPlatform),
+    buildToolId: product.buildToolId || "",
+    buildToolName: product.buildToolName || "",
+    inviteCode: product.inviteCode || "",
     rankPinned: product.rankPinned === true,
     rankWeight: Number(product.rankWeight) || 0,
     rankHidden: product.rankHidden === true,
@@ -2053,6 +2131,9 @@ app.post("/api/products", requireAuth, async (req, res) => {
       topicName,
       campaign,
       appPlatform,
+      buildToolId,
+      buildToolName,
+      inviteCode,
     } = req.body || {};
 
     const trimmedName = (name || "").trim();
@@ -2062,6 +2143,12 @@ app.post("/api/products", requireAuth, async (req, res) => {
     const trimmedImageUrl = (imageUrl || "").trim();
     const resolvedPlatform =
       normalizeAppPlatform(appPlatform) || DEFAULT_APP_PLATFORM;
+    const buildFields = await resolveBuildToolFields({
+      buildToolId,
+      buildToolName,
+      inviteCode,
+      description: trimmedDescription,
+    });
 
     if (!trimmedName) {
       return res.status(400).json({ error: "请填写资源名称" });
@@ -2142,6 +2229,9 @@ app.post("/api/products", requireAuth, async (req, res) => {
       color: pickAvatarColor(trimmedName),
       imageUrl: trimmedImageUrl,
       appPlatform: resolvedPlatform,
+      buildToolId: buildFields.buildToolId,
+      buildToolName: buildFields.buildToolName,
+      inviteCode: buildFields.inviteCode,
       voters: [],
       submittedBy: req.user.username,
       submittedAt: now,
@@ -2152,6 +2242,13 @@ app.post("/api/products", requireAuth, async (req, res) => {
     };
 
     await writeProduct(product);
+    if (product.status === "approved") {
+      try {
+        await maybeCreateMaodaoGrant(product, req.user.username);
+      } catch (grantErr) {
+        console.warn("[incentive] auto-grant failed:", grantErr.message);
+      }
+    }
 
     if (!topicsForMap) topicsForMap = await readTopics();
     const topicMap = Object.fromEntries(
@@ -2189,6 +2286,9 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
       topicName,
       campaign,
       appPlatform,
+      buildToolId,
+      buildToolName,
+      inviteCode,
     } = req.body || {};
 
     const trimmedName = (name || "").trim();
@@ -2200,6 +2300,14 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
       normalizeAppPlatform(appPlatform) ||
       normalizeAppPlatform(product.appPlatform) ||
       DEFAULT_APP_PLATFORM;
+    const buildFields = await resolveBuildToolFields({
+      buildToolId:
+        buildToolId !== undefined ? buildToolId : product.buildToolId,
+      buildToolName:
+        buildToolName !== undefined ? buildToolName : product.buildToolName,
+      inviteCode: inviteCode !== undefined ? inviteCode : product.inviteCode,
+      description: trimmedDescription,
+    });
 
     if (!trimmedName) {
       return res.status(400).json({ error: "请填写资源名称" });
@@ -2291,6 +2399,9 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     product.topicId = resolvedTopicId;
     product.imageUrl = trimmedImageUrl;
     product.appPlatform = resolvedPlatform;
+    product.buildToolId = buildFields.buildToolId;
+    product.buildToolName = buildFields.buildToolName;
+    product.inviteCode = buildFields.inviteCode;
     product.color = product.color || pickAvatarColor(trimmedName);
     product.status = nextStatus;
     product.rejectReason = rejectReason;
@@ -2299,6 +2410,13 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     product.updatedAt = now;
 
     await writeProduct(product);
+    if (prevStatus !== "approved" && nextStatus === "approved") {
+      try {
+        await maybeCreateMaodaoGrant(product, req.user.username);
+      } catch (grantErr) {
+        console.warn("[incentive] auto-grant failed:", grantErr.message);
+      }
+    }
 
     if (!topicsForMap) topicsForMap = await readTopics();
     const topicMap = Object.fromEntries(
@@ -2758,6 +2876,11 @@ app.post("/api/admin/products/:id/approve", requireAdmin, async (req, res) => {
     product.reviewedBy = req.user.username;
     product.rejectReason = "";
     await writeProduct(product);
+    try {
+      await maybeCreateMaodaoGrant(product, req.user.username);
+    } catch (grantErr) {
+      console.warn("[incentive] auto-grant failed:", grantErr.message);
+    }
     res.json({ message: "已通过审核", product: toPublicProduct(product, req.user) });
   } catch {
     res.status(404).json({ error: "资源不存在" });
@@ -3064,20 +3187,29 @@ app.get("/api/admin/ops-overview", requireAdmin, async (req, res) => {
     const rangeLabel =
       range === "month" ? "近 30 天" : range === "quarter" ? "近 90 天" : "近 7 天";
 
-    const [products, topics, shares, incentive, buildConfig] =
+    const [products, topics, shares, incentive, buildConfig, grantCounts] =
       await Promise.all([
         listProducts(),
         readTopics(),
         readShares(),
         readIncentiveConfig(),
         readBuildConfig(),
+        countIncentiveGrantsByStatus(),
       ]);
+    const tools = buildConfig.tools || [];
     const topicMap = Object.fromEntries(
       topics.map((t) => [t.id, t.name || ""]),
     );
     const rangeAgo = new Date(Date.now() - rangeDays * DAY_MS).toISOString();
     const dayAgo = new Date(Date.now() - DAY_MS).toISOString();
     const scenes = buildConfig.scenes || [];
+
+    const trendMap = Object.create(null);
+    for (let i = rangeDays - 1; i >= 0; i -= 1) {
+      const d = new Date(Date.now() - i * DAY_MS);
+      const key = d.toISOString().slice(0, 10);
+      trendMap[key] = { date: key, submits: 0, approvals: 0, maodao: 0 };
+    }
 
     let pending = 0;
     let approved = 0;
@@ -3090,13 +3222,11 @@ app.get("/api/admin/ops-overview", requireAdmin, async (req, res) => {
     let periodApproved = 0;
     let todaySubmitters = new Set();
     let maodaoHits = 0;
+    const maodaoUsers = new Set();
     const sceneCounts = Object.fromEntries([
       ...scenes.map((s) => [s.name, 0]),
       ["其他", 0],
     ]);
-    const madaoCodes = (buildConfig.tools || [])
-      .filter((t) => t.sponsored || t.id === "madao")
-      .flatMap((t) => [t.inviteCode, t.name].filter(Boolean));
 
     for (const product of products) {
       const status = product.status || "approved";
@@ -3105,6 +3235,22 @@ app.get("/api/admin/ops-overview", requireAdmin, async (req, res) => {
       else if (status === "approved") approved += 1;
 
       const submittedAt = product.submittedAt || "";
+      const submitDay = submittedAt.slice(0, 10);
+      if (submitDay && trendMap[submitDay]) {
+        trendMap[submitDay].submits += 1;
+      }
+      const reviewedDay = String(product.reviewedAt || "").slice(0, 10);
+      if (status === "approved" && reviewedDay && trendMap[reviewedDay]) {
+        trendMap[reviewedDay].approvals += 1;
+      } else if (
+        status === "approved" &&
+        !product.reviewedAt &&
+        submitDay &&
+        trendMap[submitDay]
+      ) {
+        trendMap[submitDay].approvals += 1;
+      }
+
       if (submittedAt >= rangeAgo) {
         periodSubmitted += 1;
         if (status === "approved") periodApproved += 1;
@@ -3119,13 +3265,12 @@ app.get("/api/admin/ops-overview", requireAdmin, async (req, res) => {
           scenes,
         );
         sceneCounts[scene] = (sceneCounts[scene] || 0) + 1;
-        const blob = `${product.description || ""}\n${product.tagline || ""}\n${product.name || ""}`;
-        if (
-          madaoCodes.some((code) => code && blob.includes(code)) ||
-          blob.includes("华为码道") ||
-          blob.includes("码道")
-        ) {
+        if (isMaodaoProduct(product, tools)) {
           maodaoHits += 1;
+          if (product.submittedBy) maodaoUsers.add(product.submittedBy);
+          if (submitDay && trendMap[submitDay]) {
+            trendMap[submitDay].maodao += 1;
+          }
         }
       }
     }
@@ -3163,6 +3308,12 @@ app.get("/api/admin/ops-overview", requireAdmin, async (req, res) => {
         tagline: p.tagline,
       }));
 
+    const paidFromGrants = await listIncentiveGrants({ status: "paid" });
+    const grantsPaidAmount = paidFromGrants.reduce(
+      (sum, g) => sum + (Number(g.amount) || 0),
+      0,
+    );
+
     res.json({
       range,
       rangeDays,
@@ -3177,15 +3328,199 @@ app.get("/api/admin/ops-overview", requireAdmin, async (req, res) => {
         totalViews,
         avgDailyViews: Math.round(totalViews / Math.max(1, approved)),
         maodaoConversions: maodaoHits,
-        incentivePaid: incentive.paid,
+        maodaoUsers: maodaoUsers.size,
+        grantsPending: grantCounts.pending || 0,
+        grantsPaid: grantCounts.paid || 0,
+        incentivePaid: grantsPaidAmount || incentive.paid,
         incentivePool: incentive.pool,
         maodaoReward: incentive.maodao,
       },
       funnel,
+      trend: Object.values(trendMap),
       sceneDistribution,
       pendingPreview,
       incentive,
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/users", requireAdmin, async (req, res) => {
+  try {
+    const q = String(req.query.q || "").trim();
+    const items = await listAdminUsers({ q });
+    res.json({ items, total: items.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/admin/users/:id", requireAdmin, async (req, res) => {
+  try {
+    const user = await findUserById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: "用户不存在" });
+    }
+    const nextRole = String(req.body?.role || "").trim().toLowerCase();
+    if (!["admin", "user"].includes(nextRole)) {
+      return res.status(400).json({ error: "角色仅支持 admin / user" });
+    }
+    if (user.role === "admin" && nextRole !== "admin") {
+      const admins = await countAdmins();
+      if (admins <= 1) {
+        return res.status(400).json({ error: "不能取消最后一个管理员" });
+      }
+    }
+    user.role = nextRole;
+    await updateUser(user);
+    res.json({
+      message: "用户角色已更新",
+      user: {
+        id: user.id,
+        username: user.username,
+        nickname: user.nickname || user.username,
+        role: user.role,
+        createdAt: user.createdAt || "",
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/maodao-conversions", requireAdmin, async (req, res) => {
+  try {
+    const q = String(req.query.q || "").trim().toLowerCase();
+    const rangeRaw = String(req.query.range || "all").toLowerCase();
+    const rangeDays =
+      rangeRaw === "week" ? 7 : rangeRaw === "month" ? 30 : rangeRaw === "quarter" ? 90 : 0;
+    const rangeAgo = rangeDays
+      ? new Date(Date.now() - rangeDays * DAY_MS).toISOString()
+      : "";
+    const [products, buildConfig] = await Promise.all([
+      listProducts(),
+      readBuildConfig(),
+    ]);
+    const tools = buildConfig.tools || [];
+    let items = products
+      .filter((p) => isMaodaoProduct(p, tools))
+      .filter((p) => !rangeAgo || (p.submittedAt || "") >= rangeAgo)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        tagline: p.tagline || "",
+        status: p.status || "approved",
+        submittedBy: p.submittedBy || "",
+        submittedNickname: p.submittedNickname || "",
+        submittedAt: p.submittedAt || "",
+        reviewedAt: p.reviewedAt || "",
+        buildToolId: p.buildToolId || "",
+        buildToolName: p.buildToolName || "",
+        inviteCode: p.inviteCode || "",
+        viewCount: Number(p.viewCount) || 0,
+      }))
+      .sort((a, b) =>
+        String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")),
+      );
+    if (q) {
+      items = items.filter((item) => {
+        const hay = [
+          item.name,
+          item.submittedBy,
+          item.submittedNickname,
+          item.buildToolName,
+          item.inviteCode,
+        ]
+          .join(" ")
+          .toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    const users = new Set(items.map((i) => i.submittedBy).filter(Boolean));
+    res.json({
+      items,
+      total: items.length,
+      users: users.size,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/admin/incentive-grants", requireAdmin, async (req, res) => {
+  try {
+    const q = String(req.query.q || "").trim();
+    const status = String(req.query.status || "").trim();
+    const toolId = String(req.query.toolId || "").trim();
+    const items = await listIncentiveGrants({ q, status, toolId });
+    const summary = {
+      pending: 0,
+      paid: 0,
+      rejected: 0,
+      pendingAmount: 0,
+      paidAmount: 0,
+    };
+    for (const item of items) {
+      if (item.status === "pending") {
+        summary.pending += 1;
+        summary.pendingAmount += Number(item.amount) || 0;
+      } else if (item.status === "paid") {
+        summary.paid += 1;
+        summary.paidAmount += Number(item.amount) || 0;
+      } else if (item.status === "rejected") {
+        summary.rejected += 1;
+      }
+    }
+    res.json({ items, total: items.length, summary });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/admin/incentive-grants/:id/paid", requireAdmin, async (req, res) => {
+  try {
+    const grant = await getIncentiveGrant(req.params.id);
+    if (!grant) {
+      return res.status(404).json({ error: "发奖记录不存在" });
+    }
+    if (grant.status === "paid") {
+      return res.json({ message: "已是已发放状态", grant });
+    }
+    const now = new Date().toISOString();
+    const next = await updateIncentiveGrant(grant.id, {
+      status: "paid",
+      paidAt: now,
+      note: req.body?.note ? String(req.body.note).trim() : grant.note,
+    });
+    try {
+      const incentive = await readIncentiveConfig();
+      await writeIncentiveConfig({
+        ...incentive,
+        paid: Number(incentive.paid || 0) + (Number(grant.amount) || 0),
+      });
+    } catch (cfgErr) {
+      console.warn("[incentive] bump paid failed:", cfgErr.message);
+    }
+    res.json({ message: "已标记发放", grant: next });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/admin/incentive-grants/:id/reject", requireAdmin, async (req, res) => {
+  try {
+    const grant = await getIncentiveGrant(req.params.id);
+    if (!grant) {
+      return res.status(404).json({ error: "发奖记录不存在" });
+    }
+    const next = await updateIncentiveGrant(grant.id, {
+      status: "rejected",
+      note: req.body?.note
+        ? String(req.body.note).trim()
+        : grant.note || "管理员驳回",
+    });
+    res.json({ message: "已驳回", grant: next });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

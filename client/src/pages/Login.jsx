@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
+import { getLastLoginUsername } from "../authStorage";
 
 function resolvePostLoginTarget(searchParams, user) {
   const from = (searchParams.get("from") || "").trim();
@@ -15,7 +16,7 @@ export default function Login() {
   const { user, loading: authLoading, login } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(() => getLastLoginUsername());
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -53,6 +54,8 @@ export default function Login() {
     );
   }
 
+  const remembered = Boolean(username);
+
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
@@ -77,6 +80,7 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
+            autoFocus={remembered}
             required
           />
         </label>

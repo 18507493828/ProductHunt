@@ -341,6 +341,82 @@ export async function fetchAdminOpsOverview(range = "week") {
   return request(`/api/admin/ops-overview${qs ? `?${qs}` : ""}`);
 }
 
+export async function fetchAdminUsers(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
+  const qs = params.toString();
+  const data = await request(`/api/admin/users${qs ? `?${qs}` : ""}`);
+  if (Array.isArray(data)) return { items: data, total: data.length };
+  return {
+    items: Array.isArray(data?.items) ? data.items : [],
+    total: Number(data?.total) || 0,
+  };
+}
+
+export async function updateAdminUser(id, payload) {
+  return request(`/api/admin/users/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(payload || {}),
+  });
+}
+
+export async function fetchAdminMaodaoConversions(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
+  if (filters.range) params.set("range", filters.range);
+  const qs = params.toString();
+  const data = await request(
+    `/api/admin/maodao-conversions${qs ? `?${qs}` : ""}`,
+  );
+  return {
+    items: Array.isArray(data?.items) ? data.items : [],
+    total: Number(data?.total) || 0,
+    users: Number(data?.users) || 0,
+  };
+}
+
+export async function fetchAdminIncentiveGrants(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.toolId) params.set("toolId", filters.toolId);
+  const qs = params.toString();
+  const data = await request(
+    `/api/admin/incentive-grants${qs ? `?${qs}` : ""}`,
+  );
+  return {
+    items: Array.isArray(data?.items) ? data.items : [],
+    total: Number(data?.total) || 0,
+    summary: data?.summary || {
+      pending: 0,
+      paid: 0,
+      rejected: 0,
+      pendingAmount: 0,
+      paidAmount: 0,
+    },
+  };
+}
+
+export async function markIncentiveGrantPaid(id, note = "") {
+  return request(
+    `/api/admin/incentive-grants/${encodeURIComponent(id)}/paid`,
+    {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    },
+  );
+}
+
+export async function rejectIncentiveGrant(id, note = "") {
+  return request(
+    `/api/admin/incentive-grants/${encodeURIComponent(id)}/reject`,
+    {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    },
+  );
+}
+
 export async function fetchBuildConfig() {
   return request("/api/build-config");
 }
