@@ -63,6 +63,7 @@ sudo systemctl reload nginx
 ```
 
 若使用宝塔且只反代了 `/api`：新上传图片地址为 `/api/uploads/...`，可直接显示；历史 `/uploads/...` 需在 Nginx 增加对 `/uploads/` 的反代（见示例配置）。
+
 ## 数据存储
 
 - **MySQL**：业务数据（用户、资源、话题、轮播、导航、活动、分享等）与**上传图片二进制**（表 `uploads`）均存入 MySQL。启动时 `initDb()` 会建库建表。
@@ -90,18 +91,18 @@ MYSQL_USER=vibeBuilding MYSQL_PASSWORD=你的密码 MYSQL_DATABASE=vibebuilding 
 
 ## 环境变量
 
-| 变量            | 说明             | 默认值                 |
-| --------------- | ---------------- | ---------------------- |
-| PORT            | 服务端口         | 3001                   |
-| HOST            | 监听地址         | 0.0.0.0                |
-| JWT_SECRET      | JWT 签名密钥     | 开发默认值（生产必改） |
-| ADMIN_USERNAME  | 初始管理员用户名 | admin                  |
-| ADMIN_PASSWORD  | 初始管理员密码   | admin123456            |
-| MYSQL_HOST      | MySQL 主机       | 127.0.0.1              |
-| MYSQL_PORT      | MySQL 端口       | 3306                   |
-| MYSQL_USER      | MySQL 用户       | vibeBuilding           |
-| MYSQL_PASSWORD  | MySQL 密码       | （必填）               |
-| MYSQL_DATABASE  | 数据库名         | vibebuilding           |
+| 变量           | 说明             | 默认值                 |
+| -------------- | ---------------- | ---------------------- |
+| PORT           | 服务端口         | 3001                   |
+| HOST           | 监听地址         | 0.0.0.0                |
+| JWT_SECRET     | JWT 签名密钥     | 开发默认值（生产必改） |
+| ADMIN_USERNAME | 初始管理员用户名 | admin                  |
+| ADMIN_PASSWORD | 初始管理员密码   | admin123456            |
+| MYSQL_HOST     | MySQL 主机       | 127.0.0.1              |
+| MYSQL_PORT     | MySQL 端口       | 3306                   |
+| MYSQL_USER     | MySQL 用户       | vibeBuilding           |
+| MYSQL_PASSWORD | MySQL 密码       | （必填）               |
+| MYSQL_DATABASE | 数据库名         | vibebuilding           |
 
 ### 服务器首次接入 MySQL
 
@@ -127,8 +128,11 @@ cd /www/wwwroot/ProductHunt/client && npm ci && npm run build
 cd .. && pm2 reload ecosystem.config.cjs
 
 远程部署
-git pull origin 分支
+sudo git pull origin cloudBase
 
 npm run build
 
 pm2 restart vibe-building
+
+本地数据库同步远程数据库
+./scripts/sync-products-to-remote.sh
