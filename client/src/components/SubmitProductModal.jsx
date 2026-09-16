@@ -193,7 +193,7 @@ export default function SubmitProductModal({
       return;
     }
     if (!isValidDemoUrl(trimmedUrl)) {
-      setError("演示链接需为 http(s) 地址或部署路径 /apps/应用目录/");
+      setError("演示链接需为完整 http(s) 地址，例如 https://example.com/app");
       return;
     }
     if (!(form.categories || []).length) {
@@ -355,7 +355,7 @@ export default function SubmitProductModal({
             <input
               value={form.url}
               onChange={(e) => updateForm("url", e.target.value)}
-              placeholder="https://... 或部署路径 /apps/应用目录/"
+              placeholder="https://example.com/your-app"
               disabled={submitting}
               required
             />

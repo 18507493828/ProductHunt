@@ -1,9 +1,9 @@
 /**
- * 把库里已有样例应用的 url / app_platform 对齐到 /apps/<slug>/
+ * 把库里已有样例应用的 url / app_platform 对齐到完整落地页
  * 不删数据、不改投票；仅修补落地页字段。
  *
  * 触发：
- * - 默认：发现 example.com / 非 /apps/ 落地页时自动修补
+ * - 默认：发现 example.com / 相对路径 /apps/... / 非本站落地页时自动修补
  * - 强制：SYNC_APP_LANDINGS=1
  */
 import { listProducts, writeProduct } from "./store.js";
@@ -14,8 +14,10 @@ function needsLandingFix(url) {
   if (!u) return true;
   if (/example\.com/i.test(u)) return true;
   if (/placeholder|localhost:\d+/i.test(u)) return true;
-  // 已是本站部署路径则不必改（除非强制）
-  if (/^\/apps\/[\w.-]+(?:\/[\w.-]*)*\/?$/i.test(u)) return false;
+  // 相对 /apps/ 升为全路径
+  if (/^\/apps\//i.test(u)) return true;
+  // 已是完整 http(s) 落地页则不必改（除非强制）
+  if (/^https?:\/\/.+/i.test(u)) return false;
   return true;
 }
 

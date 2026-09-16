@@ -223,5 +223,11 @@ export const SEED_APPS = [
 ];
 
 export function appDeployUrl(slug) {
-  return `/apps/${slug}/`;
+  const base = String(
+    process.env.PUBLIC_BASE_URL ||
+      process.env.VIBE_BASE_URL ||
+      "http://159.75.116.187",
+  ).replace(/\/$/, "");
+  const path = `/apps/${String(slug || "").replace(/^\/+|\/+$/g, "")}/`;
+  return `${base}${path}`;
 }

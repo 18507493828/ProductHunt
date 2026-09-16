@@ -123,6 +123,8 @@ let categoryCache = {
 
 const RANGES = ["today", "week", "month", "quarter", "all"];
 const URL_PATTERN = /^(https?:\/\/.+|\/apps\/[\w.-]+(?:\/[\w.-]*)*\/?)$/i;
+/** 应用访问 / 演示链接：须完整 http(s) */
+const PRODUCT_URL_PATTERN = /^https?:\/\/.+/i;
 // 兼容旧路径 /uploads/x 与反代仅转发 /api 时的 /api/uploads/x
 const IMAGE_URL_PATTERN =
   /^(https?:\/\/.+|\/(?:api\/)?uploads\/[\w.-]+)$/i;
@@ -2165,10 +2167,12 @@ app.post("/api/products", requireAuth, async (req, res) => {
     if (!trimmedUrl) {
       return res.status(400).json({ error: "请填写演示链接" });
     }
-    if (!URL_PATTERN.test(trimmedUrl)) {
+    if (!PRODUCT_URL_PATTERN.test(trimmedUrl)) {
       return res
         .status(400)
-        .json({ error: "演示链接需为 http(s) 地址或本地 /apps/ 路径" });
+        .json({
+          error: "演示链接需为完整 http(s) 地址，例如 https://example.com/app",
+        });
     }
     if (trimmedImageUrl && trimmedImageUrl.length > 500) {
       return res.status(400).json({ error: "图片链接过长" });
@@ -2324,10 +2328,10 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     if (!trimmedUrl) {
       return res.status(400).json({ error: "请填写演示链接" });
     }
-    if (!URL_PATTERN.test(trimmedUrl)) {
-      return res
-        .status(400)
-        .json({ error: "演示链接需为 http(s) 地址或本地 /apps/ 路径" });
+    if (!PRODUCT_URL_PATTERN.test(trimmedUrl)) {
+      return res.status(400).json({
+        error: "演示链接需为完整 http(s) 地址，例如 https://example.com/app",
+      });
     }
     if (trimmedImageUrl && trimmedImageUrl.length > 500) {
       return res.status(400).json({ error: "图片链接过长" });
@@ -3096,9 +3100,17 @@ app.get("/api/incentive-config", async (_req, res) => {
       weekTop1: config.weekTop1,
       weekTop2: config.weekTop2,
       weekTop3: config.weekTop3,
+      weekTop4to10: config.weekTop4to10,
       monthTop1: config.monthTop1,
+      monthTop2: config.monthTop2,
+      monthTop3: config.monthTop3,
+      monthTop4to10: config.monthTop4to10,
       quarterTop1: config.quarterTop1,
+      quarterTop2: config.quarterTop2,
+      quarterTop3: config.quarterTop3,
+      quarterTop4to10: config.quarterTop4to10,
       maodao: config.maodao,
+      heroCopy: config.heroCopy,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

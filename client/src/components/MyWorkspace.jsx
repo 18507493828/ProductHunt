@@ -56,6 +56,7 @@ export default function MyWorkspace({
   onPromote,
   onPublish,
   onEdit,
+  onEditDraft,
   onUnpublish,
   unpublishingId = "",
   onOpenSquare,
@@ -126,7 +127,9 @@ export default function MyWorkspace({
   function publishFromDraft(draft) {
     onPublish?.({
       name: `${draft.topic}`,
-      tagline: `基于${draft.toolName}构建的${draft.sceneName}应用`,
+      tagline: draft.deployName
+        ? `基于${draft.toolName}构建、计划部署至${draft.deployName}的${draft.sceneName}应用`
+        : `基于${draft.toolName}构建的${draft.sceneName}应用`,
       description: draft.taskBrief,
       topicName: draft.topic,
       buildTool: draft.toolName,
@@ -135,7 +138,7 @@ export default function MyWorkspace({
       scene: draft.sceneName,
       sceneId: draft.sceneId,
       sceneTopic: draft.topic,
-      url: draft.downloadUrl || "https://",
+      url: "",
     });
   }
 
@@ -170,7 +173,7 @@ export default function MyWorkspace({
             <Sparkles size={20} />
           </span>
           <strong>我要构建</strong>
-          <span>选场景 → 选话题 → 选工具 → 生成任务书</span>
+          <span>选场景 → 选话题 → 选工具 → 本地构建 → 官网部署</span>
         </button>
         <button type="button" className="ph-my-pillar" onClick={() => onPublish?.()}>
           <span className="ph-my-pillar-icon">
@@ -345,7 +348,7 @@ export default function MyWorkspace({
                     </strong>
                     <p className="ph-my-draft-meta">
                       {d.toolName}
-                      {d.inviteCode ? ` · 推广码 ${d.inviteCode}` : ""}
+                      {d.deployName ? ` · 部署 ${d.deployName}` : ""}
                       {d.sponsored ? " · 赞助激励" : ""}
                     </p>
                     {d.taskBrief ? (
@@ -356,6 +359,13 @@ export default function MyWorkspace({
                     ) : null}
                   </div>
                   <div className="ph-my-draft-actions">
+                    <button
+                      type="button"
+                      className="ph-btn-secondary"
+                      onClick={() => onEditDraft?.(d)}
+                    >
+                      编辑
+                    </button>
                     <button
                       type="button"
                       className="ph-btn-primary"

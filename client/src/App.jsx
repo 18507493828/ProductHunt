@@ -211,6 +211,7 @@ export default function App() {
   const [myLoading, setMyLoading] = useState(false);
   const [unpublishingId, setUnpublishingId] = useState("");
   const [showBuildWizard, setShowBuildWizard] = useState(false);
+  const [editingBuildDraft, setEditingBuildDraft] = useState(null);
   const [showPromoteWizard, setShowPromoteWizard] = useState(false);
   const [promoteProductId, setPromoteProductId] = useState("");
   const [draftRefreshKey, setDraftRefreshKey] = useState(0);
@@ -410,6 +411,7 @@ export default function App() {
       redirectToLogin(navigate, "/?build=1");
       return;
     }
+    setEditingBuildDraft(null);
     setShowBuildWizard(true);
     const next = new URLSearchParams(searchParams);
     next.delete("build");
@@ -575,9 +577,19 @@ export default function App() {
       .catch(() => {});
   }
 
-  function openBuildWizard() {
+  function openBuildWizard(draft = null) {
     if (!requireLogin()) return;
+    const seed =
+      draft && typeof draft === "object" && draft.id && !draft.nativeEvent
+        ? draft
+        : null;
+    setEditingBuildDraft(seed);
     setShowBuildWizard(true);
+  }
+
+  function closeBuildWizard() {
+    setShowBuildWizard(false);
+    setEditingBuildDraft(null);
   }
 
   function openPromoteWizard(productOrId) {
@@ -595,7 +607,7 @@ export default function App() {
     if (!requireLogin()) return;
     setSearchParams({ view: "my" });
     if (action === "build") {
-      setTimeout(() => setShowBuildWizard(true), 0);
+      setTimeout(() => openBuildWizard(), 0);
     } else if (action === "publish") {
       setTimeout(() => openSubmitModal(), 0);
     } else if (action === "promote") {
@@ -750,7 +762,7 @@ export default function App() {
       return;
     }
     if (!isValidDemoUrl(trimmedUrl)) {
-      setSubmitError("应用访问链接需为 http(s) 地址或部署路径 /apps/应用目录/");
+      setSubmitError("应用访问链接需为完整 http(s) 地址，例如 https://example.com/app");
       return;
     }
     if (!form.buildToolId || !tool) {
@@ -775,7 +787,6 @@ export default function App() {
         `【场景】${scene.name}`,
         `【场景话题】${sceneTopic}`,
         `【构建工具】${tool.name}`,
-        tool.inviteCode ? `【推广码】${tool.inviteCode}` : "",
       ]
         .filter(Boolean)
         .join("\n");
@@ -1600,6 +1611,7 @@ export default function App() {
               onBuild={openBuildWizard}
               onPromote={openPromoteWizard}
               onPublish={(preset) => openSubmitModal("", preset || null)}
+              onEditDraft={openBuildWizard}
               onEdit={openEditProductModal}
               onUnpublish={handleUnpublishProduct}
               unpublishingId={unpublishingId}
@@ -1818,7 +1830,7 @@ export default function App() {
                   <input
                     value={form.url}
                     onChange={(e) => updateForm("url", e.target.value)}
-                    placeholder="部署后填 /apps/应用目录/ ，也可填 https:// 外链"
+                    placeholder="https://example.com/your-app"
                     disabled={submitting}
                     required
                   />
@@ -2189,16 +2201,38 @@ export default function App() {
       <BuildWizardModal
         open={showBuildWizard}
         username={user?.username}
-        onClose={() => setShowBuildWizard(false)}
+        initialDraft={editingBuildDraft}
+        onClose={closeBuildWizard}
         onCompleted={(draft, options = {}) => {
-          setDraftRefreshKey((k) => k + 1);
+          if (!options.skipPersist) {
+            setDraftRefreshKey((k) => k + 1);
+          }
+          if (options.localBuildOnly) {
+            toast.success(
+              `已打开 ${draft.toolName}`,
+              "请先完成本地构建，再回到向导完成官网部署",
+            );
+            return;
+          }
+          if (options.openDeploySite) {
+            toast.success(
+              `已打开 ${draft.deployName || "云厂商"} 官网`,
+              "部署完成后可继续「保存并去发布」",
+            );
+            return;
+          }
           setSearchParams({ view: "my" });
           if (options.openPublish) {
-            toast.success("任务书已保存", `「${draft.topic}」可继续构建或发布到应用广场`);
+            toast.success(
+              options.isEdit ? "任务书已更新" : "任务书已保存",
+              `「${draft.topic}」可继续构建或发布到应用广场`,
+            );
             setTimeout(() => {
               openSubmitModal("", {
                 name: draft.topic,
-                tagline: `基于${draft.toolName}构建的${draft.sceneName}应用`,
+                tagline: draft.deployName
+                  ? `基于${draft.toolName}构建、计划部署至${draft.deployName}的${draft.sceneName}应用`
+                  : `基于${draft.toolName}构建的${draft.sceneName}应用`,
                 description: draft.taskBrief,
                 topicName: draft.topic,
                 sceneId: draft.sceneId || "",
@@ -2207,6 +2241,11 @@ export default function App() {
                 url: "",
               });
             }, 0);
+          } else if (options.skipLaunch) {
+            toast.success(
+              options.isEdit ? "任务书已更新" : "任务书已保存",
+              `「${draft.sceneName} · ${draft.topic}」已保存`,
+            );
           } else {
             toast.success(
               `已跳转 ${draft.toolName} 开始构建`,

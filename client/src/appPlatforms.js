@@ -10,9 +10,8 @@ export const APP_PLATFORMS = [
 
 export const DEFAULT_APP_PLATFORM = "h5";
 
-/** 外链 http(s)，或同域部署的小应用路径 /apps/<name>/ */
-export const DEMO_URL_PATTERN =
-  /^(https?:\/\/.+|\/apps\/[\w.-]+(?:\/[\w.-]*)*\/?)$/i;
+/** 应用访问链接：须为完整 http(s) 地址 */
+export const DEMO_URL_PATTERN = /^https?:\/\/.+/i;
 
 export function isValidDemoUrl(url) {
   return DEMO_URL_PATTERN.test(String(url || "").trim());

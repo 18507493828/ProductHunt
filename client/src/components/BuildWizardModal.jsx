@@ -3,7 +3,9 @@ import { createPortal } from "react-dom";
 import { ExternalLink, Sparkles, X } from "lucide-react";
 import { useModalMotion } from "../useModalMotion";
 import {
+  BUILD_DEPLOYS,
   buildTaskBrief,
+  getDeployById,
   getSceneById,
   getToolById,
   upsertBuildDraft,
@@ -16,6 +18,7 @@ export default function BuildWizardModal({
   onClose,
   username,
   onCompleted,
+  initialDraft = null,
 }) {
   const { mounted, overlayClassName, panelClassName } = useModalMotion(open);
   const { scenes: BUILD_SCENES, tools: BUILD_TOOLS } = useBuildCatalog();
@@ -23,18 +26,45 @@ export default function BuildWizardModal({
   const [sceneId, setSceneId] = useState("");
   const [topic, setTopic] = useState("");
   const [toolId, setToolId] = useState("");
+  const [deployId, setDeployId] = useState("");
+  const [draftId, setDraftId] = useState("");
+  const editingId = initialDraft?.id || draftId || "";
 
   useEffect(() => {
     if (!open) return;
+    if (initialDraft?.id) {
+      setDraftId(initialDraft.id);
+      setSceneId(initialDraft.sceneId || "");
+      setTopic(initialDraft.topic || "");
+      setToolId(initialDraft.toolId || "");
+      setDeployId(initialDraft.deployId || "");
+      if (initialDraft.deployId) setStep(5);
+      else if (initialDraft.toolId) setStep(4);
+      else if (initialDraft.topic) setStep(3);
+      else if (initialDraft.sceneId) setStep(2);
+      else setStep(1);
+      return;
+    }
     setStep(1);
     setSceneId("");
     setTopic("");
     setToolId("");
-  }, [open]);
+    setDeployId("");
+    setDraftId("");
+  }, [open, initialDraft]);
 
   const scene = useMemo(() => getSceneById(sceneId), [sceneId, BUILD_SCENES]);
   const tool = useMemo(() => getToolById(toolId), [toolId, BUILD_TOOLS]);
+  const deploy = useMemo(() => getDeployById(deployId), [deployId]);
   const topics = scene?.topics || [];
+  const briefLocal =
+    scene && topic && tool
+      ? buildTaskBrief({ scene, topic, tool, deploy: null })
+      : "";
+  const briefFull =
+    scene && topic && tool && deploy
+      ? buildTaskBrief({ scene, topic, tool, deploy })
+      : briefLocal;
 
   function goStep(n) {
     setStep(n);
@@ -44,24 +74,33 @@ export default function BuildWizardModal({
     setSceneId(id);
     setTopic("");
     setToolId("");
+    setDeployId("");
     setStep(2);
   }
 
   function selectTopic(name) {
     setTopic(name);
     setToolId("");
+    setDeployId("");
     setStep(3);
   }
 
   function selectTool(id) {
     setToolId(id);
+    setDeployId("");
     setStep(4);
   }
 
-  function finish({ openPublish = false } = {}) {
-    if (!scene || !topic || !tool || !username) return;
-    const draft = {
-      id: `draft-${Date.now()}`,
+  function selectDeploy(id) {
+    setDeployId(id);
+  }
+
+  function buildDraftPayload({ deployOverride } = {}) {
+    if (!scene || !topic || !tool || !username) return null;
+    const chosen = deployOverride === undefined ? deploy : deployOverride;
+    const now = new Date().toISOString();
+    return {
+      id: editingId || `draft-${Date.now()}`,
       sceneId: scene.id,
       sceneName: scene.name,
       topic,
@@ -69,15 +108,68 @@ export default function BuildWizardModal({
       toolName: tool.name,
       inviteCode: tool.inviteCode,
       downloadUrl: tool.downloadUrl,
+      deployId: chosen?.id || "",
+      deployName: chosen?.name || "",
+      deployUrl: chosen?.url || "",
       sponsored: !!tool.sponsored,
       incentive: tool.incentive || 0,
-      taskBrief: buildTaskBrief({ scene, topic, tool }),
+      taskBrief: buildTaskBrief({ scene, topic, tool, deploy: chosen }),
       status: "ready",
-      createdAt: new Date().toISOString(),
+      createdAt: initialDraft?.createdAt || now,
+      updatedAt: now,
     };
+  }
+
+  function persistDraft(options) {
+    const draft = buildDraftPayload(options);
+    if (!draft) return null;
     upsertBuildDraft(username, draft);
-    onCompleted?.(draft, { openPublish });
+    setDraftId(draft.id);
+    return draft;
+  }
+
+  /** 仅「保存并去发布」写入待发布任务书；编辑态「保存修改」也会写入 */
+  function finish({ openPublish = false, skipLaunch = false } = {}) {
+    if (!scene || !topic || !tool || !username) return;
+    if (!deploy) return;
+    const shouldPersist = openPublish || Boolean(initialDraft?.id);
+    if (!shouldPersist) return;
+    const draft = persistDraft();
+    if (!draft) return;
+    onCompleted?.(draft, {
+      openPublish,
+      isEdit: Boolean(initialDraft?.id),
+      skipLaunch,
+    });
     onClose?.();
+  }
+
+  function openDeploySite() {
+    if (!deploy?.url) return;
+    window.open(deploy.url, "_blank", "noopener,noreferrer");
+    onCompleted?.(
+      {
+        toolName: tool?.name || "",
+        deployName: deploy.name,
+        topic: topic || "",
+        sceneName: scene?.name || "",
+      },
+      { openDeploySite: true, skipPersist: true },
+    );
+  }
+
+  function startLocalBuild() {
+    if (!tool?.downloadUrl) return;
+    window.open(tool.downloadUrl, "_blank", "noopener,noreferrer");
+    onCompleted?.(
+      {
+        toolName: tool.name,
+        topic: topic || "",
+        sceneName: scene?.name || "",
+      },
+      { localBuildOnly: true, skipPersist: true },
+    );
+    setStep(5);
   }
 
   if (!mounted) return null;
@@ -93,8 +185,12 @@ export default function BuildWizardModal({
       >
         <div className="modal-header">
           <div>
-            <p className="ph-build-eyebrow">我要构建</p>
-            <h2 id="build-wizard-title">选择场景 → 选择场景话题 → 选择构建工具 → 生成任务书并构建</h2>
+            <p className="ph-build-eyebrow">
+              {initialDraft?.id ? "编辑任务书" : "我要构建"}
+            </p>
+            <h2 id="build-wizard-title">
+              选场景 → 选话题 → 选工具 → 本地构建 → 官网部署
+            </h2>
           </div>
           <button type="button" className="modal-close" onClick={onClose} aria-label="关闭">
             <X size={18} />
@@ -106,7 +202,8 @@ export default function BuildWizardModal({
             { n: 1, label: "选择场景" },
             { n: 2, label: "选择场景话题" },
             { n: 3, label: "选择构建工具" },
-            { n: 4, label: "生成任务书并构建" },
+            { n: 4, label: "本地构建" },
+            { n: 5, label: "官网部署" },
           ].map((s) => (
             <button
               key={s.n}
@@ -121,6 +218,7 @@ export default function BuildWizardModal({
                 else if (s.n === 2 && sceneId) goStep(2);
                 else if (s.n === 3 && topic) goStep(3);
                 else if (s.n === 4 && toolId) goStep(4);
+                else if (s.n === 5 && toolId) goStep(5);
               }}
             >
               <span>{s.n}</span>
@@ -135,20 +233,20 @@ export default function BuildWizardModal({
               {BUILD_SCENES.map((s) => {
                 const Icon = getSceneIcon(s.id || s.name);
                 return (
-                <button
-                  key={s.id}
-                  type="button"
-                  className={
-                    "ph-build-card" + (sceneId === s.id ? " selected" : "")
-                  }
-                  onClick={() => selectScene(s.id)}
-                >
-                  <span className="ph-build-card-icon" aria-hidden="true">
-                    <Icon size={22} strokeWidth={2.2} />
-                  </span>
-                  <strong>{s.name}</strong>
-                  <span>{s.topics.length} 个预置话题</span>
-                </button>
+                  <button
+                    key={s.id}
+                    type="button"
+                    className={
+                      "ph-build-card" + (sceneId === s.id ? " selected" : "")
+                    }
+                    onClick={() => selectScene(s.id)}
+                  >
+                    <span className="ph-build-card-icon" aria-hidden="true">
+                      <Icon size={22} strokeWidth={2.2} />
+                    </span>
+                    <strong>{s.name}</strong>
+                    <span>{s.topics.length} 个预置话题</span>
+                  </button>
                 );
               })}
             </div>
@@ -224,7 +322,6 @@ export default function BuildWizardModal({
                         <ExternalLink size={14} />
                         下载链接
                       </a>
-                      <span>推广码 {t.inviteCode}</span>
                     </div>
                   </button>
                 ))}
@@ -239,7 +336,9 @@ export default function BuildWizardModal({
 
           {step === 4 && scene && tool && (
             <div className="ph-build-brief">
-              <p className="ph-build-hint">应用任务书已生成 · 点击开始构建将携带任务书跳转至所选工具</p>
+              <p className="ph-build-hint">
+                先在本地用 {tool.name} 完成构建 · 构建完成后再去云厂商官网部署
+              </p>
               <div className="ph-build-brief-card">
                 <div className="ph-build-brief-row">
                   <span>场景</span>
@@ -251,10 +350,7 @@ export default function BuildWizardModal({
                 </div>
                 <div className="ph-build-brief-row">
                   <span>构建工具</span>
-                  <strong>
-                    {tool.name}
-                    <em className="ph-build-code">{tool.inviteCode}</em>
-                  </strong>
+                  <strong>{tool.name}</strong>
                 </div>
                 {tool.sponsored && (
                   <div className="ph-build-incentive">
@@ -262,9 +358,7 @@ export default function BuildWizardModal({
                     {tool.incentive} 现金激励（每个账号限 1 次）
                   </div>
                 )}
-                <pre className="ph-build-brief-text">
-                  {buildTaskBrief({ scene, topic, tool })}
-                </pre>
+                <pre className="ph-build-brief-text">{briefLocal}</pre>
                 <a
                   className="ph-build-download"
                   href={tool.downloadUrl}
@@ -272,26 +366,121 @@ export default function BuildWizardModal({
                   rel="noreferrer"
                 >
                   <ExternalLink size={16} />
-                  点击下载 {tool.name}（任务书将自动携带推广码）
+                  打开 {tool.name} 开始本地构建
                 </a>
               </div>
               <div className="ph-build-nav-row">
                 <button type="button" className="ph-btn-secondary" onClick={() => goStep(3)}>
                   上一步
                 </button>
-                <a
+                {initialDraft?.id ? (
+                  <button
+                    type="button"
+                    className="ph-btn-secondary"
+                    onClick={() => finish({ openPublish: false, skipLaunch: true })}
+                  >
+                    保存修改
+                  </button>
+                ) : null}
+                <button
+                  type="button"
                   className="ph-btn-primary"
-                  href={tool.downloadUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => finish({ openPublish: false })}
+                  onClick={startLocalBuild}
                 >
                   <Sparkles size={16} />
-                  🚀 开始构建
-                </a>
+                  🚀 开始本地构建
+                </button>
                 <button
                   type="button"
                   className="ph-btn-secondary"
+                  onClick={() => goStep(5)}
+                >
+                  下一步：官网部署
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 5 && scene && tool && (
+            <div>
+              <p className="ph-build-hint">
+                本地构建完成后，选择云厂商并前往官网完成部署
+              </p>
+              <div className="ph-build-grid">
+                {BUILD_DEPLOYS.map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    className={
+                      "ph-build-card" + (deployId === d.id ? " selected" : "")
+                    }
+                    onClick={() => selectDeploy(d.id)}
+                  >
+                    <span className="ph-build-card-emoji" aria-hidden="true">
+                      {d.emoji}
+                    </span>
+                    <strong>{d.name}</strong>
+                    <span>{d.desc}</span>
+                  </button>
+                ))}
+              </div>
+
+              {deploy ? (
+                <div className="ph-build-brief" style={{ marginTop: 14 }}>
+                  <div className="ph-build-brief-card">
+                    <div className="ph-build-brief-row">
+                      <span>本地工具</span>
+                      <strong>{tool.name}</strong>
+                    </div>
+                    <div className="ph-build-brief-row">
+                      <span>部署官网</span>
+                      <strong>{deploy.name}</strong>
+                    </div>
+                    <pre className="ph-build-brief-text">{briefFull}</pre>
+                    <a
+                      className="ph-build-download"
+                      href={deploy.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <ExternalLink size={16} />
+                      打开 {deploy.name} 官网部署
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <p className="ph-build-empty" style={{ marginTop: 12 }}>
+                  请选择一个云厂商
+                </p>
+              )}
+
+              <div className="ph-build-nav-row">
+                <button type="button" className="ph-btn-secondary" onClick={() => goStep(4)}>
+                  上一步
+                </button>
+                {initialDraft?.id ? (
+                  <button
+                    type="button"
+                    className="ph-btn-secondary"
+                    disabled={!deploy}
+                    onClick={() => finish({ openPublish: false, skipLaunch: true })}
+                  >
+                    保存修改
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="ph-btn-primary"
+                  disabled={!deploy}
+                  onClick={openDeploySite}
+                >
+                  <ExternalLink size={16} />
+                  去官网部署
+                </button>
+                <button
+                  type="button"
+                  className="ph-btn-secondary"
+                  disabled={!deploy}
                   onClick={() => finish({ openPublish: true })}
                 >
                   保存并去发布

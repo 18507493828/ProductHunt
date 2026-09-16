@@ -105,6 +105,38 @@ export const BUILD_TOOLS = [
   },
 ];
 
+/** 部署云厂商（构建向导最后一步：引导去官网部署） */
+export const BUILD_DEPLOYS = [
+  {
+    id: "tencent",
+    name: "腾讯云",
+    emoji: "☁️",
+    desc: "云服务器、云开发与 Serverless，适合快速上线 Web 应用",
+    url: "https://cloud.tencent.com/",
+  },
+  {
+    id: "huawei",
+    name: "华为云",
+    emoji: "🌐",
+    desc: "弹性云服务器与 CodeArts，与华为码道生态衔接",
+    url: "https://www.huaweicloud.com/",
+  },
+  {
+    id: "aliyun",
+    name: "阿里云",
+    emoji: "🟧",
+    desc: "ECS / 函数计算 / 静态托管，部署模板丰富",
+    url: "https://www.aliyun.com/",
+  },
+  {
+    id: "volcano",
+    name: "火山引擎",
+    emoji: "🌋",
+    desc: "字节跳动云与 AI 基础设施，适合内容与推荐类应用",
+    url: "https://www.volcengine.com/",
+  },
+];
+
 /** 运行时目录（后台配置可覆盖默认值，界面结构不变） */
 let runtimeScenes = BUILD_SCENES;
 let runtimeTools = BUILD_TOOLS;
@@ -181,6 +213,10 @@ export function getToolById(id) {
   return runtimeTools.find((t) => t.id === id) || null;
 }
 
+export function getDeployById(id) {
+  return BUILD_DEPLOYS.find((d) => d.id === id) || null;
+}
+
 export function inferSceneIdFromText(text) {
   const hay = String(text || "");
   for (const scene of runtimeScenes) {
@@ -252,17 +288,17 @@ export function compareHeatItems(a, b) {
   return heatScore(b) - heatScore(a);
 }
 
-export function buildTaskBrief({ scene, topic, tool }) {
+export function buildTaskBrief({ scene, topic, tool, deploy }) {
   const sceneName = scene?.name || "";
   const toolName = tool?.name || "";
-  const code = tool?.inviteCode || "";
+  const deployName = deploy?.name || "";
   return [
     `请为我构建一个「${topic}」主题的应用：面向${sceneName}场景的普通用户，核心功能简洁聚焦，界面友好，包含首次引导与示例数据，输出可直接体验的 Web 应用。`,
     "",
     `【场景】${sceneName}`,
     `【场景话题】${topic}`,
     `【构建工具】${toolName}`,
-    code ? `【推广码】${code}` : "",
+    deployName ? `【部署】${deployName}` : "",
     tool?.sponsored
       ? `【赞助激励】选择「华为码道」并成功发布通过审核后，可获 ¥${tool.incentive} 现金激励（每账号限 1 次）`
       : "",

@@ -12,22 +12,43 @@ const TABS = [
 
 const TOP_N = 10;
 
-function rewardFor(tab, incentive) {
-  if (!incentive) return null;
-  if (tab === "week") {
-    return [
-      incentive.weekTop1,
-      incentive.weekTop2,
-      incentive.weekTop3,
-    ].filter((n) => Number(n) > 0);
+function rewardAmounts(tab, incentive) {
+  if (!incentive) return Array(TOP_N).fill(0);
+  const pick = (t1, t2, t3, rest) =>
+    Array.from({ length: TOP_N }, (_, i) => {
+      if (i === 0) return Number(t1) || 0;
+      if (i === 1) return Number(t2) || 0;
+      if (i === 2) return Number(t3) || 0;
+      return Number(rest) || 0;
+    });
+  if (tab === "month") {
+    return pick(
+      incentive.monthTop1,
+      incentive.monthTop2,
+      incentive.monthTop3,
+      incentive.monthTop4to10,
+    );
   }
-  if (tab === "month" && Number(incentive.monthTop1) > 0) {
-    return [incentive.monthTop1];
+  if (tab === "quarter") {
+    return pick(
+      incentive.quarterTop1,
+      incentive.quarterTop2,
+      incentive.quarterTop3,
+      incentive.quarterTop4to10,
+    );
   }
-  if (tab === "quarter" && Number(incentive.quarterTop1) > 0) {
-    return [incentive.quarterTop1];
-  }
-  return [];
+  return pick(
+    incentive.weekTop1,
+    incentive.weekTop2,
+    incentive.weekTop3,
+    incentive.weekTop4to10,
+  );
+}
+
+function formatMoney(n) {
+  const num = Number(n) || 0;
+  if (Number.isInteger(num)) return `¥${num}`;
+  return `¥${num}`;
 }
 
 export default function PeriodRankBoard({
@@ -70,7 +91,7 @@ export default function PeriodRankBoard({
     };
   }, [tab]);
 
-  const rewards = rewardFor(tab, incentive);
+  const amounts = rewardAmounts(tab, incentive);
 
   return (
     <section
@@ -80,13 +101,6 @@ export default function PeriodRankBoard({
       <div className="ph-period-rank-head">
         <div>
           <h2>{title}</h2>
-          {!compact && rewards?.length > 0 && (
-            <p className="ph-period-rank-reward">
-              {tab === "week"
-                ? `激励 Top1–3：¥${rewards.join(" / ")}`
-                : `激励 Top1：¥${rewards[0]}`}
-            </p>
-          )}
         </div>
         <div className="ph-period-rank-tabs" role="tablist">
           {TABS.map((t) => (
@@ -120,42 +134,50 @@ export default function PeriodRankBoard({
           <EmptyState title="该榜单暂无应用" description="发布并推广后冲榜" />
         ) : (
           <ol className="ph-period-rank-list">
-            {items.map((item, index) => (
-              <li key={item.id} className="ph-period-rank-item">
-                <span
-                  className={
-                    "ph-period-rank-no" + (index < 3 ? ` top-${index + 1}` : "")
-                  }
-                >
-                  {index + 1}
-                </span>
-                <div className="ph-period-rank-main">
-                  <Link to={`/resource/${item.id}`}>
-                    {item.rankPinned ? "📌 " : ""}
-                    {item.name}
-                  </Link>
-                  <p>
-                    {item.submittedNickname || item.submittedBy || "构建者"}
-                    {compact
-                      ? ""
-                      : ` · ${item.topicName || item.tagline || "场景应用"}`}
-                  </p>
-                </div>
-                <div className="ph-period-rank-stats">
-                  {compact ? (
-                    <span className="ph-period-rank-heat" title="热度">
-                      🔥 热度 {item._heat}
-                    </span>
-                  ) : (
-                    <>
-                      <span>浏览 {item.viewCount || 0}</span>
-                      <span>点赞 {item.voteCount || 0}</span>
-                      <span title="热度">🔥 热度 {item._heat}</span>
-                    </>
-                  )}
-                </div>
-              </li>
-            ))}
+            {items.map((item, index) => {
+              const prize = amounts[index] || 0;
+              return (
+                <li key={item.id} className="ph-period-rank-item">
+                  <span
+                    className={
+                      "ph-period-rank-no" + (index < 3 ? ` top-${index + 1}` : "")
+                    }
+                  >
+                    {index + 1}
+                  </span>
+                  <div className="ph-period-rank-main">
+                    <Link to={`/resource/${item.id}`}>
+                      {item.rankPinned ? "📌 " : ""}
+                      {item.name}
+                    </Link>
+                    <p>
+                      {item.submittedNickname || item.submittedBy || "构建者"}
+                      {compact
+                        ? ""
+                        : ` · ${item.topicName || item.tagline || "场景应用"}`}
+                    </p>
+                  </div>
+                  <div className="ph-period-rank-stats">
+                    {prize > 0 ? (
+                      <span className="ph-period-rank-prize" title="榜单激励">
+                        {formatMoney(prize)}
+                      </span>
+                    ) : null}
+                    {compact ? (
+                      <span className="ph-period-rank-heat" title="热度">
+                        🔥 {item._heat}
+                      </span>
+                    ) : (
+                      <>
+                        <span>浏览 {item.viewCount || 0}</span>
+                        <span>点赞 {item.voteCount || 0}</span>
+                        <span title="热度">🔥 热度 {item._heat}</span>
+                      </>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ol>
         )}
       </div>

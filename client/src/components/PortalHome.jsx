@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Eye, Rocket, Share2, Sparkles, Users, Boxes, Coins } from "lucide-react";
-import { fetchProducts, fetchStats } from "../api";
+import { fetchIncentiveConfig, fetchProducts, fetchStats } from "../api";
 import { inferSceneIdFromText, compareHeatItems } from "../buildConfig";
 import useBuildCatalog from "../useBuildCatalog";
 import ProductCard, { ProductCardSkeleton } from "./ProductCard";
@@ -17,8 +17,8 @@ const PILLARS = [
     id: "build",
     icon: Sparkles,
     title: "我要构建",
-    desc: "选场景 → 选话题 → 选工具 → 生成任务书，4 步构建，10 分钟拥有你的 AI 应用。",
-    preview: "场景 · 话题 · 工具 · 任务书",
+    desc: "选场景 → 选话题 → 选工具 → 本地构建 → 官网部署，5 步完成你的 AI 应用。",
+    preview: "场景 · 话题 · 工具 · 本地构建 · 官网部署",
   },
   {
     id: "publish",
@@ -46,6 +46,7 @@ export default function PortalHome({
 }) {
   const { scenes: BUILD_SCENES } = useBuildCatalog();
   const [stats, setStats] = useState(null);
+  const [incentive, setIncentive] = useState(null);
   const [hot, setHot] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sceneFilter, setSceneFilter] = useState("all");
@@ -56,10 +57,12 @@ export default function PortalHome({
     Promise.all([
       fetchStats().catch(() => null),
       fetchProducts({ category: "全部", range: "all" }).catch(() => []),
-    ]).then(([s, list]) => {
+      fetchIncentiveConfig().catch(() => null),
+    ]).then(([s, list, inc]) => {
       if (cancelled) return;
       setStats(s);
       setHot(Array.isArray(list) ? list : []);
+      setIncentive(inc || null);
       setLoading(false);
     });
     return () => {
@@ -89,6 +92,36 @@ export default function PortalHome({
     }
     return list.slice(0, 6);
   }, [hot, sceneFilter, sort, BUILD_SCENES]);
+
+  const incentiveCopy = useMemo(() => {
+    const week = Number(incentive?.weekTop1) || 100;
+    const month = Number(incentive?.monthTop1) || 300;
+    const quarter = Number(incentive?.quarterTop1) || 1000;
+    const maodao = Number(incentive?.maodao) || 9.9;
+    const fallback = `本期激励：冲周榜最高可得 ¥${week}，月榜 ¥${month}，季榜 ¥${quarter}；选用华为码道构建并成功发布，还可再领 ¥${maodao} 活动激励。`;
+    const tpl = String(incentive?.heroCopy || "").trim();
+    if (!tpl) return fallback;
+    const vals = {
+      weekTop1: week,
+      weekTop2: Number(incentive?.weekTop2) || 0,
+      weekTop3: Number(incentive?.weekTop3) || 0,
+      weekTop4to10: Number(incentive?.weekTop4to10) || 0,
+      monthTop1: month,
+      monthTop2: Number(incentive?.monthTop2) || 0,
+      monthTop3: Number(incentive?.monthTop3) || 0,
+      monthTop4to10: Number(incentive?.monthTop4to10) || 0,
+      quarterTop1: quarter,
+      quarterTop2: Number(incentive?.quarterTop2) || 0,
+      quarterTop3: Number(incentive?.quarterTop3) || 0,
+      quarterTop4to10: Number(incentive?.quarterTop4to10) || 0,
+      maodao,
+      pool: Number(incentive?.pool) || 0,
+      paid: Number(incentive?.paid) || 0,
+    };
+    return tpl.replace(/\{(\w+)\}/g, (m, key) =>
+      key in vals ? String(vals[key]) : m,
+    );
+  }, [incentive]);
 
   function handlePillar(id) {
     if (id === "build") onOpenBuild?.();
@@ -140,6 +173,7 @@ export default function PortalHome({
               全国首个社区驱动、面向泛用户开发应用的作品平台。不用从零搭建，选好场景与工具，10
               分钟做出你的应用；一键发布应用广场，全网推广冲榜赢现金。
             </p>
+            <p className="ph-page-incentive">{incentiveCopy}</p>
             <div className="ph-page-header-actions">
               <div className="ph-page-header-cta">
                 <button
