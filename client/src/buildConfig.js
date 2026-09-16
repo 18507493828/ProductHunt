@@ -122,7 +122,6 @@ export const BUILD_DEPLOYS = [
   {
     id: "tencent",
     name: "腾讯云",
-    emoji: "☁️",
     desc: "云服务器、云开发与 Serverless，适合快速上线 Web 应用",
     url: "https://partner.cloud.tencent.com/invitation/10003541998365ba1b6492d43?inviteType=2",
     promo: "限时5折",
@@ -131,7 +130,6 @@ export const BUILD_DEPLOYS = [
   {
     id: "huawei",
     name: "华为云",
-    emoji: "🌐",
     desc: "弹性云服务器与 CodeArts，与华为码道生态衔接",
     url: "https://www.huaweicloud.com/product/ecs.html?fromSource=CSDNsmc",
     promo: "限时免费",
@@ -140,7 +138,6 @@ export const BUILD_DEPLOYS = [
   {
     id: "aliyun",
     name: "阿里云",
-    emoji: "🟧",
     desc: "ECS / 函数计算 / 静态托管，部署模板丰富",
     url: "https://www.aliyun.com/product/ecs?fromSource=CSDNsmc",
     promo: "限时5折",
@@ -149,7 +146,6 @@ export const BUILD_DEPLOYS = [
   {
     id: "volcano",
     name: "火山引擎",
-    emoji: "🌋",
     desc: "字节跳动云与 AI 基础设施，适合内容与推荐类应用",
     url: "https://www.volcengine.com/product/ecs?fromSource=CSDNsmc",
     promo: "限时免费",
@@ -236,11 +232,11 @@ export function applyBuildConfig(config) {
       .map((d) => ({
         id: d.id,
         name: d.name,
-        emoji: d.emoji || "☁️",
         desc: String(d.desc || "").trim(),
         url: String(d.url || "").trim(),
         promo: String(d.promo || "").trim(),
         promoDesc: String(d.promoDesc || "").trim(),
+        logoUrl: String(d.logoUrl || "").trim(),
       }))
       .filter((d) => d.id && d.name);
   }
@@ -267,6 +263,25 @@ export function getToolById(id) {
 
 export function getDeployById(id) {
   return runtimeDeploys.find((d) => d.id === id) || null;
+}
+
+/** 已知云厂商本地 logo；无则返回空（界面不展示占位图/表情） */
+const DEPLOY_LOGO_BY_ID = {
+  tencent: "/deploy-logos/tencent.svg",
+  huawei: "/deploy-logos/huawei.svg",
+  aliyun: "/deploy-logos/aliyun.svg",
+  volcano: "/deploy-logos/volcano.svg",
+};
+
+export function getDeployLogoUrl(deployOrId) {
+  const deploy =
+    typeof deployOrId === "string"
+      ? getDeployById(deployOrId) || { id: deployOrId }
+      : deployOrId;
+  if (!deploy) return "";
+  const custom = String(deploy.logoUrl || "").trim();
+  if (custom) return custom;
+  return DEPLOY_LOGO_BY_ID[deploy.id] || "";
 }
 
 /** 构建工具绑定的云部署 id（同公司锁定） */

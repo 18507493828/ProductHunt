@@ -26,9 +26,9 @@ function emptyDeploy(sort = 1) {
   return {
     id: "",
     name: "",
-    emoji: "☁️",
     desc: "",
     url: "",
+    logoUrl: "",
     promo: "",
     promoDesc: "",
     enabled: true,
@@ -162,9 +162,9 @@ export default function BuildTools() {
       ...deployForm,
       id: deployForm.id || undefined,
       name,
-      emoji: deployForm.emoji || "☁️",
       desc: String(deployForm.desc || "").trim(),
       url: String(deployForm.url || "").trim(),
+      logoUrl: String(deployForm.logoUrl || "").trim(),
       promo: String(deployForm.promo || "").trim(),
       promoDesc: String(deployForm.promoDesc || "").trim(),
       enabled: deployForm.enabled !== false,
@@ -374,13 +374,12 @@ export default function BuildTools() {
                       </span>
                     ) : null}
                   </div>
-                  <h2 className="admin-masonry-title">
-                    <span aria-hidden>{deploy.emoji || "☁️"}</span> {deploy.name}
-                  </h2>
+                  <h2 className="admin-masonry-title">{deploy.name}</h2>
                   <p className="admin-masonry-id">{deploy.id}</p>
                   <p className="admin-hint">{deploy.desc || "暂无描述"}</p>
                   <p className="admin-hint">
                     激励角标：{deploy.promo || "（无）"}
+                    {deploy.logoUrl ? " · 已配自定义 Logo" : ""}
                   </p>
                   {deploy.promoDesc ? (
                     <p className="admin-hint">{deploy.promoDesc}</p>
@@ -516,7 +515,7 @@ export default function BuildTools() {
                   <option value="">不绑定</option>
                   {deploys.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.emoji} {d.name}
+                      {d.name}
                       {d.promo ? `（${d.promo}）` : ""}
                     </option>
                   ))}
@@ -592,15 +591,6 @@ export default function BuildTools() {
             <div className="modal-body">
               <div className="admin-topic-form-row">
                 <label className="modal-field">
-                  <span>Emoji</span>
-                  <input
-                    value={deployForm.emoji}
-                    onChange={(e) => updateDeployForm("emoji", e.target.value)}
-                    maxLength={4}
-                    disabled={saving}
-                  />
-                </label>
-                <label className="modal-field">
                   <span>云厂商名称 *</span>
                   <input
                     value={deployForm.name}
@@ -636,6 +626,16 @@ export default function BuildTools() {
                   value={deployForm.url}
                   onChange={(e) => updateDeployForm("url", e.target.value)}
                   placeholder="https://"
+                  disabled={saving}
+                />
+              </label>
+
+              <label className="modal-field">
+                <span>Logo 地址（选填）</span>
+                <input
+                  value={deployForm.logoUrl || ""}
+                  onChange={(e) => updateDeployForm("logoUrl", e.target.value)}
+                  placeholder="https://… 留空则用内置 logo；无 logo 则不显示图片"
                   disabled={saving}
                 />
               </label>

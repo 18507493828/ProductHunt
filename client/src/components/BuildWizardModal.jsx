@@ -4,6 +4,7 @@ import { ExternalLink, Sparkles, X } from "lucide-react";
 import { useModalMotion } from "../useModalMotion";
 import {
   buildTaskBrief,
+  getDeployLogoUrl,
   getSceneById,
   getToolBoundDeployId,
   getToolById,
@@ -425,6 +426,7 @@ export default function BuildWizardModal({
               <div className="ph-build-grid">
                 {BUILD_DEPLOYS.map((d) => {
                   const lockedOut = Boolean(boundDeployId) && d.id !== boundDeployId;
+                  const logoUrl = getDeployLogoUrl(d);
                   return (
                     <button
                       key={d.id}
@@ -445,9 +447,18 @@ export default function BuildWizardModal({
                       {d.promo ? (
                         <span className="ph-build-card-promo">{d.promo}</span>
                       ) : null}
-                      <span className="ph-build-card-emoji" aria-hidden="true">
-                        {d.emoji}
-                      </span>
+                      {logoUrl ? (
+                        <div className="ph-build-card-logo" aria-hidden="true">
+                          <img
+                            src={logoUrl}
+                            alt=""
+                            onError={(e) => {
+                              const wrap = e.currentTarget.parentElement;
+                              if (wrap) wrap.remove();
+                            }}
+                          />
+                        </div>
+                      ) : null}
                       <strong>{d.name}</strong>
                       <span>{d.desc}</span>
                     </button>

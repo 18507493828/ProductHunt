@@ -138,7 +138,7 @@ export const DEFAULT_BUILD_DEPLOYS = [
   {
     id: "tencent",
     name: "腾讯云",
-    emoji: "☁️",
+    emoji: "",
     desc: "云服务器、云开发与 Serverless，适合快速上线 Web 应用",
     url: "https://partner.cloud.tencent.com/invitation/10003541998365ba1b6492d43?inviteType=2",
     promo: "限时5折",
@@ -150,7 +150,7 @@ export const DEFAULT_BUILD_DEPLOYS = [
   {
     id: "huawei",
     name: "华为云",
-    emoji: "🌐",
+    emoji: "",
     desc: "弹性云服务器与 CodeArts，与华为码道生态衔接",
     url: "https://www.huaweicloud.com/product/ecs.html?fromSource=CSDNsmc",
     promo: "限时免费",
@@ -162,7 +162,7 @@ export const DEFAULT_BUILD_DEPLOYS = [
   {
     id: "aliyun",
     name: "阿里云",
-    emoji: "🟧",
+    emoji: "",
     desc: "ECS / 函数计算 / 静态托管，部署模板丰富",
     url: "https://www.aliyun.com/product/ecs?fromSource=CSDNsmc",
     promo: "限时5折",
@@ -173,7 +173,7 @@ export const DEFAULT_BUILD_DEPLOYS = [
   {
     id: "volcano",
     name: "火山引擎",
-    emoji: "🌋",
+    emoji: "",
     desc: "字节跳动云与 AI 基础设施，适合内容与推荐类应用",
     url: "https://www.volcengine.com/product/ecs?fromSource=CSDNsmc",
     promo: "限时免费",
@@ -282,9 +282,10 @@ function normalizeDeploy(raw, index = 0) {
   return {
     id,
     name: String(input.name || fallback?.name || "").trim(),
-    emoji: String(input.emoji || fallback?.emoji || "☁️").trim() || "☁️",
+    emoji: String(input.emoji || fallback?.emoji || "").trim(),
     desc: String(input.desc || fallback?.desc || "").trim(),
     url: String(input.url || fallback?.url || "").trim(),
+    logoUrl: String(input.logoUrl || fallback?.logoUrl || "").trim(),
     promo: String(input.promo ?? fallback?.promo ?? "").trim(),
     promoDesc: String(input.promoDesc ?? fallback?.promoDesc ?? "").trim(),
     enabled: input.enabled !== false,
