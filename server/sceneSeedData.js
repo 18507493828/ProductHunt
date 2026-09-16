@@ -1,6 +1,7 @@
 /**
  * 场景样例应用清单（本地 / 远程 MySQL 对齐用）
  * 部署不会拷贝数据库，启动时用 ensureSceneProducts 按此 upsert 名称与落地页。
+ * price：售价（元），区间 5000–10000，按热度分档。
  */
 export const SCENE_CATEGORY = {
   campus: "校园",
@@ -32,6 +33,7 @@ export const SEED_APPS = [
         views: 5280,
         shares: 36,
         votes: 42,
+        price: "8800",
       },
       {
         name: "篮搭一下",
@@ -43,6 +45,7 @@ export const SEED_APPS = [
         views: 960,
         shares: 22,
         votes: 31,
+        price: "7500",
       },
       {
         name: "招领雷达",
@@ -54,6 +57,7 @@ export const SEED_APPS = [
         views: 740,
         shares: 18,
         votes: 25,
+        price: "5800",
       },
       {
         name: "食堂拼团王",
@@ -65,6 +69,7 @@ export const SEED_APPS = [
         views: 860,
         shares: 19,
         votes: 28,
+        price: "6500",
       },
     ],
   },
@@ -81,6 +86,7 @@ export const SEED_APPS = [
         views: 1520,
         shares: 48,
         votes: 55,
+        price: "9800",
       },
       {
         name: "本杀开黑台",
@@ -92,6 +98,7 @@ export const SEED_APPS = [
         views: 880,
         shares: 27,
         votes: 29,
+        price: "6800",
       },
       {
         name: "遛宠圈",
@@ -103,6 +110,7 @@ export const SEED_APPS = [
         views: 690,
         shares: 15,
         votes: 21,
+        price: "5300",
       },
     ],
   },
@@ -119,6 +127,7 @@ export const SEED_APPS = [
         views: 4860,
         shares: 40,
         votes: 38,
+        price: "8500",
       },
       {
         name: "志愿时长本",
@@ -130,6 +139,7 @@ export const SEED_APPS = [
         views: 620,
         shares: 12,
         votes: 19,
+        price: "5000",
       },
       {
         name: "流浪助养台",
@@ -141,6 +151,7 @@ export const SEED_APPS = [
         views: 4520,
         shares: 33,
         votes: 28,
+        price: "6200",
       },
     ],
   },
@@ -157,6 +168,7 @@ export const SEED_APPS = [
         views: 990,
         shares: 24,
         votes: 34,
+        price: "7800",
       },
       {
         name: "热量一眼过",
@@ -168,6 +180,7 @@ export const SEED_APPS = [
         views: 1340,
         shares: 41,
         votes: 47,
+        price: "9500",
       },
       {
         name: "跑线推荐",
@@ -179,6 +192,7 @@ export const SEED_APPS = [
         views: 5120,
         shares: 20,
         votes: 30,
+        price: "7200",
       },
     ],
   },
@@ -195,6 +209,7 @@ export const SEED_APPS = [
         views: 5680,
         shares: 39,
         votes: 44,
+        price: "9200",
       },
       {
         name: "露营装备单",
@@ -206,6 +221,7 @@ export const SEED_APPS = [
         views: 4380,
         shares: 17,
         votes: 23,
+        price: "5600",
       },
       {
         name: "骑行城市线",
@@ -217,6 +233,7 @@ export const SEED_APPS = [
         views: 4960,
         shares: 29,
         votes: 36,
+        price: "8200",
       },
     ],
   },

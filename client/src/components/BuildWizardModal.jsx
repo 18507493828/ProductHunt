@@ -3,10 +3,9 @@ import { createPortal } from "react-dom";
 import { ExternalLink, Sparkles, X } from "lucide-react";
 import { useModalMotion } from "../useModalMotion";
 import {
-  BUILD_DEPLOYS,
   buildTaskBrief,
-  getDeployById,
   getSceneById,
+  getToolBoundDeployId,
   getToolById,
   upsertBuildDraft,
 } from "../buildConfig";
@@ -21,7 +20,11 @@ export default function BuildWizardModal({
   initialDraft = null,
 }) {
   const { mounted, overlayClassName, panelClassName } = useModalMotion(open);
-  const { scenes: BUILD_SCENES, tools: BUILD_TOOLS } = useBuildCatalog();
+  const {
+    scenes: BUILD_SCENES,
+    tools: BUILD_TOOLS,
+    deploys: BUILD_DEPLOYS,
+  } = useBuildCatalog();
   const [step, setStep] = useState(1);
   const [sceneId, setSceneId] = useState("");
   const [topic, setTopic] = useState("");
@@ -36,9 +39,11 @@ export default function BuildWizardModal({
       setDraftId(initialDraft.id);
       setSceneId(initialDraft.sceneId || "");
       setTopic(initialDraft.topic || "");
-      setToolId(initialDraft.toolId || "");
-      setDeployId(initialDraft.deployId || "");
-      if (initialDraft.deployId) setStep(5);
+      const nextToolId = initialDraft.toolId || "";
+      setToolId(nextToolId);
+      const bound = getToolBoundDeployId(nextToolId);
+      setDeployId(bound || initialDraft.deployId || "");
+      if (initialDraft.deployId || bound) setStep(5);
       else if (initialDraft.toolId) setStep(4);
       else if (initialDraft.topic) setStep(3);
       else if (initialDraft.sceneId) setStep(2);
@@ -55,7 +60,19 @@ export default function BuildWizardModal({
 
   const scene = useMemo(() => getSceneById(sceneId), [sceneId, BUILD_SCENES]);
   const tool = useMemo(() => getToolById(toolId), [toolId, BUILD_TOOLS]);
-  const deploy = useMemo(() => getDeployById(deployId), [deployId]);
+  const boundDeployId = useMemo(
+    () => getToolBoundDeployId(tool),
+    [tool, BUILD_TOOLS],
+  );
+  const deploy = useMemo(
+    () => BUILD_DEPLOYS.find((d) => d.id === deployId) || null,
+    [BUILD_DEPLOYS, deployId],
+  );
+
+  useEffect(() => {
+    if (!toolId || !boundDeployId) return;
+    if (deployId !== boundDeployId) setDeployId(boundDeployId);
+  }, [toolId, boundDeployId, deployId]);
   const topics = scene?.topics || [];
   const briefLocal =
     scene && topic && tool
@@ -87,11 +104,12 @@ export default function BuildWizardModal({
 
   function selectTool(id) {
     setToolId(id);
-    setDeployId("");
+    setDeployId(getToolBoundDeployId(id));
     setStep(4);
   }
 
   function selectDeploy(id) {
+    if (boundDeployId && id !== boundDeployId) return;
     setDeployId(id);
   }
 
@@ -189,7 +207,7 @@ export default function BuildWizardModal({
               {initialDraft?.id ? "编辑任务书" : "我要构建"}
             </p>
             <h2 id="build-wizard-title">
-              选场景 → 选话题 → 选工具 → 本地构建 → 官网部署
+              选场景 → 选话题 → 选工具 → 本地构建 → 云部署
             </h2>
           </div>
           <button type="button" className="modal-close" onClick={onClose} aria-label="关闭">
@@ -197,13 +215,14 @@ export default function BuildWizardModal({
           </button>
         </div>
 
+        <div className="ph-build-wizard-scroll">
         <div className="ph-build-steps" aria-label="构建步骤">
           {[
             { n: 1, label: "选择场景" },
             { n: 2, label: "选择场景话题" },
             { n: 3, label: "选择构建工具" },
             { n: 4, label: "本地构建" },
-            { n: 5, label: "官网部署" },
+            { n: 5, label: "云部署" },
           ].map((s) => (
             <button
               key={s.n}
@@ -337,7 +356,7 @@ export default function BuildWizardModal({
           {step === 4 && scene && tool && (
             <div className="ph-build-brief">
               <p className="ph-build-hint">
-                先在本地用 {tool.name} 完成构建 · 构建完成后再去云厂商官网部署
+                先在本地用 {tool.name} 完成构建 · 构建完成后再去做云部署
               </p>
               <div className="ph-build-brief-card">
                 <div className="ph-build-brief-row">
@@ -395,7 +414,7 @@ export default function BuildWizardModal({
                   className="ph-btn-secondary"
                   onClick={() => goStep(5)}
                 >
-                  下一步：官网部署
+                  下一步：云部署
                 </button>
               </div>
             </div>
@@ -403,26 +422,37 @@ export default function BuildWizardModal({
 
           {step === 5 && scene && tool && (
             <div>
-              <p className="ph-build-hint">
-                本地构建完成后，选择云厂商并前往官网完成部署
-              </p>
               <div className="ph-build-grid">
-                {BUILD_DEPLOYS.map((d) => (
-                  <button
-                    key={d.id}
-                    type="button"
-                    className={
-                      "ph-build-card" + (deployId === d.id ? " selected" : "")
-                    }
-                    onClick={() => selectDeploy(d.id)}
-                  >
-                    <span className="ph-build-card-emoji" aria-hidden="true">
-                      {d.emoji}
-                    </span>
-                    <strong>{d.name}</strong>
-                    <span>{d.desc}</span>
-                  </button>
-                ))}
+                {BUILD_DEPLOYS.map((d) => {
+                  const lockedOut = Boolean(boundDeployId) && d.id !== boundDeployId;
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      disabled={lockedOut}
+                      className={
+                        "ph-build-card" +
+                        (deployId === d.id ? " selected" : "") +
+                        (lockedOut ? " locked" : "")
+                      }
+                      onClick={() => selectDeploy(d.id)}
+                      title={
+                        lockedOut
+                          ? `已绑定「${tool.name}」对应云服务，不可选择`
+                          : d.promoDesc || d.promo || undefined
+                      }
+                    >
+                      {d.promo ? (
+                        <span className="ph-build-card-promo">{d.promo}</span>
+                      ) : null}
+                      <span className="ph-build-card-emoji" aria-hidden="true">
+                        {d.emoji}
+                      </span>
+                      <strong>{d.name}</strong>
+                      <span>{d.desc}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               {deploy ? (
@@ -433,9 +463,29 @@ export default function BuildWizardModal({
                       <strong>{tool.name}</strong>
                     </div>
                     <div className="ph-build-brief-row">
-                      <span>部署官网</span>
-                      <strong>{deploy.name}</strong>
+                      <span>云部署</span>
+                      <strong>
+                        {deploy.name}
+                        {deploy.promo ? (
+                          <>
+                            {" · "}
+                            <span className="ph-build-promo-text">
+                              {deploy.promo}
+                            </span>
+                          </>
+                        ) : null}
+                      </strong>
                     </div>
+                    {deploy.promo ? (
+                      <div className="ph-build-incentive ph-build-deploy-incentive">
+                        <span className="ph-build-deploy-promo-label">
+                          {deploy.promo}
+                        </span>
+                        {deploy.promoDesc ? (
+                          <span>：{deploy.promoDesc}</span>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <pre className="ph-build-brief-text">{briefFull}</pre>
                     <a
                       className="ph-build-download"
@@ -444,7 +494,12 @@ export default function BuildWizardModal({
                       rel="noreferrer"
                     >
                       <ExternalLink size={16} />
-                      打开 {deploy.name} 官网部署
+                      打开 {deploy.name} 云部署
+                      {deploy.promo ? (
+                        <span className="ph-build-download-promo">
+                          （{deploy.promo}）
+                        </span>
+                      ) : null}
                     </a>
                   </div>
                 </div>
@@ -475,7 +530,7 @@ export default function BuildWizardModal({
                   onClick={openDeploySite}
                 >
                   <ExternalLink size={16} />
-                  去官网部署
+                  去云部署
                 </button>
                 <button
                   type="button"
@@ -488,6 +543,7 @@ export default function BuildWizardModal({
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>,

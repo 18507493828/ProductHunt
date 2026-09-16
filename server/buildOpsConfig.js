@@ -81,6 +81,7 @@ export const DEFAULT_BUILD_TOOLS = [
     downloadUrl:
       "https://developer.huaweicloud.com/codeartsco.html?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
     inviteCode: "CSDN-MD-004",
+    deployId: "huawei",
     recommended: false,
     sponsored: true,
     incentive: 9.9,
@@ -94,6 +95,7 @@ export const DEFAULT_BUILD_TOOLS = [
     desc: "腾讯生态 AI 智能体，对话式全流程构建，适合快速出原型",
     downloadUrl: "https://www.workbuddy.cn/?fromSource=CSDNsmc",
     inviteCode: "CSDN-WB-001",
+    deployId: "tencent",
     recommended: true,
     sponsored: false,
     incentive: 0,
@@ -107,6 +109,7 @@ export const DEFAULT_BUILD_TOOLS = [
     desc: "字节 AI IDE，面向工程化开发，适合有代码基础的构建者",
     downloadUrl: "https://www.trae.ai/download?fromSource=CSDNsmc",
     inviteCode: "CSDN-TR-002",
+    deployId: "volcano",
     recommended: false,
     sponsored: false,
     incentive: 0,
@@ -121,6 +124,7 @@ export const DEFAULT_BUILD_TOOLS = [
     downloadUrl:
       "https://b.qianwen.com/apps/qkhomepage_twofoufeb/routes/l5Utxkrh6",
     inviteCode: "CSDN-QW-003",
+    deployId: "aliyun",
     recommended: false,
     sponsored: false,
     incentive: 0,
@@ -128,6 +132,64 @@ export const DEFAULT_BUILD_TOOLS = [
     sort: 4,
   },
 ];
+
+/** 云部署厂商（构建向导最后一步；激励文案运营可配） */
+export const DEFAULT_BUILD_DEPLOYS = [
+  {
+    id: "tencent",
+    name: "腾讯云",
+    emoji: "☁️",
+    desc: "云服务器、云开发与 Serverless，适合快速上线 Web 应用",
+    url: "https://partner.cloud.tencent.com/invitation/10003541998365ba1b6492d43?inviteType=2",
+    promo: "限时5折",
+    promoDesc:
+      "通过活动通道开通，云服务器等产品享限时 5 折优惠（以官网活动页为准）",
+    enabled: true,
+    sort: 1,
+  },
+  {
+    id: "huawei",
+    name: "华为云",
+    emoji: "🌐",
+    desc: "弹性云服务器与 CodeArts，与华为码道生态衔接",
+    url: "https://www.huaweicloud.com/product/ecs.html?fromSource=CSDNsmc",
+    promo: "限时免费",
+    promoDesc:
+      "新用户可通过活动通道领取限时免费体验额度（以官网活动页为准）",
+    enabled: true,
+    sort: 2,
+  },
+  {
+    id: "aliyun",
+    name: "阿里云",
+    emoji: "🟧",
+    desc: "ECS / 函数计算 / 静态托管，部署模板丰富",
+    url: "https://www.aliyun.com/product/ecs?fromSource=CSDNsmc",
+    promo: "限时5折",
+    promoDesc: "活动通道下单 ECS 等产品享限时 5 折优惠（以官网活动页为准）",
+    enabled: true,
+    sort: 3,
+  },
+  {
+    id: "volcano",
+    name: "火山引擎",
+    emoji: "🌋",
+    desc: "字节跳动云与 AI 基础设施，适合内容与推荐类应用",
+    url: "https://www.volcengine.com/product/ecs?fromSource=CSDNsmc",
+    promo: "限时免费",
+    promoDesc:
+      "新用户可通过活动通道领取限时免费云资源体验（以官网活动页为准）",
+    enabled: true,
+    sort: 4,
+  },
+];
+
+const TOOL_DEFAULT_DEPLOY = {
+  madao: "huawei",
+  workbuddy: "tencent",
+  trae: "volcano",
+  qwen: "aliyun",
+};
 
 function slugify(text, fallback = "item") {
   const raw = String(text || "")
@@ -198,6 +260,8 @@ function normalizeTool(raw, index = 0) {
       .replace(/官方赞助/g, "活动赞助"),
     downloadUrl,
     inviteCode: String(input.inviteCode || "").trim(),
+    deployId:
+      String(input.deployId || "").trim() || TOOL_DEFAULT_DEPLOY[id] || "",
     recommended: Boolean(input.recommended),
     sponsored: Boolean(input.sponsored),
     incentive: Number.isFinite(incentive) && incentive >= 0 ? incentive : 0,
@@ -211,6 +275,25 @@ function normalizeTool(raw, index = 0) {
   };
 }
 
+function normalizeDeploy(raw, index = 0) {
+  const input = raw && typeof raw === "object" ? raw : {};
+  const id = String(input.id || slugify(input.name, `deploy-${index + 1}`)).trim();
+  const fallback = DEFAULT_BUILD_DEPLOYS.find((d) => d.id === id);
+  return {
+    id,
+    name: String(input.name || fallback?.name || "").trim(),
+    emoji: String(input.emoji || fallback?.emoji || "☁️").trim() || "☁️",
+    desc: String(input.desc || fallback?.desc || "").trim(),
+    url: String(input.url || fallback?.url || "").trim(),
+    promo: String(input.promo ?? fallback?.promo ?? "").trim(),
+    promoDesc: String(input.promoDesc ?? fallback?.promoDesc ?? "").trim(),
+    enabled: input.enabled !== false,
+    sort: Number.isFinite(Number(input.sort))
+      ? Number(input.sort)
+      : fallback?.sort || index + 1,
+  };
+}
+
 export function normalizeBuildConfig(raw) {
   const input = raw && typeof raw === "object" ? raw : {};
   const scenesSource = Array.isArray(input.scenes)
@@ -219,6 +302,9 @@ export function normalizeBuildConfig(raw) {
   const toolsSource = Array.isArray(input.tools)
     ? input.tools
     : DEFAULT_BUILD_TOOLS;
+  const deploysSource = Array.isArray(input.deploys)
+    ? input.deploys
+    : DEFAULT_BUILD_DEPLOYS;
   const scenes = scenesSource
     .map((s, i) => normalizeScene(s, i))
     .filter((s) => s.name)
@@ -232,15 +318,20 @@ export function normalizeBuildConfig(raw) {
       if (aFirst !== bFirst) return aFirst - bFirst;
       return a.sort - b.sort || a.name.localeCompare(b.name, "zh");
     });
-  return { scenes, tools };
+  const deploys = deploysSource
+    .map((d, i) => normalizeDeploy(d, i))
+    .filter((d) => d.name)
+    .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name, "zh"));
+  return { scenes, tools, deploys };
 }
 
 export const DEFAULT_BUILD_CONFIG = normalizeBuildConfig({
   scenes: DEFAULT_BUILD_SCENES,
   tools: DEFAULT_BUILD_TOOLS,
+  deploys: DEFAULT_BUILD_DEPLOYS,
 });
 
-/** 前台可用：仅返回启用中的场景 / 话题 / 工具 */
+/** 前台可用：仅返回启用中的场景 / 话题 / 工具 / 云部署 */
 export function publicBuildConfig(config) {
   const normalized = normalizeBuildConfig(config);
   return {
@@ -254,6 +345,7 @@ export function publicBuildConfig(config) {
           .map((t) => t.name),
       })),
     tools: normalized.tools.filter((t) => t.enabled),
+    deploys: normalized.deploys.filter((d) => d.enabled),
   };
 }
 

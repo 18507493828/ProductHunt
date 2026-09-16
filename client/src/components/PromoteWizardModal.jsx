@@ -99,6 +99,7 @@ export default function PromoteWizardModal({
           </button>
         </div>
 
+        <div className="ph-build-wizard-scroll">
         <div className="ph-build-steps" aria-label="霸榜步骤">
           {[
             { n: 1, label: "选择推广应用" },
@@ -214,6 +215,7 @@ export default function PromoteWizardModal({
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>,

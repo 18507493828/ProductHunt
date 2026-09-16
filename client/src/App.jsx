@@ -2210,7 +2210,7 @@ export default function App() {
           if (options.localBuildOnly) {
             toast.success(
               `已打开 ${draft.toolName}`,
-              "请先完成本地构建，再回到向导完成官网部署",
+              "请先完成本地构建，再回到向导完成云部署",
             );
             return;
           }

@@ -123,6 +123,7 @@ export async function ensureSceneProducts() {
         `这是面向「${scene.name}」场景的应用，围绕「${app.topic}」打磨，适合社区体验与二次创作。`,
       ].join("\n");
 
+      const seedPrice = String(app.price || "").trim();
       const prev = byId.get(id) || byName.get(app.name);
       if (prev) {
         const seedViews = Number(app.views) || 0;
@@ -142,6 +143,7 @@ export async function ensureSceneProducts() {
           topicId: prev.topicId || topic.id,
           topicIds: prev.topicIds?.length ? prev.topicIds : [topic.id],
           color: prev.color || color,
+          price: seedPrice || prev.price || "",
           viewCount:
             platform === "pc"
               ? Math.max(prevViews, seedViews)
@@ -184,6 +186,10 @@ export async function ensureSceneProducts() {
           rankHidden: false,
           rankWeight: 0,
           appPlatform: platform,
+          price: seedPrice,
+          originalPrice: "",
+          buyUrl: "",
+          purchaseNote: "",
           updatedAt: submittedAt,
         };
         await writeProduct(product);

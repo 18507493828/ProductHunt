@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>码上创 vibe building · 产品介绍</title>
+  <style>
+    @page { size: A4; margin: 0; }
+
+    :root {
+      --ink: #14101f;
+      --ink-soft: #3d3650;
+      --muted: #7a738c;
+      --line: #e6e2ef;
+      --mist: #f7f5fb;
+      --accent: #5b52e0;
+      --gold: #b08d57;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: #fff;
+      color: var(--ink);
+      font-family: "Hiragino Sans GB", "PingFang SC", "Heiti SC", sans-serif;
+      font-size: 10pt;
+      line-height: 1.6;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page {
+      width: 210mm;
+      height: 297mm;
+      page-break-after: always;
+      position: relative;
+      overflow: hidden;
+      background: #fff;
+    }
+    .page:last-child { page-break-after: auto; }
+
+    .sheet {
+      height: 100%;
+      padding: 16mm 18mm 14mm;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Cover */
+    .cover { background: #120e1c; color: #f4f1ea; }
+    .cover::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(145deg, rgba(91, 82, 224, 0.28) 0%, transparent 42%),
+        linear-gradient(320deg, rgba(176, 141, 87, 0.18) 0%, transparent 38%),
+        radial-gradient(80% 55% at 85% 15%, rgba(255,255,255,0.08), transparent 60%);
+    }
+    .cover::after {
+      content: "";
+      position: absolute;
+      right: -40mm; bottom: -30mm;
+      width: 140mm; height: 140mm;
+      border: 1px solid rgba(244, 241, 234, 0.08);
+      border-radius: 50%;
+    }
+    .cover-inner {
+      position: relative; z-index: 1;
+      height: 100%;
+      padding: 24mm 22mm 20mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .cover-top { display: flex; justify-content: space-between; }
+    .cover-mark {
+      font-family: "Songti SC", "STSong", serif;
+      font-size: 13pt; letter-spacing: 0.28em;
+      color: rgba(244, 241, 234, 0.78);
+    }
+    .cover-mark em { font-style: normal; color: var(--gold); }
+    .cover-doc-label {
+      font-size: 8pt; letter-spacing: 0.22em;
+      color: rgba(244, 241, 234, 0.45); text-transform: uppercase;
+    }
+    .cover-main { margin: auto 0; padding: 14mm 0; }
+    .cover-kicker {
+      font-size: 8.5pt; letter-spacing: 0.32em;
+      color: var(--gold); margin-bottom: 14px;
+    }
+    .cover-brand {
+      font-family: "Songti SC", "STSong", serif;
+      font-size: 42pt; font-weight: 600;
+      letter-spacing: 0.12em; margin-bottom: 8px;
+    }
+    .cover-en {
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 12pt; letter-spacing: 0.18em;
+      color: rgba(244, 241, 234, 0.55);
+      text-transform: lowercase; margin-bottom: 22px;
+    }
+    .cover-rule { width: 36px; height: 1px; background: var(--gold); margin-bottom: 22px; }
+    .cover-title {
+      font-family: "Songti SC", "STSong", serif;
+      font-size: 22pt; letter-spacing: 0.2em; margin-bottom: 16px;
+    }
+    .cover-desc {
+      max-width: 128mm; font-size: 10.5pt; line-height: 1.85;
+      color: rgba(244, 241, 234, 0.72);
+    }
+    .cover-bottom {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      border-top: 1px solid rgba(244, 241, 234, 0.12); padding-top: 14px;
+    }
+    .cover-pillars span {
+      font-size: 10pt; letter-spacing: 0.28em;
+      padding-right: 18px; margin-right: 18px;
+      border-right: 1px solid rgba(244, 241, 234, 0.18);
+    }
+    .cover-pillars span:last-child { border: 0; margin: 0; padding: 0; }
+    .cover-meta {
+      text-align: right; font-size: 8pt; letter-spacing: 0.12em;
+      color: rgba(244, 241, 234, 0.4); line-height: 1.8;
+    }
+
+    .page-head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding-bottom: 8px; border-bottom: 1px solid var(--line);
+      margin-bottom: 12px; flex-shrink: 0;
+    }
+    .page-head .brand { font-size: 8pt; letter-spacing: 0.16em; color: var(--muted); }
+    .page-head .brand strong { color: var(--ink); font-weight: 600; margin-right: 6px; }
+    .page-head .sec { font-size: 8pt; letter-spacing: 0.14em; color: var(--gold); }
+
+    .page-foot {
+      margin-top: auto;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      display: flex; justify-content: space-between;
+      font-size: 7.5pt; letter-spacing: 0.1em; color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .body { flex: 1 1 auto; min-height: 0; }
+
+    .chapter {
+      display: flex; gap: 10px; align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .chapter-no {
+      font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+      font-size: 9pt; letter-spacing: 0.1em; color: var(--gold);
+    }
+    .chapter-title {
+      font-family: "Songti SC", "STSong", serif;
+      font-size: 17pt; font-weight: 600; letter-spacing: 0.08em;
+    }
+    .lead {
+      margin: 0 0 12px;
+      font-size: 10pt; line-height: 1.7; color: var(--ink-soft);
+    }
+    h2 {
+      font-family: "Songti SC", "STSong", serif;
+      font-size: 12pt; font-weight: 600; letter-spacing: 0.06em;
+      margin: 14px 0 8px;
+    }
+    h3 { font-size: 10pt; font-weight: 600; margin: 0 0 4px; }
+    p { margin: 0; color: var(--ink-soft); }
+
+    .split {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0 16px; margin-top: 2px;
+    }
+    .split-item {
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+    }
+    .split-item:nth-child(1),
+    .split-item:nth-child(2) { border-top: 0; padding-top: 0; }
+    .split-item p { font-size: 9pt; line-height: 1.55; }
+
+    .value-list {
+      list-style: none;
+      border-top: 1px solid var(--line);
+      margin-top: 2px;
+    }
+    .value-list li {
+      display: grid; grid-template-columns: 28mm 1fr; gap: 10px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--line);
+      align-items: baseline;
+    }
+    .value-list strong { font-size: 9.5pt; color: var(--ink); }
+    .value-list span { font-size: 9pt; line-height: 1.55; }
+
+    .journey {
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      border: 1px solid var(--line);
+      margin: 6px 0 12px;
+    }
+    .journey-step {
+      padding: 12px 9px 13px;
+      border-right: 1px solid var(--line);
+      background: var(--mist);
+    }
+    .journey-step:last-child { border-right: 0; }
+    .journey-step .n {
+      font-size: 7.5pt; letter-spacing: 0.1em;
+      color: var(--gold); margin-bottom: 5px;
+    }
+    .journey-step strong {
+      display: block; font-size: 10.5pt;
+      margin-bottom: 3px; letter-spacing: 0.06em;
+    }
+    .journey-step span {
+      font-size: 8pt; color: var(--muted); line-height: 1.4;
+    }
+
+    .path-list { margin-top: 2px; }
+    .path-block {
+      padding: 11px 0;
+      border-top: 1px solid var(--line);
+    }
+    .path-block:first-child { border-top: 0; padding-top: 0; }
+    .path-block .label {
+      font-size: 7.5pt; letter-spacing: 0.18em;
+      color: var(--accent); margin-bottom: 3px;
+    }
+    .path-block h3 {
+      font-family: "Songti SC", "STSong", serif;
+      font-size: 11.5pt; margin-bottom: 4px; letter-spacing: 0.06em;
+    }
+    .path-block p { font-size: 9.2pt; line-height: 1.6; }
+
+    table.features {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9pt;
+      margin-top: 4px;
+    }
+    table.features th {
+      text-align: left; font-size: 7.5pt; letter-spacing: 0.12em;
+      color: var(--muted); padding: 0 0 8px;
+      border-bottom: 1.5px solid var(--ink);
+    }
+    table.features td {
+      padding: 8px 10px 8px 0;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top; color: var(--ink-soft); line-height: 1.5;
+    }
+    table.features td:first-child {
+      width: 26mm; color: var(--ink); font-weight: 600; padding-right: 8px;
+    }
+
+    .ops-note {
+      margin-top: 12px;
+      padding: 12px 14px;
+      background: var(--mist);
+      border-left: 2px solid var(--accent);
+    }
+    .ops-note h3 {
+      font-family: "Songti SC", "STSong", serif;
+      font-size: 11pt; margin-bottom: 4px;
+    }
+    .ops-note p { font-size: 9pt; line-height: 1.55; }
+
+    .reward-row {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px; margin: 8px 0 12px;
+    }
+    .reward {
+      border: 1px solid var(--line);
+      padding: 14px 13px 15px;
+      position: relative;
+      background: linear-gradient(180deg, #fbfaf8 0%, #fff 28%);
+    }
+    .reward::before {
+      content: ""; position: absolute; left: 0; top: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--gold), transparent 85%);
+    }
+    .reward .period {
+      font-size: 7.5pt; letter-spacing: 0.16em;
+      color: var(--gold); margin-bottom: 6px;
+    }
+    .reward h3 {
+      font-family: "Songti SC", "STSong", serif;
+      font-size: 14pt; letter-spacing: 0.1em; margin-bottom: 10px;
+    }
+    .reward ul {
+      list-style: none; font-size: 9pt;
+      color: var(--ink-soft); line-height: 1.7;
+    }
+    .reward ul li {
+      display: flex; justify-content: space-between;
+      border-bottom: 1px dotted var(--line); padding: 2px 0;
+    }
+    .reward ul li span:last-child { font-weight: 600; color: var(--ink); }
+
+    .duo {
+      display: grid; grid-template-columns: 1.15fr 0.85fr;
+      gap: 12px; margin-bottom: 4px;
+    }
+    .callout { padding: 14px 15px; background: #120e1c; }
+    .callout .period {
+      font-size: 7.5pt; letter-spacing: 0.18em;
+      color: var(--gold); margin-bottom: 5px;
+    }
+    .callout h3 {
+      font-family: "Songti SC", "STSong", serif;
+      font-size: 12pt; color: #f4f1ea; margin-bottom: 6px;
+    }
+    .callout p {
+      font-size: 9pt; line-height: 1.6;
+      color: rgba(244, 241, 234, 0.72);
+    }
+    .heat-panel {
+      border: 1px solid var(--line);
+      padding: 14px 15px;
+      background: var(--mist);
+    }
+    .heat-panel h3 {
+      font-family: "Songti SC", "STSong", serif;
+      font-size: 12pt; margin-bottom: 6px;
+    }
+    .heat-panel p { font-size: 9pt; line-height: 1.6; }
+
+    .scene-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      border-top: 1px solid var(--ink);
+      margin-top: 4px;
+    }
+    .scene {
+      padding: 14px 14px 15px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .scene:nth-child(odd) { padding-right: 14px; }
+    .scene:nth-child(even) {
+      padding-left: 14px;
+      border-left: 1px solid var(--line);
+    }
+    .scene .idx {
+      font-size: 7.5pt; color: var(--gold);
+      letter-spacing: 0.1em; margin-bottom: 4px;
+    }
+    .scene h3 {
+      font-family: "Songti SC", "STSong", serif;
+      font-size: 11.5pt; margin-bottom: 5px;
+    }
+    .scene p { font-size: 9pt; line-height: 1.55; }
+
+    .config-cols {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 6px 20px; margin-top: 6px;
+    }
+    .config-cols li {
+      list-style: none;
+      padding: 7px 0 7px 11px;
+      border-left: 1.5px solid var(--accent);
+      font-size: 9pt; color: var(--ink-soft); line-height: 1.45;
+    }
+  </style>
+</head>
+<body>
+
+  <section class="page cover">
+    <div class="cover-inner">
+      <div class="cover-top">
+        <div class="cover-mark">码上创<em>/</em></div>
+        <div class="cover-doc-label">Product Overview</div>
+      </div>
+      <div class="cover-main">
+        <div class="cover-kicker">CSDN 出品 · 社区开发者应用共创平台</div>
+        <div class="cover-brand">码上创</div>
+        <div class="cover-en">vibe building</div>
+        <div class="cover-rule"></div>
+        <div class="cover-title">产品介绍</div>
+        <p class="cover-desc">
+          面向泛用户与开发者的 AI 应用共创平台。从选题构建、上架发布到推广冲榜，
+          形成完整闭环，让应用更快被看见、被体验、被激励。
+        </p>
+      </div>
+      <div class="cover-bottom">
+        <div class="cover-pillars">
+          <span>构建</span><span>发布</span><span>霸榜</span>
+        </div>
+        <div class="cover-meta">CSDN<br />PRODUCT BRIEF</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 概述 -->
+  <section class="page">
+    <div class="sheet">
+      <header class="page-head">
+        <div class="brand"><strong>码上创</strong> vibe building</div>
+        <div class="sec">01 / 产品概述</div>
+      </header>
+      <div class="body">
+        <div class="chapter">
+          <span class="chapter-no">01</span>
+          <h1 class="chapter-title">产品概述</h1>
+        </div>
+        <p class="lead">
+          码上创是 CSDN 出品的社区驱动应用共创平台。用户可借助华为码道、WorkBuddy、Trae Work、千问 Work 等 AI 构建工具，
+          围绕校园、社交、公益、健身、户外等真实场景快速做出可体验的 Web 应用，发布到应用广场，并通过多渠道分享冲榜，赢取现金激励。
+        </p>
+
+        <h2>产品定位</h2>
+        <div class="split">
+          <div class="split-item">
+            <h3>构建者</h3>
+            <p>降低「做什么、用什么做、怎么上线」的门槛，提供场景话题、工具引导与部署路径，帮助快速完成从创意到上架。</p>
+          </div>
+          <div class="split-item">
+            <h3>体验者</h3>
+            <p>在应用广场按场景浏览与体验作品，点赞互动，发现社区里正在发生的新应用。</p>
+          </div>
+          <div class="split-item">
+            <h3>活动方</h3>
+            <p>通过周榜、月榜、季榜与工具赞助激励，拉动构建、发布与推广，形成可持续的共创活动机制。</p>
+          </div>
+          <div class="split-item">
+            <h3>运营方</h3>
+            <p>后台可配置场景话题、构建工具、榜单奖金、推广渠道与审核流程，支撑日常活动运营。</p>
+          </div>
+        </div>
+
+        <h2>核心价值</h2>
+        <ul class="value-list">
+          <li><strong>完整闭环</strong><span>选题构建 → 提交审核 → 广场曝光 → 分享回流 → 榜单激励，一站完成。</span></li>
+          <li><strong>场景化选题</strong><span>预置生活与校园等真实话题，减少从零构思的成本。</span></li>
+          <li><strong>工具生态开放</strong><span>支持多家 AI 构建工具接入；选用华为码道并成功发布，可领取活动激励。</span></li>
+          <li><strong>可运营热度</strong><span>浏览、点赞、分享回流共同影响热度，周 / 月 / 季榜持续激励。</span></li>
+          <li><strong>社区背书</strong><span>依托 CSDN 开发者社区，连接创作、展示与传播。</span></li>
+        </ul>
+      </div>
+      <footer class="page-foot">
+        <span>码上创 vibe building</span>
+        <span>02</span>
+      </footer>
+    </div>
+  </section>
+
+  <!-- 旅程 + 功能 -->
+  <section class="page">
+    <div class="sheet">
+      <header class="page-head">
+        <div class="brand"><strong>码上创</strong> vibe building</div>
+        <div class="sec">02–03 / 旅程 · 功能</div>
+      </header>
+      <div class="body">
+        <div class="chapter">
+          <span class="chapter-no">02</span>
+          <h1 class="chapter-title">用户旅程</h1>
+        </div>
+        <p class="lead">平台主路径围绕「我要构建 / 我要发布 / 我要霸榜」三条主线展开，贯穿发现、构建、上线与传播。</p>
+
+        <div class="journey">
+          <div class="journey-step"><div class="n">01</div><strong>发现</strong><span>浏览广场与激励</span></div>
+          <div class="journey-step"><div class="n">02</div><strong>构建</strong><span>场景 · 话题 · 工具</span></div>
+          <div class="journey-step"><div class="n">03</div><strong>部署</strong><span>本地构建 · 云上线</span></div>
+          <div class="journey-step"><div class="n">04</div><strong>发布</strong><span>提交审核上架</span></div>
+          <div class="journey-step"><div class="n">05</div><strong>霸榜</strong><span>分享冲榜领奖</span></div>
+        </div>
+
+        <div class="path-list">
+          <div class="path-block">
+            <div class="label">PATH 01</div>
+            <h3>我要构建</h3>
+            <p>构建向导按五步引导：选择场景 → 选择话题 → 选择构建工具 → 本地打开工具完成构建 → 前往云厂商官网完成部署。系统会生成可复制的任务书，并可保存为待发布草稿。</p>
+          </div>
+          <div class="path-block">
+            <div class="label">PATH 02</div>
+            <h3>我要发布</h3>
+            <p>填写应用名称、一句话介绍、体验链接、分类与话题、封面等信息后提交审核。审核通过即进入应用广场，支持标注 H5、PC、小程序、App 等形态。</p>
+          </div>
+          <div class="path-block">
+            <div class="label">PATH 03</div>
+            <h3>我要霸榜</h3>
+            <p>一键分享至小红书、抖音、微信朋友圈、CSDN 博客等渠道，带动浏览与回流热度。周期内热度靠前的作品进入周榜、月榜、季榜，按名次获得对应激励。</p>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div class="chapter">
+            <span class="chapter-no">03</span>
+            <h1 class="chapter-title">核心功能</h1>
+          </div>
+          <table class="features">
+            <thead><tr><th>模块</th><th>能力说明</th></tr></thead>
+            <tbody>
+              <tr><td>门户首页</td><td>展示品牌主张、本期激励、平台数据概览，以及构建 / 发布 / 霸榜入口与热门应用速览。</td></tr>
+              <tr><td>应用广场</td><td>浏览已上架应用，支持按场景筛选、按最热 / 最新 / 点赞排序；侧栏同步展示码上创榜单。</td></tr>
+              <tr><td>构建向导</td><td>场景、话题、工具、本地构建、云部署五步流程；生成任务书，支持草稿保存与继续编辑。</td></tr>
+              <tr><td>构建工具</td><td>可配置接入华为码道、WorkBuddy、Trae Work、千问 Work 等；赞助工具可设置发布成功后的现金激励。</td></tr>
+              <tr><td>产品提交</td><td>结构化表单提交体验链接与资料；普通用户需审核，通过后进入广场公开展示。</td></tr>
+              <tr><td>码上创榜单</td><td>周榜 / 月榜 / 季榜 Top10，结合浏览、点赞、分享回流等热度，并展示对应名次奖金。</td></tr>
+              <tr><td>分享推广</td><td>多渠道一键分享文案与链接，拉动站外流量回流，提升应用热度。</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <footer class="page-foot">
+        <span>码上创 vibe building</span>
+        <span>03</span>
+      </footer>
+    </div>
+  </section>
+
+  <!-- 激励 + 场景 -->
+  <section class="page">
+    <div class="sheet">
+      <header class="page-head">
+        <div class="brand"><strong>码上创</strong> vibe building</div>
+        <div class="sec">04–05 / 激励 · 场景</div>
+      </header>
+      <div class="body">
+        <div class="chapter">
+          <span class="chapter-no">04</span>
+          <h1 class="chapter-title">激励与榜单</h1>
+        </div>
+        <p class="lead">平台以现金激励驱动构建与传播。榜单奖金与工具赞助激励均可在后台配置，前台即时生效。</p>
+
+        <div class="reward-row">
+          <div class="reward">
+            <div class="period">WEEKLY · 周榜</div>
+            <h3>每周结算</h3>
+            <ul>
+              <li><span>Top 1</span><span>¥ 100</span></li>
+              <li><span>Top 2</span><span>¥ 50</span></li>
+              <li><span>Top 3</span><span>¥ 30</span></li>
+              <li><span>Top 4–10</span><span>各 ¥ 10</span></li>
+            </ul>
+          </div>
+          <div class="reward">
+            <div class="period">MONTHLY · 月榜</div>
+            <h3>每月结算</h3>
+            <ul>
+              <li><span>Top 1</span><span>¥ 300</span></li>
+              <li><span>Top 2</span><span>¥ 150</span></li>
+              <li><span>Top 3</span><span>¥ 80</span></li>
+              <li><span>Top 4–10</span><span>各 ¥ 20</span></li>
+            </ul>
+          </div>
+          <div class="reward">
+            <div class="period">QUARTERLY · 季榜</div>
+            <h3>每季结算</h3>
+            <ul>
+              <li><span>Top 1</span><span>¥ 1,000</span></li>
+              <li><span>Top 2</span><span>¥ 500</span></li>
+              <li><span>Top 3</span><span>¥ 200</span></li>
+              <li><span>Top 4–10</span><span>各 ¥ 50</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="duo">
+          <div class="callout">
+            <div class="period">SPONSOR PATH</div>
+            <h3>华为码道活动激励</h3>
+            <p>选用华为码道完成构建并成功发布通过审核后，可额外领取活动现金激励（默认每账号限领一次，金额可配置）。</p>
+          </div>
+          <div class="heat-panel">
+            <h3>热度与传达</h3>
+            <p>首页展示本期激励说明；热度综合浏览、点赞与分享回流，运营可结合渠道与档位调节节奏。</p>
+          </div>
+        </div>
+
+        <div style="margin-top:18px;">
+          <div class="chapter">
+            <span class="chapter-no">05</span>
+            <h1 class="chapter-title">适用场景</h1>
+          </div>
+          <div class="scene-grid">
+            <div class="scene">
+              <div class="idx">01</div>
+              <h3>开发者共创活动</h3>
+              <p>面向社区开发者发起主题构建赛，用场景话题降低参赛门槛，用榜单与现金激励拉动完赛与传播。</p>
+            </div>
+            <div class="scene">
+              <div class="idx">02</div>
+              <h3>AI 工具联合运营</h3>
+              <p>将构建工具作为赞助路径接入平台，用户选用指定工具并成功发布即可领取激励，提升工具曝光与转化。</p>
+            </div>
+            <div class="scene">
+              <div class="idx">03</div>
+              <h3>校园与垂直场景共创</h3>
+              <p>围绕校园、社交、公益、健身、户外等场景持续产出可体验应用，形成可浏览、可互动的作品库。</p>
+            </div>
+            <div class="scene">
+              <div class="idx">04</div>
+              <h3>内容与流量联动</h3>
+              <p>结合小红书、抖音、朋友圈、CSDN 博客等渠道分享，把站外内容流量回流到应用体验与榜单竞争。</p>
+            </div>
+          </div>
+
+          <h2>运营可配置项</h2>
+          <ul class="config-cols">
+            <li>构建场景、话题与工具目录</li>
+            <li>周 / 月 / 季榜奖金与码道激励</li>
+            <li>首页激励文案</li>
+            <li>推广渠道与分享文案</li>
+            <li>活动、分类、轮播与导航</li>
+            <li>应用审核与发奖流程</li>
+          </ul>
+        </div>
+      </div>
+      <footer class="page-foot">
+        <span>码上创 vibe building</span>
+        <span>04</span>
+      </footer>
+    </div>
+  </section>
+
+</body>
+</html>

@@ -130,6 +130,42 @@ const IMAGE_URL_PATTERN =
   /^(https?:\/\/.+|\/(?:api\/)?uploads\/[\w.-]+)$/i;
 const LOCAL_UPLOAD_URL_PATTERN = /^\/(?:api\/)?uploads\/([\w.-]+)$/i;
 
+function normalizePurchaseFields(body = {}, fallback = {}) {
+  const price = String(
+    body.price !== undefined ? body.price : fallback.price || "",
+  ).trim().slice(0, 64);
+  const originalPrice = String(
+    body.originalPrice !== undefined
+      ? body.originalPrice
+      : fallback.originalPrice || "",
+  )
+    .trim()
+    .slice(0, 64);
+  const buyUrl = String(
+    body.buyUrl !== undefined ? body.buyUrl : fallback.buyUrl || "",
+  ).trim();
+  const purchaseNote = String(
+    body.purchaseNote !== undefined
+      ? body.purchaseNote
+      : fallback.purchaseNote || "",
+  )
+    .trim()
+    .slice(0, 500);
+
+  if (buyUrl) {
+    if (buyUrl.length > 500) {
+      return { error: "购买链接过长" };
+    }
+    if (!PRODUCT_URL_PATTERN.test(buyUrl)) {
+      return {
+        error: "购买链接需为完整 http(s) 地址，例如 https://example.com/buy",
+      };
+    }
+  }
+
+  return { price, originalPrice, buyUrl, purchaseNote };
+}
+
 function localUploadFilename(url) {
   const match = String(url || "").match(LOCAL_UPLOAD_URL_PATTERN);
   return match ? match[1] : "";
@@ -1126,6 +1162,10 @@ function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = nu
     buildToolId: product.buildToolId || "",
     buildToolName: product.buildToolName || "",
     inviteCode: product.inviteCode || "",
+    price: product.price || "",
+    originalPrice: product.originalPrice || "",
+    buyUrl: product.buyUrl || "",
+    purchaseNote: product.purchaseNote || "",
     rankPinned: product.rankPinned === true,
     rankWeight: Number(product.rankWeight) || 0,
     rankHidden: product.rankHidden === true,
@@ -1137,6 +1177,11 @@ function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = nu
     myRating: myRating > 0 ? myRating : 0,
     myRatings: myRatings || null,
     submittedBy: resolveSubmitterDisplayName(product, nicknameMap),
+    isOwner: Boolean(
+      currentUser?.username &&
+        product.submittedBy &&
+        product.submittedBy === currentUser.username,
+    ),
     submittedAt: product.submittedAt,
     status: product.status,
     rejectReason: product.rejectReason || "",
@@ -2136,6 +2181,10 @@ app.post("/api/products", requireAuth, async (req, res) => {
       buildToolId,
       buildToolName,
       inviteCode,
+      price,
+      originalPrice,
+      buyUrl,
+      purchaseNote,
     } = req.body || {};
 
     const trimmedName = (name || "").trim();
@@ -2143,6 +2192,15 @@ app.post("/api/products", requireAuth, async (req, res) => {
     const trimmedUrl = (url || "").trim();
     const trimmedDescription = (description || "").trim();
     const trimmedImageUrl = (imageUrl || "").trim();
+    const purchaseFields = normalizePurchaseFields({
+      price,
+      originalPrice,
+      buyUrl,
+      purchaseNote,
+    });
+    if (purchaseFields.error) {
+      return res.status(400).json({ error: purchaseFields.error });
+    }
     const resolvedPlatform =
       normalizeAppPlatform(appPlatform) || DEFAULT_APP_PLATFORM;
     const buildFields = await resolveBuildToolFields({
@@ -2236,6 +2294,10 @@ app.post("/api/products", requireAuth, async (req, res) => {
       buildToolId: buildFields.buildToolId,
       buildToolName: buildFields.buildToolName,
       inviteCode: buildFields.inviteCode,
+      price: purchaseFields.price,
+      originalPrice: purchaseFields.originalPrice,
+      buyUrl: purchaseFields.buyUrl,
+      purchaseNote: purchaseFields.purchaseNote,
       voters: [],
       submittedBy: req.user.username,
       submittedAt: now,
@@ -2293,6 +2355,10 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
       buildToolId,
       buildToolName,
       inviteCode,
+      price,
+      originalPrice,
+      buyUrl,
+      purchaseNote,
     } = req.body || {};
 
     const trimmedName = (name || "").trim();
@@ -2300,6 +2366,13 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     const trimmedUrl = (url || "").trim();
     const trimmedDescription = (description || "").trim();
     const trimmedImageUrl = (imageUrl || "").trim();
+    const purchaseFields = normalizePurchaseFields(
+      { price, originalPrice, buyUrl, purchaseNote },
+      product,
+    );
+    if (purchaseFields.error) {
+      return res.status(400).json({ error: purchaseFields.error });
+    }
     const resolvedPlatform =
       normalizeAppPlatform(appPlatform) ||
       normalizeAppPlatform(product.appPlatform) ||
@@ -2406,6 +2479,10 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     product.buildToolId = buildFields.buildToolId;
     product.buildToolName = buildFields.buildToolName;
     product.inviteCode = buildFields.inviteCode;
+    product.price = purchaseFields.price;
+    product.originalPrice = purchaseFields.originalPrice;
+    product.buyUrl = purchaseFields.buyUrl;
+    product.purchaseNote = purchaseFields.purchaseNote;
     product.color = product.color || pickAvatarColor(trimmedName);
     product.status = nextStatus;
     product.rejectReason = rejectReason;

@@ -62,6 +62,14 @@ export const BUILD_SCENES = [
   },
 ];
 
+/** 构建工具默认绑定的云部署（同公司产品 → 同公司云） */
+export const TOOL_DEFAULT_DEPLOY = {
+  madao: "huawei",
+  workbuddy: "tencent",
+  trae: "volcano",
+  qwen: "aliyun",
+};
+
 export const BUILD_TOOLS = [
   {
     id: "madao",
@@ -71,6 +79,7 @@ export const BUILD_TOOLS = [
     downloadUrl:
       "https://developer.huaweicloud.com/codeartsco.html?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
     inviteCode: "CSDN-MD-004",
+    deployId: "huawei",
     sponsored: true,
     incentive: 9.9,
   },
@@ -81,6 +90,7 @@ export const BUILD_TOOLS = [
     desc: "腾讯生态 AI 智能体，对话式全流程构建，适合快速出原型",
     downloadUrl: "https://www.workbuddy.cn/?fromSource=CSDNsmc",
     inviteCode: "CSDN-WB-001",
+    deployId: "tencent",
     recommended: true,
     sponsored: false,
   },
@@ -91,6 +101,7 @@ export const BUILD_TOOLS = [
     desc: "字节 AI IDE，面向工程化开发，适合有代码基础的构建者",
     downloadUrl: "https://www.trae.ai/download?fromSource=CSDNsmc",
     inviteCode: "CSDN-TR-002",
+    deployId: "volcano",
     sponsored: false,
   },
   {
@@ -101,51 +112,65 @@ export const BUILD_TOOLS = [
     downloadUrl:
       "https://b.qianwen.com/apps/qkhomepage_twofoufeb/routes/l5Utxkrh6",
     inviteCode: "CSDN-QW-003",
+    deployId: "aliyun",
     sponsored: false,
   },
 ];
 
-/** 部署云厂商（构建向导最后一步：引导去官网部署） */
+/** 部署云厂商（构建向导最后一步：云部署；可由运营后台覆盖） */
 export const BUILD_DEPLOYS = [
   {
     id: "tencent",
     name: "腾讯云",
     emoji: "☁️",
     desc: "云服务器、云开发与 Serverless，适合快速上线 Web 应用",
-    url: "https://cloud.tencent.com/",
+    url: "https://partner.cloud.tencent.com/invitation/10003541998365ba1b6492d43?inviteType=2",
+    promo: "限时5折",
+    promoDesc: "通过活动通道开通，云服务器等产品享限时 5 折优惠（以官网活动页为准）",
   },
   {
     id: "huawei",
     name: "华为云",
     emoji: "🌐",
     desc: "弹性云服务器与 CodeArts，与华为码道生态衔接",
-    url: "https://www.huaweicloud.com/",
+    url: "https://www.huaweicloud.com/product/ecs.html?fromSource=CSDNsmc",
+    promo: "限时免费",
+    promoDesc: "新用户可通过活动通道领取限时免费体验额度（以官网活动页为准）",
   },
   {
     id: "aliyun",
     name: "阿里云",
     emoji: "🟧",
     desc: "ECS / 函数计算 / 静态托管，部署模板丰富",
-    url: "https://www.aliyun.com/",
+    url: "https://www.aliyun.com/product/ecs?fromSource=CSDNsmc",
+    promo: "限时5折",
+    promoDesc: "活动通道下单 ECS 等产品享限时 5 折优惠（以官网活动页为准）",
   },
   {
     id: "volcano",
     name: "火山引擎",
     emoji: "🌋",
     desc: "字节跳动云与 AI 基础设施，适合内容与推荐类应用",
-    url: "https://www.volcengine.com/",
+    url: "https://www.volcengine.com/product/ecs?fromSource=CSDNsmc",
+    promo: "限时免费",
+    promoDesc: "新用户可通过活动通道领取限时免费云资源体验（以官网活动页为准）",
   },
 ];
 
 /** 运行时目录（后台配置可覆盖默认值，界面结构不变） */
 let runtimeScenes = BUILD_SCENES;
 let runtimeTools = BUILD_TOOLS;
+let runtimeDeploys = BUILD_DEPLOYS;
 const listeners = new Set();
 
 function notifyBuildCatalog() {
   listeners.forEach((fn) => {
     try {
-      fn({ scenes: runtimeScenes, tools: runtimeTools });
+      fn({
+        scenes: runtimeScenes,
+        tools: runtimeTools,
+        deploys: runtimeDeploys,
+      });
     } catch {
       /* ignore */
     }
@@ -158,6 +183,10 @@ export function getBuildScenes() {
 
 export function getBuildTools() {
   return runtimeTools;
+}
+
+export function getBuildDeploys() {
+  return runtimeDeploys;
 }
 
 export function subscribeBuildCatalog(fn) {
@@ -178,17 +207,23 @@ export function applyBuildConfig(config) {
   }
   if (Array.isArray(config?.tools)) {
     runtimeTools = config.tools
-      .map((t) => ({
-        id: t.id,
-        name: t.name,
-        emoji: t.emoji || "🛠️",
-        desc: String(t.desc || "").replace("官方赞助", "活动赞助"),
-        downloadUrl: t.downloadUrl || "",
-        inviteCode: t.inviteCode || "",
-        recommended: Boolean(t.recommended),
-        sponsored: Boolean(t.sponsored),
-        incentive: Number(t.incentive) || 0,
-      }))
+      .map((t) => {
+        const id = t.id;
+        const deployId =
+          String(t.deployId || "").trim() || TOOL_DEFAULT_DEPLOY[id] || "";
+        return {
+          id,
+          name: t.name,
+          emoji: t.emoji || "🛠️",
+          desc: String(t.desc || "").replace("官方赞助", "活动赞助"),
+          downloadUrl: t.downloadUrl || "",
+          inviteCode: t.inviteCode || "",
+          deployId,
+          recommended: Boolean(t.recommended),
+          sponsored: Boolean(t.sponsored),
+          incentive: Number(t.incentive) || 0,
+        };
+      })
       .sort((a, b) => {
         const aFirst = a.id === "madao" ? 0 : 1;
         const bFirst = b.id === "madao" ? 0 : 1;
@@ -196,8 +231,25 @@ export function applyBuildConfig(config) {
         return 0;
       });
   }
+  if (Array.isArray(config?.deploys)) {
+    runtimeDeploys = config.deploys
+      .map((d) => ({
+        id: d.id,
+        name: d.name,
+        emoji: d.emoji || "☁️",
+        desc: String(d.desc || "").trim(),
+        url: String(d.url || "").trim(),
+        promo: String(d.promo || "").trim(),
+        promoDesc: String(d.promoDesc || "").trim(),
+      }))
+      .filter((d) => d.id && d.name);
+  }
   notifyBuildCatalog();
-  return { scenes: runtimeScenes, tools: runtimeTools };
+  return {
+    scenes: runtimeScenes,
+    tools: runtimeTools,
+    deploys: runtimeDeploys,
+  };
 }
 
 export function getSponsoredIncentive() {
@@ -214,7 +266,17 @@ export function getToolById(id) {
 }
 
 export function getDeployById(id) {
-  return BUILD_DEPLOYS.find((d) => d.id === id) || null;
+  return runtimeDeploys.find((d) => d.id === id) || null;
+}
+
+/** 构建工具绑定的云部署 id（同公司锁定） */
+export function getToolBoundDeployId(toolOrId) {
+  const tool =
+    typeof toolOrId === "string" ? getToolById(toolOrId) : toolOrId;
+  if (!tool) return "";
+  const bound =
+    String(tool.deployId || "").trim() || TOOL_DEFAULT_DEPLOY[tool.id] || "";
+  return getDeployById(bound) ? bound : "";
 }
 
 export function inferSceneIdFromText(text) {
@@ -299,6 +361,9 @@ export function buildTaskBrief({ scene, topic, tool, deploy }) {
     `【场景话题】${topic}`,
     `【构建工具】${toolName}`,
     deployName ? `【部署】${deployName}` : "",
+    deploy?.promo
+      ? `【云部署激励】${deploy.promo}${deploy.promoDesc ? ` · ${deploy.promoDesc}` : ""}`
+      : "",
     tool?.sponsored
       ? `【赞助激励】选择「华为码道」并成功发布通过审核后，可获 ¥${tool.incentive} 现金激励（每账号限 1 次）`
       : "",

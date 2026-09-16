@@ -85,6 +85,7 @@ export default function RatingModal({
           ×
         </button>
 
+        <div className="ph-rating-scroll">
         <p className="ph-rating-eyebrow">为这个作品打分</p>
         <h2 id="rating-modal-title" className="ph-rating-title">
           {product?.name || "作品"}
@@ -132,6 +133,7 @@ export default function RatingModal({
           >
             {submitting ? "提交中..." : "提交评分"}
           </button>
+        </div>
         </div>
       </div>
     </div>,

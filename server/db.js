@@ -127,6 +127,10 @@ async function applySchema(conn) {
   await ensureColumn(conn, "products", "build_tool_id", "VARCHAR(64) NOT NULL DEFAULT ''");
   await ensureColumn(conn, "products", "build_tool_name", "VARCHAR(191) NOT NULL DEFAULT ''");
   await ensureColumn(conn, "products", "invite_code", "VARCHAR(191) NOT NULL DEFAULT ''");
+  await ensureColumn(conn, "products", "price", "VARCHAR(64) NOT NULL DEFAULT ''");
+  await ensureColumn(conn, "products", "original_price", "VARCHAR(64) NOT NULL DEFAULT ''");
+  await ensureColumn(conn, "products", "buy_url", "VARCHAR(500) NOT NULL DEFAULT ''");
+  await ensureColumn(conn, "products", "purchase_note", "VARCHAR(500) NOT NULL DEFAULT ''");
 }
 
 async function ensureColumn(conn, table, column, definition) {

@@ -23,6 +23,10 @@ const EMPTY_FORM = {
   description: "",
   imageUrl: "",
   topicName: "",
+  price: "",
+  originalPrice: "",
+  buyUrl: "",
+  purchaseNote: "",
 };
 
 /**
@@ -76,6 +80,10 @@ export default function SubmitProductModal({
         description: editingProduct.description || "",
         imageUrl: editingProduct.imageUrl || "",
         topicName: editingProduct.topicName || "",
+        price: editingProduct.price || "",
+        originalPrice: editingProduct.originalPrice || "",
+        buyUrl: editingProduct.buyUrl || "",
+        purchaseNote: editingProduct.purchaseNote || "",
       });
     } else {
       setSelectedTopicId("");
@@ -216,6 +224,10 @@ export default function SubmitProductModal({
         imageUrl: form.imageUrl,
         topicId: selectedTopicId || "",
         topicName: (form.topicName || "").trim(),
+        price: (form.price || "").trim(),
+        originalPrice: (form.originalPrice || "").trim(),
+        buyUrl: (form.buyUrl || "").trim(),
+        purchaseNote: (form.purchaseNote || "").trim(),
       };
       const result = editingId
         ? await updateProduct(editingId, payload)
@@ -497,6 +509,62 @@ export default function SubmitProductModal({
               )}
             </div>
           </div>
+
+          <div className="modal-row">
+            <label className="modal-field">
+              <span>
+                售价
+                <span className="field-hint">（建议 5000–10000）</span>
+              </span>
+              <input
+                value={form.price}
+                onChange={(e) => updateForm("price", e.target.value)}
+                placeholder="例如：7800"
+                maxLength={64}
+                disabled={submitting}
+              />
+            </label>
+            <label className="modal-field">
+              <span>
+                原价
+                <span className="field-hint">（选填）</span>
+              </span>
+              <input
+                value={form.originalPrice}
+                onChange={(e) => updateForm("originalPrice", e.target.value)}
+                placeholder="例如：19.9"
+                maxLength={64}
+                disabled={submitting}
+              />
+            </label>
+          </div>
+
+          <label className="modal-field">
+            <span>
+              购买链接
+              <span className="field-hint">（选填，填写后购买弹窗可跳转）</span>
+            </span>
+            <input
+              value={form.buyUrl}
+              onChange={(e) => updateForm("buyUrl", e.target.value)}
+              placeholder="https://example.com/buy"
+              disabled={submitting}
+            />
+          </label>
+
+          <label className="modal-field">
+            <span>
+              购买说明
+              <span className="field-hint">（选填）</span>
+            </span>
+            <input
+              value={form.purchaseNote}
+              onChange={(e) => updateForm("purchaseNote", e.target.value)}
+              placeholder="例如：含永久授权 / 限时优惠至月底"
+              maxLength={500}
+              disabled={submitting}
+            />
+          </label>
 
           <label className="modal-field">
             <span>详细介绍</span>

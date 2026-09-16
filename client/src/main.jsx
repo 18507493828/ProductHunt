@@ -25,6 +25,7 @@ import Campaigns from "./pages/admin/Campaigns.jsx";
 import Categories from "./pages/admin/Categories.jsx";
 import Navs from "./pages/admin/Navs.jsx";
 import ResourceDetail from "./pages/ResourceDetail.jsx";
+import CreatorChat from "./pages/CreatorChat.jsx";
 import CampaignDetail from "./pages/CampaignDetail.jsx";
 import TopicPostDetail from "./pages/TopicPostDetail.jsx";
 import "./index.css";
@@ -41,6 +42,8 @@ createRoot(document.getElementById("root")).render(
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/resource/:id" element={<ResourceDetail />} />
+            <Route path="/chat/:productId" element={<CreatorChat />} />
+            <Route path="/chat" element={<CreatorChat />} />
             <Route path="/campaign/:id" element={<CampaignDetail />} />
             <Route path="/topic-post/:id" element={<TopicPostDetail />} />
             <Route path="/admin" element={<AdminLayout />}>

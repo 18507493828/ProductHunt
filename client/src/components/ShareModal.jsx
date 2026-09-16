@@ -9,6 +9,7 @@ import {
   buildProductShareUrl,
   copySharePayload,
 } from "../shareUtils";
+import { getShareLaunchTip, launchShareDestination } from "../shareLaunch";
 import { SHARE_PLATFORMS } from "../sharePlatforms";
 import CachedImage from "./CachedImage";
 
@@ -152,7 +153,7 @@ export default function ShareModal({ product, open, onClose, initialPlatform = "
 
   const coverUrl = String(product?.imageUrl || "").trim();
 
-  async function handleCopy() {
+  async function handleShare() {
     if (!product || !preview) return;
     try {
       setBusy(true);
@@ -163,17 +164,25 @@ export default function ShareModal({ product, open, onClose, initialPlatform = "
       } catch {
         /* ignore */
       }
-      toast.success(
-        copiedImage ? `已复制${current.name}文案和封面` : `已复制${current.name}文案`,
-        copiedImage
-          ? "可直接粘贴到对应平台；部分 App 需再单独贴图"
-          : coverUrl
-            ? "文案已复制；封面请在下方预览中另存或长按保存后一起发布"
-            : "可直接粘贴到对应平台发布",
-      );
+
+      const launch = launchShareDestination(platform);
+      const copyHint = copiedImage
+        ? "文案和封面已复制"
+        : coverUrl
+          ? "文案已复制（封面请另存后一起发）"
+          : "文案已复制";
+
+      if (platform === "link" || launch.mode === "copy-only") {
+        toast.success(copyHint, "可直接粘贴或发给好友");
+      } else {
+        toast.success(
+          copyHint,
+          launch.tip || `正在打开${launch.label || current.name}`,
+        );
+      }
       window.setTimeout(() => setCopied(false), 1800);
     } catch (err) {
-      toast.error("复制失败", err.message || "请手动复制");
+      toast.error("分享失败", err.message || "请手动复制后打开对应 App");
     } finally {
       setBusy(false);
     }
@@ -199,6 +208,7 @@ export default function ShareModal({ product, open, onClose, initialPlatform = "
           ×
         </button>
 
+        <div className="ph-share-scroll">
         <p className="ph-share-eyebrow">📢 推广我的应用</p>
         <h2 id="share-modal-title" className="ph-share-title">
           {product.name || "作品"}
@@ -231,9 +241,8 @@ export default function ShareModal({ product, open, onClose, initialPlatform = "
         </div>
 
         <p className="ph-share-tip">
-          {coverUrl
-            ? `${current.tip}；有封面时会尽量连同图片一起复制`
-            : current.tip}
+          {getShareLaunchTip(current.id)}
+          {coverUrl ? "；有封面时会尽量连同图片一起复制" : ""}
         </p>
 
         <div className="ph-share-preview-wrap">
@@ -266,13 +275,13 @@ export default function ShareModal({ product, open, onClose, initialPlatform = "
           <button
             type="button"
             className="ph-share-btn primary"
-            onClick={handleCopy}
+            onClick={handleShare}
             disabled={busy || !preview}
           >
             {copied ? (
               <>
                 <Check size={16} aria-hidden="true" />
-                已复制，可去平台粘贴
+                已复制，正在打开…
               </>
             ) : (
               <>
@@ -281,6 +290,7 @@ export default function ShareModal({ product, open, onClose, initialPlatform = "
               </>
             )}
           </button>
+        </div>
         </div>
       </div>
     </div>,

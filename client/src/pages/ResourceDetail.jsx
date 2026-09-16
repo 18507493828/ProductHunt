@@ -1,12 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowUpRight, Eye, MessageCircle, Share2, ThumbsUp } from "lucide-react";
+import {
+  ArrowUpRight,
+  Eye,
+  MessageCircle,
+  Share2,
+  ShoppingBag,
+  ThumbsUp,
+} from "lucide-react";
 import { fetchProduct, fetchProducts, postComment, voteProduct } from "../api";
 import { useAuth } from "../AuthContext";
 import { redirectToLogin } from "../authRedirect";
 import { useToast } from "../Toast";
 import EmptyState from "../components/EmptyState";
 import RatingModal from "../components/RatingModal";
+import PurchaseModal from "../components/PurchaseModal";
 import ProductCard from "../components/ProductCard";
 import CachedImage from "../components/CachedImage";
 import TopicRichText from "../components/TopicRichText";
@@ -45,6 +53,7 @@ export default function ResourceDetail() {
   const [commentBusy, setCommentBusy] = useState(false);
   const [ratingOpen, setRatingOpen] = useState(false);
   const [ratingBusy, setRatingBusy] = useState(false);
+  const [purchaseOpen, setPurchaseOpen] = useState(false);
   const [related, setRelated] = useState([]);
 
   useEffect(() => {
@@ -277,6 +286,15 @@ export default function ResourceDetail() {
                       <Share2 size={16} aria-hidden="true" />
                       分享
                     </button>
+                    <button
+                      type="button"
+                      className="ph-btn-secondary ph-btn-buy"
+                      aria-label="购买应用"
+                      onClick={() => setPurchaseOpen(true)}
+                    >
+                      <ShoppingBag size={16} aria-hidden="true" />
+                      购买
+                    </button>
                   </div>
                 </div>
               </article>
@@ -360,6 +378,11 @@ export default function ResourceDetail() {
           onSubmit={submitRating}
         />
       )}
+      <PurchaseModal
+        product={resource}
+        open={purchaseOpen}
+        onClose={() => setPurchaseOpen(false)}
+      />
     </div>
   );
 }

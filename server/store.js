@@ -426,7 +426,25 @@ export async function readBuildConfig() {
 }
 
 export async function writeBuildConfig(config) {
-  const normalized = normalizeBuildConfig(config);
+  const incoming = config && typeof config === "object" ? config : {};
+  let existing = null;
+  try {
+    existing = await readBuildConfig();
+  } catch {
+    existing = null;
+  }
+  const merged = {
+    scenes:
+      incoming.scenes !== undefined
+        ? incoming.scenes
+        : existing?.scenes,
+    tools: incoming.tools !== undefined ? incoming.tools : existing?.tools,
+    deploys:
+      incoming.deploys !== undefined
+        ? incoming.deploys
+        : existing?.deploys,
+  };
+  const normalized = normalizeBuildConfig(merged);
   await query(
     `INSERT INTO build_config (id, payload)
      VALUES (1, ?)
@@ -951,6 +969,10 @@ async function assembleProducts(productRows) {
       buildToolId: row.build_tool_id || "",
       buildToolName: row.build_tool_name || "",
       inviteCode: row.invite_code || "",
+      price: row.price || "",
+      originalPrice: row.original_price || "",
+      buyUrl: row.buy_url || "",
+      purchaseNote: row.purchase_note || "",
     };
     if (!product.buildToolId && !product.buildToolName && !product.inviteCode) {
       const meta = extractBuildMetaFromDescription(product.description);
@@ -1004,8 +1026,9 @@ export async function writeProduct(product) {
          submitted_by, submitted_nickname, submitted_at, status, reject_reason,
          reviewed_at, reviewed_by, is_special, campaign, view_count, share_count,
          app_platform, build_tool_id, build_tool_name, invite_code,
+         price, original_price, buy_url, purchase_note,
          updated_at, rank_pinned, rank_hidden, rank_weight)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          name = VALUES(name),
          tagline = VALUES(tagline),
@@ -1030,6 +1053,10 @@ export async function writeProduct(product) {
          build_tool_id = VALUES(build_tool_id),
          build_tool_name = VALUES(build_tool_name),
          invite_code = VALUES(invite_code),
+         price = VALUES(price),
+         original_price = VALUES(original_price),
+         buy_url = VALUES(buy_url),
+         purchase_note = VALUES(purchase_note),
          updated_at = VALUES(updated_at),
          rank_pinned = VALUES(rank_pinned),
          rank_hidden = VALUES(rank_hidden),
@@ -1059,6 +1086,10 @@ export async function writeProduct(product) {
         product.buildToolId || "",
         product.buildToolName || "",
         product.inviteCode || "",
+        product.price || "",
+        product.originalPrice || "",
+        product.buyUrl || "",
+        product.purchaseNote || "",
         toDbDate(product.updatedAt),
         fromBool(Boolean(product.rankPinned)),
         fromBool(Boolean(product.rankHidden)),

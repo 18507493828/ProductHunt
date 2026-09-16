@@ -136,3 +136,6 @@ pm2 restart vibe-building
 
 本地数据库同步远程数据库
 ./scripts/sync-products-to-remote.sh
+
+cd /www/wwwroot/ProductHunt
+ssh ubuntu@159.75.116.187

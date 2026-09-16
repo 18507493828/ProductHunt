@@ -17,8 +17,8 @@ const PILLARS = [
     id: "build",
     icon: Sparkles,
     title: "我要构建",
-    desc: "选场景 → 选话题 → 选工具 → 本地构建 → 官网部署，5 步完成你的 AI 应用。",
-    preview: "场景 · 话题 · 工具 · 本地构建 · 官网部署",
+    desc: "选场景 → 选话题 → 选工具 → 本地构建 → 云部署，5 步完成你的 AI 应用。",
+    preview: "场景 · 话题 · 工具 · 本地构建 · 云部署",
   },
   {
     id: "publish",
