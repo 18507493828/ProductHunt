@@ -79,7 +79,7 @@ export const DEFAULT_BUILD_TOOLS = [
     emoji: "🔥",
     desc: "华为云开发者工具 · 本期活动赞助",
     downloadUrl:
-      "https://developer.huaweicloud.com/codeartsco.html?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
+      "https://devcloud.cn-north-4.huaweicloud.com/chat/home?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
     inviteCode: "CSDN-MD-004",
     deployId: "huawei",
     recommended: false,
@@ -243,6 +243,9 @@ function normalizeTool(raw, index = 0) {
   let downloadUrl = String(input.downloadUrl || "").trim();
   // 旧默认下载链自动升级到最新运营链接（自定义其它地址不覆盖）
   const legacyUrls = {
+    madao: [
+      "https://developer.huaweicloud.com/codeartsco.html?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
+    ],
     workbuddy: ["https://www.workbuddy.cn/download"],
     trae: ["https://www.trae.ai/download"],
     qwen: ["https://qwen.aliyun.com/workbench"],

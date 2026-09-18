@@ -77,7 +77,7 @@ export const BUILD_TOOLS = [
     emoji: "🔥",
     desc: "华为云开发者工具 · 本期活动赞助",
     downloadUrl:
-      "https://developer.huaweicloud.com/codeartsco.html?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
+      "https://devcloud.cn-north-4.huaweicloud.com/chat/home?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
     inviteCode: "CSDN-MD-004",
     deployId: "huawei",
     sponsored: true,
