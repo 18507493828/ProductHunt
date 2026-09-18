@@ -226,7 +226,7 @@ const DEFAULT_NAVS = [
   {
     id: "nav-codearts",
     title: "码道官方网站",
-    url: "https://codearts.huaweicloud.com/",
+    url: "https://devcloud.cn-north-4.huaweicloud.com/chat/home?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
     sort: 1,
     enabled: true,
     createdAt: "",
@@ -455,15 +455,42 @@ async function getBannerById(id) {
 
 async function initNavs() {
   const existing = await readNavs();
-  if (existing.length > 0) return;
+  if (existing.length === 0) {
+    const now = new Date().toISOString();
+    const seed = DEFAULT_NAVS.map((nav) => ({
+      ...nav,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    await writeNavs(seed);
+    return;
+  }
 
-  const now = new Date().toISOString();
-  const seed = DEFAULT_NAVS.map((nav) => ({
-    ...nav,
-    createdAt: now,
-    updatedAt: now,
-  }));
-  await writeNavs(seed);
+  // 码道官方站旧链接自动升级（保留渠道码参数）
+  const legacyMaodaoNavUrls = new Set([
+    "https://codearts.huaweicloud.com/",
+    "https://codearts.huaweicloud.com",
+    "https://developer.huaweicloud.com/codeartsco.html?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
+  ]);
+  const latestMaodaoNav = DEFAULT_NAVS.find((n) => n.id === "nav-codearts");
+  if (!latestMaodaoNav) return;
+
+  let changed = false;
+  const next = existing.map((nav) => {
+    if (
+      nav?.id === "nav-codearts" &&
+      legacyMaodaoNavUrls.has(String(nav.url || "").trim())
+    ) {
+      changed = true;
+      return {
+        ...nav,
+        url: latestMaodaoNav.url,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    return nav;
+  });
+  if (changed) await writeNavs(next);
 }
 
 function toPublicNav(nav) {
