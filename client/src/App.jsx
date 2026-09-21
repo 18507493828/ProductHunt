@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Upload, Inbox, SearchX } from "lucide-react";
+import { Upload, Inbox, SearchX, Plus } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { useToast } from "./Toast";
 import { redirectToLogin } from "./authRedirect";
@@ -22,6 +22,7 @@ import {
   uploadImage,
   voteProduct,
   fetchBuildConfig,
+  removeBuildSceneTopic,
 } from "./api";
 import EmptyState from "./components/EmptyState";
 import ProductCard, { ProductCardSkeleton } from "./components/ProductCard";
@@ -43,7 +44,7 @@ import MyWorkspace from "./components/MyWorkspace";
 import BuildWizardModal from "./components/BuildWizardModal";
 import PromoteWizardModal from "./components/PromoteWizardModal";
 import PeriodRankBoard from "./components/PeriodRankBoard";
-import { applyBuildConfig, getSceneById, getToolById, compareHeatItems, inferSceneIdFromText } from "./buildConfig";
+import { applyBuildConfig, getSceneById, getToolById, compareHeatItems, inferSceneIdFromText, productMatchesScene } from "./buildConfig";
 import useBuildCatalog from "./useBuildCatalog";
 import Carousel from "./components/Carousel";
 import { getSceneIcon } from "./sceneIcons";
@@ -52,6 +53,7 @@ import {
   DEFAULT_APP_PLATFORM,
   isValidDemoUrl,
 } from "./appPlatforms";
+import { priceFormFromStored } from "./productPricing";
 import { bareTopicName, formatTopicName } from "./topicUtils";
 import "./App.css";
 
@@ -225,6 +227,16 @@ export default function App() {
   const [imageUploading, setImageUploading] = useState(false);
   const [submitTopicSuggestOpen, setSubmitTopicSuggestOpen] = useState(false);
   const [submitSelectedTopicId, setSubmitSelectedTopicId] = useState("");
+  const [customSceneInput, setCustomSceneInput] = useState("");
+  const [customTopicInput, setCustomTopicInput] = useState("");
+  const [sceneAdding, setSceneAdding] = useState(false);
+  const [topicAdding, setTopicAdding] = useState(false);
+  const sceneOptionsRef = useRef(null);
+  const sceneCommitRef = useRef(false);
+  const topicCommitRef = useRef(false);
+  const scenePointerInside = useRef(false);
+  const topicPointerInside = useRef(false);
+  const [extraScenes, setExtraScenes] = useState([]);
   const [form, setForm] = useState({
     name: "",
     tagline: "",
@@ -238,23 +250,52 @@ export default function App() {
     sceneTopic: "",
     buildToolId: "",
     appPlatform: DEFAULT_APP_PLATFORM,
+    priceMode: "",
+    price: "",
   });
 
+  const publishScenes = useMemo(() => {
+    const me = user?.username || "";
+    const merged = BUILD_SCENES.map((scene) => ({
+      ...scene,
+      topics: [...(scene.topics || [])],
+      createdBy: scene.createdBy || "",
+      topicOwners: { ...(scene.topicOwners || {}) },
+    }));
+    for (const extra of extraScenes) {
+      const hit = merged.find((scene) => scene.name === extra.name);
+      if (hit) {
+        for (const topic of extra.topics) {
+          if (!hit.topics.includes(topic)) hit.topics.push(topic);
+          if (!hit.topicOwners[topic]) hit.topicOwners[topic] = extra.createdBy || me;
+        }
+      } else {
+        merged.push({
+          id: extra.id,
+          name: extra.name,
+          emoji: "📌",
+          topics: [...extra.topics],
+          createdBy: extra.createdBy || me,
+          topicOwners: Object.fromEntries(
+            extra.topics.map((topic) => [topic, extra.createdBy || me]),
+          ),
+        });
+      }
+    }
+    return merged;
+  }, [BUILD_SCENES, extraScenes, user?.username]);
+
   const submitScene = useMemo(
-    () => getSceneById(form.sceneId),
-    [form.sceneId, BUILD_SCENES],
+    () => publishScenes.find((scene) => scene.id === form.sceneId) || null,
+    [form.sceneId, publishScenes],
   );
   const submitSceneTopics = submitScene?.topics || [];
 
   const visibleProducts = useMemo(() => {
     let list = [...products];
     if (squareScene !== "all") {
-      list = list.filter((p) => {
-        const sid = inferSceneIdFromText(
-          `${p.topicName || ""}\n${p.name || ""}\n${p.tagline || ""}\n${p.description || ""}`,
-        );
-        return sid === squareScene;
-      });
+      const scene = BUILD_SCENES.find((s) => s.id === squareScene);
+      list = list.filter((p) => productMatchesScene(p, scene));
     }
     if (squareSort === "new") {
       list.sort((a, b) =>
@@ -557,6 +598,11 @@ export default function App() {
     setSubmitSelectedTopicId("");
     setSubmitTopicSuggestOpen(false);
     setSubmitReturnCampaignId(campaignId);
+    setExtraScenes([]);
+    setCustomSceneInput("");
+    setCustomTopicInput("");
+    setSceneAdding(false);
+    setTopicAdding(false);
     setForm({
       name: seed?.name || "",
       tagline: seed?.tagline || "",
@@ -570,6 +616,7 @@ export default function App() {
       sceneTopic,
       buildToolId,
       appPlatform: seed?.appPlatform || DEFAULT_APP_PLATFORM,
+      ...priceFormFromStored(seed?.price),
     });
     setShowSubmitModal(true);
     fetchTopics({ all: true })
@@ -622,6 +669,11 @@ export default function App() {
     setSubmitError("");
     setSubmitTopicSuggestOpen(false);
     setSubmitSelectedTopicId(product.topicId || "");
+    setExtraScenes([]);
+    setCustomSceneInput("");
+    setCustomTopicInput("");
+    setSceneAdding(false);
+    setTopicAdding(false);
     setForm({
       name: product.name || "",
       tagline: product.tagline || "",
@@ -645,6 +697,7 @@ export default function App() {
           String(product.description || "").includes(t.name),
         )?.id || "",
       appPlatform: product.appPlatform || DEFAULT_APP_PLATFORM,
+      ...priceFormFromStored(product.price),
     });
     setShowSubmitModal(true);
     fetchTopics({ all: true })
@@ -674,6 +727,231 @@ export default function App() {
 
   function updateForm(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function addCustomScene() {
+    const name = customSceneInput.trim();
+    if (!name) {
+      setSubmitError("请输入场景名称");
+      return;
+    }
+    if (name.length > 12) {
+      setSubmitError("场景名称不超过 12 个字");
+      return;
+    }
+    if (name === "全部" || name === "其他") {
+      setSubmitError("请换一个场景名称");
+      return;
+    }
+    setSubmitError("");
+    const existing = publishScenes.find((scene) => scene.name === name);
+    if (existing) {
+      setForm((prev) => ({
+        ...prev,
+        sceneId: existing.id,
+        sceneTopic: "",
+        topicName: "",
+        categories: [existing.name],
+      }));
+    } else {
+      const id = `custom-${Date.now().toString(36)}`;
+      setExtraScenes((prev) => [
+        ...prev,
+        { id, name, topics: [], createdBy: user?.username || "" },
+      ]);
+      setForm((prev) => ({
+        ...prev,
+        sceneId: id,
+        sceneTopic: "",
+        topicName: "",
+        categories: [name],
+      }));
+    }
+    setCustomSceneInput("");
+    setCustomTopicInput("");
+  }
+
+  function addCustomTopic() {
+    const topic = customTopicInput.trim();
+    const scene = publishScenes.find((item) => item.id === form.sceneId);
+    if (!scene) {
+      setSubmitError("请先选择所属场景");
+      return;
+    }
+    if (!topic) {
+      setSubmitError("请输入话题名称");
+      return;
+    }
+    if (topic.length > 30) {
+      setSubmitError("话题名称不超过 30 个字");
+      return;
+    }
+    setSubmitError("");
+    if (!scene.topics.includes(topic)) {
+      setExtraScenes((prev) => {
+        const hit = prev.find((item) => item.name === scene.name);
+        if (hit) {
+          return prev.map((item) =>
+            item.name === scene.name
+              ? { ...item, topics: [...item.topics, topic] }
+              : item,
+          );
+        }
+        return [
+          ...prev,
+          {
+            id: scene.id,
+            name: scene.name,
+            topics: [topic],
+            createdBy: user?.username || "",
+          },
+        ];
+      });
+    }
+    setForm((prev) => ({
+      ...prev,
+      sceneTopic: topic,
+      topicName: topic,
+      categories: [scene.name],
+    }));
+    setSubmitSelectedTopicId("");
+    setCustomTopicInput("");
+  }
+
+  function sceneIsMine(scene) {
+    const me = user?.username || "";
+    if (!me || !scene) return false;
+    if (String(scene.id).startsWith("custom-")) return scene.createdBy === me || !scene.createdBy;
+    return scene.createdBy === me;
+  }
+
+  function topicIsMine(scene, topic) {
+    const me = user?.username || "";
+    if (!me || !scene) return false;
+    if (
+      extraScenes.some(
+        (item) => item.name === scene.name && item.topics.includes(topic),
+      )
+    ) {
+      return true;
+    }
+    return scene.topicOwners?.[topic] === me;
+  }
+
+  function savedSceneOwned(scene) {
+    const me = user?.username || "";
+    const saved = BUILD_SCENES.find((item) => item.name === scene?.name);
+    return Boolean(me && saved?.createdBy === me);
+  }
+
+  function savedTopicOwned(scene, topic) {
+    const me = user?.username || "";
+    const saved = BUILD_SCENES.find((item) => item.name === scene?.name);
+    return Boolean(me && saved?.topicOwners?.[topic] === me);
+  }
+
+  function confirmSceneInput() {
+    if (sceneCommitRef.current) return;
+    const name = customSceneInput.trim();
+    if (!name) {
+      sceneCommitRef.current = true;
+      setSceneAdding(false);
+      setCustomSceneInput("");
+      return;
+    }
+    if (name.length > 12) {
+      setSubmitError("场景名称不超过 12 个字");
+      return;
+    }
+    if (name === "全部" || name === "其他") {
+      setSubmitError("请换一个场景名称");
+      return;
+    }
+    sceneCommitRef.current = true;
+    addCustomScene();
+    setSceneAdding(false);
+  }
+
+  function confirmTopicInput() {
+    if (topicCommitRef.current) return;
+    const topic = customTopicInput.trim();
+    if (!topic) {
+      topicCommitRef.current = true;
+      setTopicAdding(false);
+      setCustomTopicInput("");
+      return;
+    }
+    if (!form.sceneId) {
+      setSubmitError("请先选择所属场景");
+      return;
+    }
+    if (topic.length > 30) {
+      setSubmitError("话题名称不超过 30 个字");
+      return;
+    }
+    topicCommitRef.current = true;
+    addCustomTopic();
+    setTopicAdding(false);
+  }
+
+  function leaveSceneEditor() {
+    if (!scenePointerInside.current) return;
+    scenePointerInside.current = false;
+    confirmSceneInput();
+  }
+
+  function leaveTopicEditor() {
+    if (!topicPointerInside.current) return;
+    topicPointerInside.current = false;
+    confirmTopicInput();
+  }
+
+  async function removeCustomScene(scene) {
+    setExtraScenes((prev) =>
+      prev.filter((item) => item.id !== scene.id && item.name !== scene.name),
+    );
+    if (form.sceneId === scene.id) {
+      setForm((prev) => ({
+        ...prev,
+        sceneId: "",
+        sceneTopic: "",
+        topicName: "",
+        categories: [],
+      }));
+      setCustomTopicInput("");
+    }
+    if (!savedSceneOwned(scene)) return;
+    try {
+      const result = await removeBuildSceneTopic({ sceneName: scene.name });
+      if (result?.config) applyBuildConfig(result.config);
+      const catRes = await fetchCategoryOptions().catch(() => null);
+      if (catRes?.categories) setCategories(["全部", ...catRes.categories]);
+    } catch (err) {
+      setSubmitError(err.message);
+    }
+  }
+
+  async function removeCustomTopic(scene, topic) {
+    setExtraScenes((prev) =>
+      prev.map((item) =>
+        item.name === scene.name
+          ? { ...item, topics: item.topics.filter((name) => name !== topic) }
+          : item,
+      ),
+    );
+    if (form.sceneTopic === topic) {
+      setForm((prev) => ({ ...prev, sceneTopic: "", topicName: "" }));
+    }
+    if (!savedTopicOwned(scene, topic)) return;
+    try {
+      const result = await removeBuildSceneTopic({
+        sceneName: scene.name,
+        topicName: topic,
+      });
+      if (result?.config) applyBuildConfig(result.config);
+    } catch (err) {
+      setSubmitError(err.message);
+    }
   }
 
   function toggleSubmitCategory(category) {
@@ -737,7 +1015,7 @@ export default function App() {
     const trimmedName = form.name.trim();
     const trimmedTagline = form.tagline.trim();
     const trimmedUrl = form.url.trim();
-    const scene = getSceneById(form.sceneId);
+    const scene = publishScenes.find((item) => item.id === form.sceneId);
     const tool = getToolById(form.buildToolId);
     const sceneTopic = (form.sceneTopic || form.topicName || "").trim();
 
@@ -773,9 +1051,19 @@ export default function App() {
       setSubmitError("请选择应用形态");
       return;
     }
-    if (!(form.categories || []).length) {
-      setSubmitError("请至少选择一个分类");
-      return;
+
+    let price = "";
+    if (form.priceMode === "negotiable") {
+      price = "面议";
+    } else if (form.priceMode === "custom") {
+      const rawPrice = String(form.price || "").trim();
+      if (rawPrice) {
+        if (!/^\d+(\.\d{1,2})?$/.test(rawPrice)) {
+          setSubmitError("自定义价格请填写数字，最多两位小数");
+          return;
+        }
+        price = rawPrice;
+      }
     }
 
     try {
@@ -799,16 +1087,18 @@ export default function App() {
         name: form.name,
         tagline: form.tagline,
         url: form.url,
-        categories: form.categories || [],
+        categories: [scene.name],
         campaign: form.campaign || "",
         description,
         imageUrl: form.imageUrl,
         topicId: submitSelectedTopicId || "",
         topicName: sceneTopic,
+        sceneName: scene.name,
         appPlatform: form.appPlatform || DEFAULT_APP_PLATFORM,
         buildToolId: tool.id,
         buildToolName: tool.name,
         inviteCode: tool.inviteCode || "",
+        price,
       };
       const result = isEditing
         ? await updateProduct(editingProductId, payload)
@@ -834,7 +1124,22 @@ export default function App() {
         sceneTopic: "",
         buildToolId: "",
         appPlatform: DEFAULT_APP_PLATFORM,
+        priceMode: "",
+        price: "",
       });
+      setExtraScenes([]);
+      setCustomSceneInput("");
+      setCustomTopicInput("");
+      setSceneAdding(false);
+      setTopicAdding(false);
+      fetchBuildConfig()
+        .then((config) => applyBuildConfig(config))
+        .catch(() => {});
+      fetchCategoryOptions()
+        .then(({ categories: list }) =>
+          setCategories(["全部", ...(list || [])]),
+        )
+        .catch(() => {});
       toast.success(
         isEditing ? "保存成功" : "提交成功",
         !isEditing && !isAdmin
@@ -1744,60 +2049,13 @@ export default function App() {
                   <span>
                     所属场景 <span className="field-required">*</span>
                   </span>
-                  <div className="modal-category-options">
-                    {BUILD_SCENES.map((s) => {
+                  <div className="modal-category-options" ref={sceneOptionsRef}>
+                    {publishScenes.map((s) => {
                       const selected = form.sceneId === s.id;
+                      const removable = sceneIsMine(s);
                       return (
-                        <button
-                          key={s.id}
-                          type="button"
-                          className={
-                            selected
-                              ? "modal-category active"
-                              : "modal-category"
-                          }
-                          onClick={() => {
-                            setForm((prev) => ({
-                              ...prev,
-                              sceneId: s.id,
-                              sceneTopic: "",
-                              topicName: "",
-                            }));
-                            setSubmitSelectedTopicId("");
-                          }}
-                          disabled={submitting}
-                          aria-pressed={selected}
-                        >
-                          {(() => {
-                            const Icon = getSceneIcon(s.id || s.name);
-                            return (
-                              <>
-                                <span className="ph-filter-icon" aria-hidden="true">
-                                  <Icon size={14} strokeWidth={2.2} />
-                                </span>
-                                {s.name}
-                              </>
-                            );
-                          })()}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="modal-field">
-                  <span>
-                    场景话题 <span className="field-required">*</span>
-                  </span>
-                  {!form.sceneId ? (
-                    <p className="modal-hint">请先选择所属场景</p>
-                  ) : (
-                    <div className="modal-category-options">
-                      {submitSceneTopics.map((topic) => {
-                        const selected = form.sceneTopic === topic;
-                        return (
+                        <span key={s.id} className="modal-category-item">
                           <button
-                            key={topic}
                             type="button"
                             className={
                               selected
@@ -1807,18 +2065,196 @@ export default function App() {
                             onClick={() => {
                               setForm((prev) => ({
                                 ...prev,
-                                sceneTopic: topic,
-                                topicName: topic,
+                                sceneId: s.id,
+                                sceneTopic: "",
+                                topicName: "",
+                                categories: [s.name],
                               }));
                               setSubmitSelectedTopicId("");
+                              setCustomTopicInput("");
                             }}
                             disabled={submitting}
                             aria-pressed={selected}
                           >
-                            {topic}
+                            {(() => {
+                              const Icon = getSceneIcon(s.id || s.name);
+                              return (
+                                <>
+                                  <span className="ph-filter-icon" aria-hidden="true">
+                                    <Icon size={14} strokeWidth={2.2} />
+                                  </span>
+                                  {s.name}
+                                </>
+                              );
+                            })()}
                           </button>
+                          {removable ? (
+                            <button
+                              type="button"
+                              className="modal-category-remove"
+                              aria-label={`删除场景 ${s.name}`}
+                              disabled={submitting}
+                              onClick={() => removeCustomScene(s)}
+                            >
+                              ×
+                            </button>
+                          ) : null}
+                        </span>
+                      );
+                      })}
+                    {sceneAdding ? (
+                      <span
+                        className="modal-category-editor"
+                        onMouseEnter={() => {
+                          scenePointerInside.current = true;
+                        }}
+                        onMouseLeave={leaveSceneEditor}
+                      >
+                        <input
+                          className="modal-category-input"
+                          autoFocus
+                          value={customSceneInput}
+                          onChange={(e) => setCustomSceneInput(e.target.value)}
+                          onBlur={confirmSceneInput}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              confirmSceneInput();
+                            } else if (e.key === "Escape") {
+                              sceneCommitRef.current = true;
+                              setSceneAdding(false);
+                              setCustomSceneInput("");
+                            }
+                          }}
+                          placeholder="新场景"
+                          maxLength={12}
+                          disabled={submitting}
+                        />
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="modal-category modal-category-add"
+                        aria-label="添加场景"
+                        disabled={submitting}
+                        onClick={() => {
+                          sceneCommitRef.current = false;
+                          scenePointerInside.current = false;
+                          setSceneAdding(true);
+                        }}
+                      >
+                        <Plus size={18} strokeWidth={1.75} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="modal-field">
+                  <span>
+                    场景话题 <span className="field-required">*</span>
+                  </span>
+                  {!form.sceneId ? (
+                    <button
+                      type="button"
+                      className="modal-scene-prompt"
+                      onClick={() => {
+                        const first = sceneOptionsRef.current?.querySelector(
+                          ".modal-category:not(.modal-category-add)",
+                        );
+                        sceneOptionsRef.current?.scrollIntoView({
+                          block: "nearest",
+                          behavior: "smooth",
+                        });
+                        first?.focus();
+                      }}
+                    >
+                      请先选择所属场景
+                    </button>
+                  ) : (
+                    <div className="modal-category-options">
+                      {submitSceneTopics.map((topic) => {
+                        const selected = form.sceneTopic === topic;
+                        const removable = topicIsMine(submitScene, topic);
+                        return (
+                          <span key={topic} className="modal-category-item">
+                            <button
+                              type="button"
+                              className={
+                                selected
+                                  ? "modal-category active"
+                                  : "modal-category"
+                              }
+                              onClick={() => {
+                                setForm((prev) => ({
+                                  ...prev,
+                                  sceneTopic: topic,
+                                  topicName: topic,
+                                }));
+                                setSubmitSelectedTopicId("");
+                              }}
+                              disabled={submitting}
+                              aria-pressed={selected}
+                            >
+                              {topic}
+                            </button>
+                            {removable ? (
+                              <button
+                                type="button"
+                                className="modal-category-remove"
+                                aria-label={`删除话题 ${topic}`}
+                                disabled={submitting}
+                                onClick={() => removeCustomTopic(submitScene, topic)}
+                              >
+                                ×
+                              </button>
+                            ) : null}
+                          </span>
                         );
                       })}
+                      {topicAdding ? (
+                        <span
+                          className="modal-category-editor"
+                          onMouseEnter={() => {
+                            topicPointerInside.current = true;
+                          }}
+                          onMouseLeave={leaveTopicEditor}
+                        >
+                          <input
+                            className="modal-category-input"
+                            autoFocus
+                            value={customTopicInput}
+                            onChange={(e) => setCustomTopicInput(e.target.value)}
+                            onBlur={confirmTopicInput}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                confirmTopicInput();
+                              } else if (e.key === "Escape") {
+                                topicCommitRef.current = true;
+                                setTopicAdding(false);
+                                setCustomTopicInput("");
+                              }
+                            }}
+                            placeholder="新话题"
+                            maxLength={30}
+                            disabled={submitting}
+                          />
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="modal-category modal-category-add"
+                          aria-label="添加话题"
+                          disabled={submitting}
+                          onClick={() => {
+                            topicCommitRef.current = false;
+                            topicPointerInside.current = false;
+                            setTopicAdding(true);
+                          }}
+                        >
+                          <Plus size={18} strokeWidth={1.75} />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1835,6 +2271,64 @@ export default function App() {
                     required
                   />
                 </label>
+
+                <div className="modal-field">
+                  <span>
+                    应用售价
+                    <span className="field-hint">（选填）</span>
+                  </span>
+                  <div className="modal-category-options">
+                    <button
+                      type="button"
+                      className={
+                        form.priceMode === "custom"
+                          ? "modal-category active"
+                          : "modal-category"
+                      }
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          priceMode:
+                            prev.priceMode === "custom" ? "" : "custom",
+                        }))
+                      }
+                      disabled={submitting}
+                      aria-pressed={form.priceMode === "custom"}
+                    >
+                      自定义
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        form.priceMode === "negotiable"
+                          ? "modal-category active"
+                          : "modal-category"
+                      }
+                      onClick={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          priceMode:
+                            prev.priceMode === "negotiable" ? "" : "negotiable",
+                          price: "",
+                        }))
+                      }
+                      disabled={submitting}
+                      aria-pressed={form.priceMode === "negotiable"}
+                    >
+                      面议
+                    </button>
+                  </div>
+                  {form.priceMode === "custom" && (
+                    <input
+                      value={form.price}
+                      onChange={(e) => updateForm("price", e.target.value)}
+                      placeholder="例如：7800"
+                      inputMode="decimal"
+                      maxLength={12}
+                      disabled={submitting}
+                    />
+                  )}
+                </div>
 
                 <div className="modal-field">
                   <span>
@@ -1893,38 +2387,6 @@ export default function App() {
                         </button>
                       );
                     })}
-                  </div>
-                </div>
-
-                <div className="modal-field">
-                  <span>
-                    分类 <span className="field-required">*</span>
-                    <span className="field-hint">（可多选）</span>
-                  </span>
-                  <div className="modal-category-options">
-                    {categories
-                      .filter((c) => c !== "全部")
-                      .map((category) => {
-                        const selected = (form.categories || []).includes(
-                          category,
-                        );
-                        return (
-                          <button
-                            key={category}
-                            type="button"
-                            className={
-                              selected
-                                ? "modal-category active"
-                                : "modal-category"
-                            }
-                            onClick={() => toggleSubmitCategory(category)}
-                            disabled={submitting}
-                            aria-pressed={selected}
-                          >
-                            {category}
-                          </button>
-                        );
-                      })}
                   </div>
                 </div>
 

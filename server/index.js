@@ -152,6 +152,10 @@ function normalizePurchaseFields(body = {}, fallback = {}) {
     .trim()
     .slice(0, 500);
 
+  if (price && price !== "面议" && !/^\d+(\.\d{1,2})?$/.test(price)) {
+    return { error: "价格需为数字，或选择面议" };
+  }
+
   if (buyUrl) {
     if (buyUrl.length > 500) {
       return { error: "购买链接过长" };
@@ -880,6 +884,36 @@ function toPublicCategory(category) {
 
 function isEnabledCategory(name) {
   return Boolean(name && categoryCache.enabledNames.includes(name));
+}
+
+/** 把用户自定义的场景和话题写入构建配置，并补上对应分类。 */
+async function bindSceneTopic(sceneName, topicName, createdBy = "") {
+  const name = String(sceneName || "").trim();
+  const topic = String(topicName || "").trim();
+  if (!name && !topic) return "";
+  const { upsertSceneTopic } = await import("./buildOpsConfig.js");
+  const current = await readBuildConfig();
+  const result = upsertSceneTopic(current, name, topic, createdBy);
+  if (result.error) {
+    const err = new Error(result.error);
+    err.status = 400;
+    throw err;
+  }
+  if (result.changed) await writeBuildConfig(result.config);
+  if (result.sceneName && !isEnabledCategory(result.sceneName)) {
+    const categories = await readCategories();
+    const now = new Date().toISOString();
+    categories.push({
+      id: `scene-${result.sceneId}`,
+      name: result.sceneName,
+      sort: categories.length + 1,
+      enabled: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await writeCategories(categories);
+  }
+  return result.sceneName || "";
 }
 
 function getDefaultCategoryName() {
@@ -2267,15 +2301,31 @@ app.post("/api/products", requireAuth, async (req, res) => {
     }
 
     const requestedCategories = [];
-    const rawCategories = Array.isArray(categories)
-      ? categories
-      : category
-        ? [category]
-        : [];
-    for (const raw of rawCategories) {
-      const name = (raw || "").trim();
-      if (isEnabledCategory(name) && !requestedCategories.includes(name)) {
-        requestedCategories.push(name);
+    let linkedScene = "";
+    try {
+      linkedScene = await bindSceneTopic(
+        req.body?.sceneName,
+        topicName,
+        req.user?.username || "",
+      );
+    } catch (sceneErr) {
+      return res
+        .status(sceneErr.status || 400)
+        .json({ error: sceneErr.message || "场景保存失败" });
+    }
+    if (linkedScene) {
+      requestedCategories.push(linkedScene);
+    } else {
+      const rawCategories = Array.isArray(categories)
+        ? categories
+        : category
+          ? [category]
+          : [];
+      for (const raw of rawCategories) {
+        const catName = (raw || "").trim();
+        if (isEnabledCategory(catName) && !requestedCategories.includes(catName)) {
+          requestedCategories.push(catName);
+        }
       }
     }
     if (requestedCategories.length === 0) {
@@ -2442,17 +2492,33 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
 
     const previousCategories = getProductCategories(product);
     const requestedCategories = [];
-    const rawCategories = Array.isArray(categories)
-      ? categories
-      : category
-        ? [category]
-        : [];
-    for (const raw of rawCategories) {
-      const catName = (raw || "").trim();
-      const allowed =
-        isEnabledCategory(catName) || previousCategories.includes(catName);
-      if (catName && allowed && !requestedCategories.includes(catName)) {
-        requestedCategories.push(catName);
+    let linkedScene = "";
+    try {
+      linkedScene = await bindSceneTopic(
+        req.body?.sceneName,
+        topicName,
+        req.user?.username || "",
+      );
+    } catch (sceneErr) {
+      return res
+        .status(sceneErr.status || 400)
+        .json({ error: sceneErr.message || "场景保存失败" });
+    }
+    if (linkedScene) {
+      requestedCategories.push(linkedScene);
+    } else {
+      const rawCategories = Array.isArray(categories)
+        ? categories
+        : category
+          ? [category]
+          : [];
+      for (const raw of rawCategories) {
+        const catName = (raw || "").trim();
+        const allowed =
+          isEnabledCategory(catName) || previousCategories.includes(catName);
+        if (catName && allowed && !requestedCategories.includes(catName)) {
+          requestedCategories.push(catName);
+        }
       }
     }
     if (requestedCategories.length === 0) {
@@ -3247,6 +3313,36 @@ app.get("/api/build-config", async (_req, res) => {
     const { publicBuildConfig } = await import("./buildOpsConfig.js");
     const config = await readBuildConfig();
     res.json(publicBuildConfig(config));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/build-scenes/remove", requireAuth, async (req, res) => {
+  try {
+    const { removeUserSceneTopic, publicBuildConfig } = await import(
+      "./buildOpsConfig.js"
+    );
+    const sceneName = String(req.body?.sceneName || "").trim();
+    const topicName = String(req.body?.topicName || "").trim();
+    const current = await readBuildConfig();
+    const result = removeUserSceneTopic(
+      current,
+      sceneName,
+      topicName,
+      req.user?.username || "",
+    );
+    if (result.error) {
+      return res.status(400).json({ error: result.error });
+    }
+    if (result.changed) await writeBuildConfig(result.config);
+    if (result.removedScene) {
+      const categories = await readCategories();
+      const next = categories.filter((item) => item.name !== result.removedScene);
+      if (next.length !== categories.length) await writeCategories(next);
+    }
+    const config = await readBuildConfig();
+    res.json({ message: "已删除", config: publicBuildConfig(config) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

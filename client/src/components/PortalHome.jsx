@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Eye, Rocket, Share2, Sparkles, Users, Boxes, Coins } from "lucide-react";
 import { fetchIncentiveConfig, fetchProducts, fetchStats } from "../api";
-import { inferSceneIdFromText, compareHeatItems } from "../buildConfig";
+import { compareHeatItems, productMatchesScene } from "../buildConfig";
 import useBuildCatalog from "../useBuildCatalog";
 import ProductCard, { ProductCardSkeleton } from "./ProductCard";
 import { getSceneIcon } from "../sceneIcons";
@@ -74,12 +74,7 @@ export default function PortalHome({
     let list = [...hot];
     if (sceneFilter !== "all") {
       const scene = BUILD_SCENES.find((s) => s.id === sceneFilter);
-      list = list.filter((p) => {
-        const sid = inferSceneIdFromText(
-          `${p.topicName || ""}\n${p.name || ""}\n${p.tagline || ""}\n${p.description || ""}`,
-        );
-        return sid === sceneFilter || (scene && (p.topicName || "").includes(scene.name));
-      });
+      list = list.filter((p) => productMatchesScene(p, scene));
     }
     if (sort === "new") {
       list.sort((a, b) =>

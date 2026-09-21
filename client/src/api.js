@@ -421,6 +421,13 @@ export async function fetchBuildConfig() {
   return request("/api/build-config");
 }
 
+export async function removeBuildSceneTopic({ sceneName, topicName = "" }) {
+  return request("/api/build-scenes/remove", {
+    method: "POST",
+    body: JSON.stringify({ sceneName, topicName }),
+  });
+}
+
 export async function fetchAdminBuildConfig() {
   return request("/api/admin/build-config");
 }

@@ -218,6 +218,7 @@ function normalizeTopic(raw, index = 0) {
     name,
     enabled: input.enabled !== false,
     sort: Number.isFinite(Number(input.sort)) ? Number(input.sort) : index + 1,
+    createdBy: String(input.createdBy || "").trim(),
   };
 }
 
@@ -233,6 +234,7 @@ function normalizeScene(raw, index = 0) {
     enabled: input.enabled !== false,
     sort: Number.isFinite(Number(input.sort)) ? Number(input.sort) : index + 1,
     topics,
+    createdBy: String(input.createdBy || "").trim(),
   };
 }
 
@@ -329,6 +331,94 @@ export function normalizeBuildConfig(raw) {
   return { scenes, tools, deploys };
 }
 
+/** 用户发布时补一个场景，并把话题挂到该场景下。已存在则只补话题。 */
+export function upsertSceneTopic(config, sceneName, topicName, createdBy = "") {
+  const name = String(sceneName || "").trim().slice(0, 12);
+  const topic = String(topicName || "").trim().slice(0, 30);
+  const owner = String(createdBy || "").trim();
+  if (!name) return { error: "请填写场景名称" };
+  if (!topic) return { error: "请填写场景话题" };
+  if (name === "全部" || name === "其他") {
+    return { error: "请换一个场景名称" };
+  }
+  const normalized = normalizeBuildConfig(config);
+  const scenes = normalized.scenes.map((scene) => ({
+    ...scene,
+    topics: (scene.topics || []).map((item) => ({ ...item })),
+  }));
+  let scene = scenes.find((item) => item.name === name);
+  let changed = false;
+  if (!scene) {
+    scene = {
+      id: `user-scene-${Date.now().toString(36)}`,
+      emoji: "📌",
+      name,
+      enabled: true,
+      sort: scenes.reduce((max, item) => Math.max(max, Number(item.sort) || 0), 0) + 1,
+      topics: [],
+      createdBy: owner,
+    };
+    scenes.push(scene);
+    changed = true;
+  }
+  if (!scene.topics.some((item) => item.name === topic)) {
+    scene.topics.push({
+      id: `user-topic-${Date.now().toString(36)}`,
+      name: topic,
+      enabled: true,
+      sort: scene.topics.length + 1,
+      createdBy: owner,
+    });
+    changed = true;
+  }
+  return {
+    changed,
+    sceneId: scene.id,
+    sceneName: scene.name,
+    topicName: topic,
+    config: { ...normalized, scenes },
+  };
+}
+
+/** 只能删除自己创建的场景或话题。 */
+export function removeUserSceneTopic(config, sceneName, topicName = "", username = "") {
+  const name = String(sceneName || "").trim();
+  const topic = String(topicName || "").trim();
+  const owner = String(username || "").trim();
+  if (!name) return { error: "请指定要删除的场景" };
+  if (!owner) return { error: "请先登录" };
+  const normalized = normalizeBuildConfig(config);
+  const scenes = normalized.scenes.map((scene) => ({
+    ...scene,
+    topics: (scene.topics || []).map((item) => ({ ...item })),
+  }));
+  const index = scenes.findIndex((scene) => scene.name === name);
+  if (index < 0) return { error: "场景不存在" };
+  const scene = scenes[index];
+  if (!topic) {
+    if (!scene.createdBy || scene.createdBy !== owner) {
+      return { error: "只能删除自己创建的场景" };
+    }
+    scenes.splice(index, 1);
+    return {
+      changed: true,
+      removedScene: name,
+      config: { ...normalized, scenes },
+    };
+  }
+  const topicIndex = scene.topics.findIndex((item) => item.name === topic);
+  if (topicIndex < 0) return { error: "话题不存在" };
+  if (!scene.topics[topicIndex].createdBy || scene.topics[topicIndex].createdBy !== owner) {
+    return { error: "只能删除自己创建的话题" };
+  }
+  scene.topics.splice(topicIndex, 1);
+  return {
+    changed: true,
+    removedTopic: topic,
+    config: { ...normalized, scenes },
+  };
+}
+
 export const DEFAULT_BUILD_CONFIG = normalizeBuildConfig({
   scenes: DEFAULT_BUILD_SCENES,
   tools: DEFAULT_BUILD_TOOLS,
@@ -347,6 +437,12 @@ export function publicBuildConfig(config) {
           .filter((t) => t.enabled)
           .sort((a, b) => a.sort - b.sort)
           .map((t) => t.name),
+        createdBy: String(s.createdBy || ""),
+        topicOwners: Object.fromEntries(
+          s.topics
+            .filter((t) => t.createdBy)
+            .map((t) => [t.name, t.createdBy]),
+        ),
       })),
     tools: normalized.tools.filter((t) => t.enabled),
     deploys: normalized.deploys.filter((d) => d.enabled),

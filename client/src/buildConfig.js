@@ -1,3 +1,5 @@
+import { useBuildCatalogStore } from "./stores/buildCatalogStore";
+
 /** 我要构建：场景 → 话题 → 工具（内容对齐 Demo；可由运营后台动态覆盖） */
 
 export const BUILD_SCENES = [
@@ -153,56 +155,58 @@ export const BUILD_DEPLOYS = [
   },
 ];
 
-/** 运行时目录（后台配置可覆盖默认值，界面结构不变） */
-let runtimeScenes = BUILD_SCENES;
-let runtimeTools = BUILD_TOOLS;
-let runtimeDeploys = BUILD_DEPLOYS;
-const listeners = new Set();
+useBuildCatalogStore.setState({
+  scenes: BUILD_SCENES,
+  tools: BUILD_TOOLS,
+  deploys: BUILD_DEPLOYS,
+});
 
-function notifyBuildCatalog() {
-  listeners.forEach((fn) => {
-    try {
-      fn({
-        scenes: runtimeScenes,
-        tools: runtimeTools,
-        deploys: runtimeDeploys,
-      });
-    } catch {
-      /* ignore */
-    }
-  });
+function catalogState() {
+  return useBuildCatalogStore.getState();
 }
 
 export function getBuildScenes() {
-  return runtimeScenes;
+  return catalogState().scenes;
 }
 
 export function getBuildTools() {
-  return runtimeTools;
+  return catalogState().tools;
 }
 
 export function getBuildDeploys() {
-  return runtimeDeploys;
+  return catalogState().deploys;
 }
 
 export function subscribeBuildCatalog(fn) {
-  listeners.add(fn);
-  return () => listeners.delete(fn);
+  return useBuildCatalogStore.subscribe((state) => {
+    fn({
+      scenes: state.scenes,
+      tools: state.tools,
+      deploys: state.deploys,
+    });
+  });
 }
 
 export function applyBuildConfig(config) {
+  const current = catalogState();
+  let scenes = current.scenes;
+  let tools = current.tools;
+  let deploys = current.deploys;
   if (Array.isArray(config?.scenes)) {
-    runtimeScenes = config.scenes.map((s) => ({
+    scenes = config.scenes.map((s) => ({
       id: s.id,
       emoji: s.emoji || "📌",
       name: s.name,
       topics: Array.isArray(s.topics)
         ? s.topics.map((t) => (typeof t === "string" ? t : t.name)).filter(Boolean)
         : [],
+      createdBy: String(s.createdBy || ""),
+      topicOwners:
+        s.topicOwners && typeof s.topicOwners === "object" ? s.topicOwners : {},
     }));
   }
   if (Array.isArray(config?.tools)) {
-    runtimeTools = config.tools
+    tools = config.tools
       .map((t) => {
         const id = t.id;
         const deployId =
@@ -228,7 +232,7 @@ export function applyBuildConfig(config) {
       });
   }
   if (Array.isArray(config?.deploys)) {
-    runtimeDeploys = config.deploys
+    deploys = config.deploys
       .map((d) => ({
         id: d.id,
         name: d.name,
@@ -240,29 +244,25 @@ export function applyBuildConfig(config) {
       }))
       .filter((d) => d.id && d.name);
   }
-  notifyBuildCatalog();
-  return {
-    scenes: runtimeScenes,
-    tools: runtimeTools,
-    deploys: runtimeDeploys,
-  };
+  useBuildCatalogStore.setState({ scenes, tools, deploys });
+  return { scenes, tools, deploys };
 }
 
 export function getSponsoredIncentive() {
-  const sponsored = runtimeTools.find((t) => t.sponsored && t.incentive > 0);
+  const sponsored = getBuildTools().find((t) => t.sponsored && t.incentive > 0);
   return sponsored?.incentive ?? 0;
 }
 
 export function getSceneById(id) {
-  return runtimeScenes.find((s) => s.id === id) || null;
+  return getBuildScenes().find((s) => s.id === id) || null;
 }
 
 export function getToolById(id) {
-  return runtimeTools.find((t) => t.id === id) || null;
+  return getBuildTools().find((t) => t.id === id) || null;
 }
 
 export function getDeployById(id) {
-  return runtimeDeploys.find((d) => d.id === id) || null;
+  return getBuildDeploys().find((d) => d.id === id) || null;
 }
 
 /** 已知云厂商本地 logo；无则返回空（界面不展示占位图/表情） */
@@ -296,15 +296,31 @@ export function getToolBoundDeployId(toolOrId) {
 
 export function inferSceneIdFromText(text) {
   const hay = String(text || "");
-  for (const scene of runtimeScenes) {
+  for (const scene of getBuildScenes()) {
     for (const topic of scene.topics) {
-      if (hay.includes(topic)) return scene.id;
+      if (topic && hay.includes(topic)) return scene.id;
     }
   }
-  for (const scene of runtimeScenes) {
-    if (hay.includes(scene.name)) return scene.id;
+  for (const scene of getBuildScenes()) {
+    if (scene.name && hay.includes(scene.name)) return scene.id;
   }
   return "";
+}
+
+/** 首页/广场筛选：优先按卡片上的分类标签，没有标签时才从文案推断 */
+export function productMatchesScene(product, scene) {
+  if (!scene) return true;
+  const labels = [
+    ...(Array.isArray(product?.categories) ? product.categories : []),
+    product?.category || "",
+  ]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+  if (labels.length > 0) return labels.includes(scene.name);
+  const sid = inferSceneIdFromText(
+    `${product?.topicName || ""}\n${product?.name || ""}\n${product?.tagline || ""}\n${product?.description || ""}`,
+  );
+  return sid === scene.id;
 }
 
 /** 综合热度分（对齐 Demo）：浏览×1 + 体验×5 + 点赞×3 + 分享回流×8 */
