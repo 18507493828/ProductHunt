@@ -47,6 +47,7 @@ export default function SubmitProductModal({
 
   const [form, setForm] = useState(EMPTY_FORM);
   const [categories, setCategories] = useState([]);
+  const [buildScenes, setBuildScenes] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
   const [topicAll, setTopicAll] = useState([]);
   const [selectedTopicId, setSelectedTopicId] = useState("");
@@ -58,6 +59,20 @@ export default function SubmitProductModal({
   const editingId = editingProduct?.id || "";
   const locked = Boolean(lockedCampaignId);
   const { mounted, overlayClassName, panelClassName } = useModalMotion(open);
+
+  const selectedSceneName = (form.categories || [])[0] || "";
+  const selectedBuildScene = buildScenes.find(
+    (s) => s.name === selectedSceneName,
+  );
+  const sceneTopicOptions = (selectedBuildScene?.topics || [])
+    .map((t) => {
+      if (typeof t === "string") return { name: t.trim(), enabled: true };
+      return {
+        name: String(t?.name || "").trim(),
+        enabled: t?.enabled !== false,
+      };
+    })
+    .filter((t) => t.name && t.enabled);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -102,10 +117,11 @@ export default function SubmitProductModal({
     ]).then(([buildConfig, catRes, campaignList, topicRes]) => {
       if (cancelled) return;
       // 与客户端广场/发布一致：优先用构建场景名
-      const sceneNames = (buildConfig?.scenes || [])
+      const scenes = (buildConfig?.scenes || [])
         .filter((s) => s && s.enabled !== false && s.name)
-        .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0))
-        .map((s) => s.name);
+        .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0));
+      setBuildScenes(scenes);
+      const sceneNames = scenes.map((s) => s.name);
       const fallback = Array.isArray(catRes?.categories) ? catRes.categories : [];
       setCategories(sceneNames.length ? sceneNames : fallback);
       setCampaigns(Array.isArray(campaignList) ? campaignList : []);
@@ -133,7 +149,17 @@ export default function SubmitProductModal({
     setForm((prev) => ({
       ...prev,
       categories: [scene],
+      topicName: "",
     }));
+    setSelectedTopicId("");
+    setTopicSuggestOpen(false);
+    setError("");
+  }
+
+  function selectSceneTopic(topicName) {
+    setSelectedTopicId("");
+    setForm((prev) => ({ ...prev, topicName }));
+    setTopicSuggestOpen(false);
     setError("");
   }
 
@@ -144,7 +170,7 @@ export default function SubmitProductModal({
   }
 
   function handlePickTopic(topic) {
-    setSelectedTopicId(topic.id);
+    setSelectedTopicId(topic.id || "");
     updateForm("topicName", topic.name);
     setTopicSuggestOpen(false);
     setError("");
@@ -153,7 +179,28 @@ export default function SubmitProductModal({
   function topicSuggestions() {
     const q = (form.topicName || "").trim().toLowerCase();
     if (!q) return [];
-    return topicAll.filter((t) => t.name.toLowerCase().includes(q)).slice(0, 8);
+
+    // 优先匹配当前场景下的构建话题（运营后台创建的那批）
+    const sceneHits = sceneTopicOptions
+      .filter((t) => t.name.toLowerCase().includes(q))
+      .map((t) => ({
+        id: "",
+        name: t.name,
+        postCount: null,
+        source: "scene",
+      }));
+
+    const communityHits = topicAll
+      .filter((t) => String(t.name || "").toLowerCase().includes(q))
+      .filter(
+        (t) =>
+          !sceneHits.some(
+            (s) => s.name.toLowerCase() === String(t.name || "").toLowerCase(),
+          ),
+      )
+      .map((t) => ({ ...t, source: "community" }));
+
+    return [...sceneHits, ...communityHits].slice(0, 10);
   }
 
   async function handleImageChange(e) {
@@ -463,18 +510,52 @@ export default function SubmitProductModal({
           )}
 
           <div className="modal-field">
-            <label className="modal-label" htmlFor="submit-product-topic-name">
-              话题
-            </label>
-            <div className="topic-input-wrap">
+            <span>
+              场景话题
+              <span className="field-hint">（可选，优先选当前场景下的话题）</span>
+            </span>
+            {!selectedSceneName ? (
+              <p className="field-hint" style={{ margin: 0 }}>
+                请先选择所属场景
+              </p>
+            ) : sceneTopicOptions.length > 0 ? (
+              <div className="modal-category-options">
+                {sceneTopicOptions.map((topic) => {
+                  const selected = form.topicName === topic.name;
+                  return (
+                    <button
+                      key={topic.name}
+                      type="button"
+                      className={
+                        selected ? "modal-category active" : "modal-category"
+                      }
+                      onClick={() => selectSceneTopic(topic.name)}
+                      disabled={submitting}
+                      aria-pressed={selected}
+                    >
+                      {topic.name}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="field-hint" style={{ margin: 0 }}>
+                该场景暂无预置话题，可在下方手动输入
+              </p>
+            )}
+            <div className="topic-input-wrap" style={{ marginTop: 10 }}>
               <input
                 id="submit-product-topic-name"
                 className="modal-input"
-                placeholder="输入话题名称，如：AI 创作、独立开发…"
+                placeholder={
+                  selectedSceneName
+                    ? "搜索或输入话题，如：桌游、组队…"
+                    : "请先选择场景后再填写话题"
+                }
                 value={form.topicName}
                 maxLength={30}
                 autoComplete="off"
-                disabled={submitting}
+                disabled={submitting || !selectedSceneName}
                 onChange={(e) => handleTopicNameChange(e.target.value)}
                 onFocus={() =>
                   setTopicSuggestOpen((form.topicName || "").trim().length > 0)
@@ -482,7 +563,7 @@ export default function SubmitProductModal({
                 onBlur={() => setTimeout(() => setTopicSuggestOpen(false), 120)}
               />
               {selectedTopicId && (
-                <span className="topic-input-picked">已选话题</span>
+                <span className="topic-input-picked">已选社区话题</span>
               )}
               {topicSuggestOpen && (
                 <div className="topic-suggest" role="listbox">
@@ -490,7 +571,7 @@ export default function SubmitProductModal({
                     topicSuggestions().map((topic) => (
                       <button
                         type="button"
-                        key={topic.id}
+                        key={`${topic.source}-${topic.id || topic.name}`}
                         className="topic-suggest-item"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handlePickTopic(topic)}
@@ -500,7 +581,9 @@ export default function SubmitProductModal({
                             #{topic.name}
                           </span>
                           <span className="topic-suggest-meta">
-                            {topic.postCount ?? 0} 条内容 · 点击选用
+                            {topic.source === "scene"
+                              ? "当前场景话题 · 点击选用"
+                              : `${topic.postCount ?? 0} 条内容 · 点击选用`}
                           </span>
                         </span>
                       </button>
@@ -508,7 +591,7 @@ export default function SubmitProductModal({
                   ) : (
                     <div className="topic-suggest-item topic-suggest-empty">
                       {(form.topicName || "").trim()
-                        ? "无匹配话题，提交时将自动新建"
+                        ? "无匹配话题，提交时将按输入新建"
                         : "输入关键词搜索话题"}
                     </div>
                   )}
