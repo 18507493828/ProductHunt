@@ -4,8 +4,6 @@ import { fetchIncentiveConfig, fetchProducts, fetchStats } from "../api";
 import { compareHeatItems, productMatchesScene } from "../buildConfig";
 import useBuildCatalog from "../useBuildCatalog";
 import ProductCard, { ProductCardSkeleton } from "./ProductCard";
-import { getSceneIcon } from "../sceneIcons";
-
 function formatCount(n) {
   const num = Number(n) || 0;
   if (num >= 10000) return `${(num / 10000).toFixed(1).replace(/\.0$/, "")}万`;
@@ -257,22 +255,16 @@ export default function PortalHome({
                 >
                   全部
                 </button>
-                {BUILD_SCENES.map((s) => {
-                  const Icon = getSceneIcon(s.id);
-                  return (
+                {BUILD_SCENES.map((s) => (
                   <button
                     key={s.id}
                     type="button"
                     className={"ph-filter" + (sceneFilter === s.id ? " active" : "")}
                     onClick={() => setSceneFilter(s.id)}
                   >
-                    <span className="ph-filter-icon" aria-hidden="true">
-                      <Icon size={14} strokeWidth={2.2} />
-                    </span>
                     {s.name}
                   </button>
-                  );
-                })}
+                ))}
               </div>
               <div className="ph-period-rank-tabs" role="tablist" aria-label="排序">
                 {[

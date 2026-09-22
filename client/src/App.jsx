@@ -47,7 +47,6 @@ import PeriodRankBoard from "./components/PeriodRankBoard";
 import { applyBuildConfig, getSceneById, getToolById, compareHeatItems, inferSceneIdFromText, productMatchesScene } from "./buildConfig";
 import useBuildCatalog from "./useBuildCatalog";
 import Carousel from "./components/Carousel";
-import { getSceneIcon } from "./sceneIcons";
 import {
   APP_PLATFORMS,
   DEFAULT_APP_PLATFORM,
@@ -1691,9 +1690,7 @@ export default function App() {
                     >
                       全部
                     </button>
-                    {BUILD_SCENES.map((s) => {
-                      const Icon = getSceneIcon(s.id);
-                      return (
+                    {BUILD_SCENES.map((s) => (
                       <button
                         key={s.id}
                         type="button"
@@ -1703,13 +1700,9 @@ export default function App() {
                         }
                         onClick={() => setSquareScene(s.id)}
                       >
-                        <span className="ph-filter-icon" aria-hidden="true">
-                          <Icon size={14} strokeWidth={2.2} />
-                        </span>
                         {s.name}
                       </button>
-                      );
-                    })}
+                    ))}
                   </div>
                   <div className="ph-period-rank-tabs" role="tablist" aria-label="排序">
                     {[
@@ -2076,17 +2069,7 @@ export default function App() {
                             disabled={submitting}
                             aria-pressed={selected}
                           >
-                            {(() => {
-                              const Icon = getSceneIcon(s.id || s.name);
-                              return (
-                                <>
-                                  <span className="ph-filter-icon" aria-hidden="true">
-                                    <Icon size={14} strokeWidth={2.2} />
-                                  </span>
-                                  {s.name}
-                                </>
-                              );
-                            })()}
+                            {s.name}
                           </button>
                           {removable ? (
                             <button
