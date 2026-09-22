@@ -673,28 +673,55 @@ export default function App() {
     setCustomTopicInput("");
     setSceneAdding(false);
     setTopicAdding(false);
+
+    const categoryNames = [
+      ...(Array.isArray(product.categories) ? product.categories : []),
+      product.category,
+    ]
+      .map((name) => String(name || "").trim())
+      .filter(Boolean);
+    const matchedScene =
+      BUILD_SCENES.find((scene) => categoryNames.includes(scene.name)) ||
+      null;
+    const sceneId =
+      matchedScene?.id ||
+      inferSceneIdFromText(
+        `${product.topicName || ""}\n${product.description || ""}\n${product.name || ""}`,
+      ) ||
+      "";
+    const sceneTopic =
+      product.topicName ||
+      (matchedScene?.topics || []).find((topic) =>
+        String(product.description || "").includes(topic),
+      ) ||
+      "";
+    const buildToolId =
+      (product.buildToolId &&
+      BUILD_TOOLS.some((tool) => tool.id === product.buildToolId)
+        ? product.buildToolId
+        : "") ||
+      BUILD_TOOLS.find((tool) => tool.name === product.buildToolName)?.id ||
+      BUILD_TOOLS.find((tool) =>
+        String(product.description || "").includes(tool.name),
+      )?.id ||
+      "";
+
     setForm({
       name: product.name || "",
       tagline: product.tagline || "",
       url: product.url || "",
-      categories: product.categories?.length
-        ? product.categories
-        : product.category
-          ? [product.category]
+      categories: matchedScene
+        ? [matchedScene.name]
+        : categoryNames.length
+          ? [categoryNames[0]]
           : [],
       campaign: product.campaign || "",
       description: product.description || "",
       imageUrl: product.imageUrl || "",
-      topicName: product.topicName || "",
-      sceneId:
-        inferSceneIdFromText(
-          `${product.topicName || ""}\n${product.description || ""}\n${product.name || ""}`,
-        ) || "",
-      sceneTopic: product.topicName || "",
-      buildToolId:
-        BUILD_TOOLS.find((t) =>
-          String(product.description || "").includes(t.name),
-        )?.id || "",
+      topicName: sceneTopic,
+      sceneId,
+      sceneTopic,
+      buildToolId,
       appPlatform: product.appPlatform || DEFAULT_APP_PLATFORM,
       ...priceFormFromStored(product.price),
     });
@@ -706,7 +733,11 @@ export default function App() {
         if (!product.topicName && product.topicId) {
           const hit = items.find((t) => t.id === product.topicId);
           if (hit) {
-            setForm((prev) => ({ ...prev, topicName: hit.name || "" }));
+            setForm((prev) => ({
+              ...prev,
+              topicName: hit.name || "",
+              sceneTopic: hit.name || prev.sceneTopic,
+            }));
             setSubmitSelectedTopicId(hit.id);
           }
         }

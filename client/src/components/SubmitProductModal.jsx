@@ -13,7 +13,11 @@ import {
 import { useAuth } from "../AuthContext";
 import { useToast } from "../Toast";
 import { useModalMotion } from "../useModalMotion";
-import { isValidDemoUrl } from "../appPlatforms";
+import {
+  APP_PLATFORMS,
+  DEFAULT_APP_PLATFORM,
+  isValidDemoUrl,
+} from "../appPlatforms";
 
 const EMPTY_FORM = {
   name: "",
@@ -24,6 +28,8 @@ const EMPTY_FORM = {
   description: "",
   imageUrl: "",
   topicName: "",
+  appPlatform: DEFAULT_APP_PLATFORM,
+  buildToolId: "",
   price: "",
   originalPrice: "",
   buyUrl: "",
@@ -31,7 +37,7 @@ const EMPTY_FORM = {
 };
 
 /**
- * 上传/编辑资源弹窗。
+ * 上传/编辑应用弹窗（运营端与活动页共用）。
  * lockedCampaignId：锁定活动（活动详情页一键参与时使用）
  */
 export default function SubmitProductModal({
@@ -48,6 +54,7 @@ export default function SubmitProductModal({
   const [form, setForm] = useState(EMPTY_FORM);
   const [categories, setCategories] = useState([]);
   const [buildScenes, setBuildScenes] = useState([]);
+  const [buildTools, setBuildTools] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
   const [topicAll, setTopicAll] = useState([]);
   const [selectedTopicId, setSelectedTopicId] = useState("");
@@ -73,6 +80,7 @@ export default function SubmitProductModal({
       };
     })
     .filter((t) => t.name && t.enabled);
+  const selectedTool = buildTools.find((t) => t.id === form.buildToolId);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -96,6 +104,8 @@ export default function SubmitProductModal({
         description: editingProduct.description || "",
         imageUrl: editingProduct.imageUrl || "",
         topicName: editingProduct.topicName || "",
+        appPlatform: editingProduct.appPlatform || DEFAULT_APP_PLATFORM,
+        buildToolId: editingProduct.buildToolId || "",
         price: editingProduct.price || "",
         originalPrice: editingProduct.originalPrice || "",
         buyUrl: editingProduct.buyUrl || "",
@@ -121,17 +131,35 @@ export default function SubmitProductModal({
         .filter((s) => s && s.enabled !== false && s.name)
         .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0));
       setBuildScenes(scenes);
+      const tools = (buildConfig?.tools || [])
+        .filter((t) => t && t.enabled !== false && t.id)
+        .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0));
+      setBuildTools(tools);
       const sceneNames = scenes.map((s) => s.name);
       const fallback = Array.isArray(catRes?.categories) ? catRes.categories : [];
       setCategories(sceneNames.length ? sceneNames : fallback);
       setCampaigns(Array.isArray(campaignList) ? campaignList : []);
       const items = topicRes?.items || [];
       setTopicAll(items);
-      if (editingProduct && !editingProduct.topicName && editingProduct.topicId) {
-        const hit = items.find((t) => t.id === editingProduct.topicId);
-        if (hit) {
-          setForm((prev) => ({ ...prev, topicName: hit.name || "" }));
-          setSelectedTopicId(hit.id);
+
+      if (editingProduct) {
+        setForm((prev) => {
+          const next = { ...prev };
+          if (!next.buildToolId) {
+            next.buildToolId =
+              tools.find((t) => t.id === editingProduct.buildToolId)?.id ||
+              tools.find((t) => t.name === editingProduct.buildToolName)?.id ||
+              "";
+          }
+          if (!next.topicName && editingProduct.topicId) {
+            const hit = items.find((t) => t.id === editingProduct.topicId);
+            if (hit) next.topicName = hit.name || "";
+          }
+          return next;
+        });
+        if (!editingProduct.topicName && editingProduct.topicId) {
+          const hit = items.find((t) => t.id === editingProduct.topicId);
+          if (hit) setSelectedTopicId(hit.id);
         }
       }
     });
@@ -239,9 +267,10 @@ export default function SubmitProductModal({
     const trimmedName = form.name.trim();
     const trimmedTagline = form.tagline.trim();
     const trimmedUrl = form.url.trim();
+    const topicName = (form.topicName || "").trim();
 
     if (!trimmedName) {
-      setError("请填写资源名称");
+      setError("请填写应用名称");
       return;
     }
     if (!trimmedTagline) {
@@ -258,6 +287,18 @@ export default function SubmitProductModal({
     }
     if (!(form.categories || []).length) {
       setError("请选择所属场景");
+      return;
+    }
+    if (!topicName) {
+      setError("请选择或填写场景话题");
+      return;
+    }
+    if (!form.appPlatform) {
+      setError("请选择应用形态");
+      return;
+    }
+    if (!form.buildToolId || !selectedTool) {
+      setError("请选择构建工具");
       return;
     }
 
@@ -278,7 +319,10 @@ export default function SubmitProductModal({
         description: form.description,
         imageUrl: form.imageUrl,
         topicId: selectedTopicId || "",
-        topicName: (form.topicName || "").trim(),
+        topicName,
+        appPlatform: form.appPlatform || DEFAULT_APP_PLATFORM,
+        buildToolId: selectedTool.id,
+        buildToolName: selectedTool.name || "",
         price: (form.price || "").trim(),
         originalPrice: (form.originalPrice || "").trim(),
         buyUrl: (form.buyUrl || "").trim(),
@@ -321,10 +365,10 @@ export default function SubmitProductModal({
           <div>
             <h2 id="submit-product-modal-title">
               {editingId
-                ? "编辑资源"
+                ? "编辑应用"
                 : locked
                   ? `参与「${lockedCampaign?.title || "活动"}」`
-                  : "上传你的资源"}
+                  : "上传你的应用"}
             </h2>
           </div>
           <button
@@ -389,7 +433,7 @@ export default function SubmitProductModal({
 
           <label className="modal-field">
             <span>
-              资源名称 <span className="field-required">*</span>
+              应用名称 <span className="field-required">*</span>
             </span>
             <input
               value={form.name}
@@ -511,8 +555,7 @@ export default function SubmitProductModal({
 
           <div className="modal-field">
             <span>
-              场景话题
-              <span className="field-hint">（可选，优先选当前场景下的话题）</span>
+              场景话题 <span className="field-required">*</span>
             </span>
             {!selectedSceneName ? (
               <p className="field-hint" style={{ margin: 0 }}>
@@ -600,6 +643,63 @@ export default function SubmitProductModal({
             </div>
           </div>
 
+          <div className="modal-field">
+            <span>
+              应用形态 <span className="field-required">*</span>
+            </span>
+            <div className="modal-category-options">
+              {APP_PLATFORMS.map((p) => {
+                const selected = form.appPlatform === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={
+                      selected ? "modal-category active" : "modal-category"
+                    }
+                    onClick={() => updateForm("appPlatform", p.id)}
+                    disabled={submitting}
+                    aria-pressed={selected}
+                    title={p.tip}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="modal-field">
+            <span>
+              构建工具 <span className="field-required">*</span>
+            </span>
+            <div className="modal-category-options">
+              {buildTools.map((t) => {
+                const selected = form.buildToolId === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={
+                      selected ? "modal-category active" : "modal-category"
+                    }
+                    onClick={() => updateForm("buildToolId", t.id)}
+                    disabled={submitting}
+                    aria-pressed={selected}
+                  >
+                    {t.emoji ? `${t.emoji} ` : ""}
+                    {t.name}
+                    {t.sponsored && Number(t.incentive) > 0
+                      ? ` · 活动赞助 ¥${t.incentive} 激励`
+                      : t.sponsored
+                        ? " · 活动赞助"
+                        : ""}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="modal-row">
             <label className="modal-field">
               <span>
@@ -661,7 +761,7 @@ export default function SubmitProductModal({
             <textarea
               value={form.description}
               onChange={(e) => updateForm("description", e.target.value)}
-              placeholder="资源的能力说明、适用场景、使用方式（选填）"
+              placeholder="应用的能力说明、适用场景、使用方式（选填）"
               rows={4}
               maxLength={500}
               disabled={submitting}

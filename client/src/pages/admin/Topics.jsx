@@ -279,19 +279,23 @@ export default function Topics() {
         ) : null}
       </div>
 
+      <p className="admin-tip" style={{ margin: "0 0 12px", color: "var(--ph-text-muted, #6b7280)", fontSize: 13 }}>
+        此处为客户端广场 / 发布的唯一场景与话题来源。修改后前台筛选与发布选项会同步更新。
+      </p>
+
       {error && <div className="error">{error}</div>}
       {message && <div className="admin-success">{message}</div>}
 
       {loading ? (
         <div className="dash-loading">加载中...</div>
       ) : scenes.length === 0 ? (
-        <EmptyState title="还没有构建场景" />
+        <EmptyState title="还没有场景" />
       ) : (
         <div className="admin-scene-tabs-layout">
           <div
             className="admin-period-tabs admin-scene-tabs"
             role="tablist"
-            aria-label="构建场景"
+            aria-label="场景"
           >
             {scenes.map((scene) => {
               const key = scene.id || scene.name;

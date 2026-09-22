@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./AuthContext.jsx";
 import { ToastProvider } from "./Toast.jsx";
 import { ShareProvider } from "./ShareContext.jsx";
@@ -22,7 +22,6 @@ import Users from "./pages/admin/Users.jsx";
 import MaodaoRewards from "./pages/admin/MaodaoRewards.jsx";
 import Banners from "./pages/admin/Banners.jsx";
 import Campaigns from "./pages/admin/Campaigns.jsx";
-import Categories from "./pages/admin/Categories.jsx";
 import Navs from "./pages/admin/Navs.jsx";
 import ResourceDetail from "./pages/ResourceDetail.jsx";
 import CreatorChat from "./pages/CreatorChat.jsx";
@@ -59,7 +58,11 @@ createRoot(document.getElementById("root")).render(
               <Route path="users" element={<Users />} />
               <Route path="maodao-rewards" element={<MaodaoRewards />} />
               <Route path="votes" element={<Votes />} />
-              <Route path="categories" element={<Categories />} />
+              {/* 场景唯一来源是「场景与话题」(build-config)；旧分类页重定向 */}
+              <Route
+                path="categories"
+                element={<Navigate to="/admin/topics" replace />}
+              />
               <Route path="campaigns" element={<Campaigns />} />
               <Route path="banners" element={<Banners />} />
               <Route path="navs" element={<Navs />} />

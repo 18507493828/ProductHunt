@@ -9,7 +9,7 @@ const NAV_GROUPS = [
       { to: "/admin/products", end: false, label: "应用管理" },
       { to: "/admin/users", end: false, label: "用户管理" },
       { to: "/admin/maodao-rewards", end: false, label: "码道发奖" },
-      { to: "/admin/topics", end: false, label: "构建场景话题" },
+      { to: "/admin/topics", end: false, label: "场景与话题" },
       { to: "/admin/channels", end: false, label: "推广渠道管理" },
       { to: "/admin/rank-incentives", end: false, label: "榜单&激励管理" },
       { to: "/admin/build-tools", end: false, label: "构建工具&激励" },
@@ -19,7 +19,6 @@ const NAV_GROUPS = [
     label: "内容运营",
     items: [
       { to: "/admin/votes", end: false, label: "投票管理" },
-      { to: "/admin/categories", end: false, label: "场景管理" },
       { to: "/admin/campaigns", end: false, label: "活动管理" },
       { to: "/admin/banners", end: false, label: "轮播管理" },
       { to: "/admin/navs", end: false, label: "导航管理" },
