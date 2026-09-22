@@ -3,7 +3,6 @@ import { ThumbsUp, Eye, MessageCircle, Share2, Star } from "lucide-react";
 import CachedImage from "./CachedImage";
 import { useShare } from "../ShareContext";
 import { buildTopicHomePath, formatTopicName } from "../topicUtils";
-import { formatProductPrice } from "../productPricing";
 
 function getProductInitial(name = "") {
   return (name.trim()[0] || "P").toUpperCase();
@@ -44,7 +43,6 @@ export default function ProductCard({
 }) {
   const navigate = useNavigate();
   const { openShare } = useShare();
-  const priceLabel = formatProductPrice(product).display;
   const mediaStyle = product.imageUrl
     ? undefined
     : {
@@ -118,9 +116,6 @@ export default function ProductCard({
           <p className="ph-product-card-tagline" title={product.tagline}>
             {product.tagline}
           </p>
-          {priceLabel ? (
-            <p className="ph-product-card-price">{priceLabel}</p>
-          ) : null}
 
           {(showTopic || showMeta) && (
             <div className="ph-product-card-tags">
