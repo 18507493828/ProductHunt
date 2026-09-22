@@ -268,18 +268,33 @@ const DEFAULT_NAVS = [
 let dbReady = false;
 let dbLastError = "";
 
+/** 部署/重启默认绝不改已有业务数据；仅空表可首次灌种子。显式 STARTUP_MUTATE_DATA=1 才允许旧的对齐逻辑。 */
+function allowStartupDataMutations() {
+  return (
+    process.env.STARTUP_MUTATE_DATA === "1" ||
+    process.env.STARTUP_MUTATE_DATA === "true"
+  );
+}
+
 // Init DB first, then start server
 try {
   await initDb();
   dbReady = true;
   console.log("[db] initialized successfully");
-  // 把历史 server/storage JSON / 磁盘图片导入 MySQL（库中已有的默认保留；缺的补齐）
-  try {
-    await migrateJsonToMysql({
-      force: process.env.MIGRATE_JSON_FORCE === "1",
-    });
-  } catch (err) {
-    console.warn("[migrate] skipped:", err.message || err);
+  // JSON→MySQL：默认跳过；仅 MIGRATE_JSON=1 / MIGRATE_JSON_FORCE=1 时执行
+  if (
+    process.env.MIGRATE_JSON === "1" ||
+    process.env.MIGRATE_JSON_FORCE === "1"
+  ) {
+    try {
+      await migrateJsonToMysql({
+        force: process.env.MIGRATE_JSON_FORCE === "1",
+      });
+    } catch (err) {
+      console.warn("[migrate] skipped:", err.message || err);
+    }
+  } else {
+    console.log("[migrate] skipped (set MIGRATE_JSON=1 to import JSON)");
   }
   await initAuth();
   await initBanners();
@@ -288,13 +303,18 @@ try {
   await initCategories();
   await initTopics();
   await initTopicPosts();
-  try {
-    // 对齐样例应用的名称、落地页 /apps/...、形态（不覆盖投票；全量覆盖设 SEED_SCENES_REPLACE=1）
-    await ensureSceneProducts();
-    await syncCategoriesFromBuildScenes();
-    await syncAppLandings({ force: true });
-  } catch (err) {
-    console.warn("[ensure-scenes] skipped:", err.message || err);
+  if (allowStartupDataMutations()) {
+    try {
+      await ensureSceneProducts();
+      await syncCategoriesFromBuildScenes({ remapProducts: true });
+      await syncAppLandings({ force: true });
+    } catch (err) {
+      console.warn("[ensure-scenes] skipped:", err.message || err);
+    }
+  } else {
+    console.log(
+      "[startup] data mutate skipped (products/categories/landings untouched)",
+    );
   }
   console.log("[server] all init tasks completed");
 } catch (err) {
@@ -424,7 +444,20 @@ function bannersNeedReseed(list) {
 
 async function initBanners() {
   const existing = await readBanners();
-  if (!bannersNeedReseed(existing)) return;
+  // 仅空表灌种子；已有数据（含运营改过的）部署时绝不重写
+  if (existing.length > 0) {
+    if (allowStartupDataMutations() && bannersNeedReseed(existing)) {
+      const now = new Date().toISOString();
+      const seed = DEFAULT_BANNERS.map((banner) => ({
+        ...banner,
+        createdAt: banner.createdAt || now,
+        updatedAt: now,
+      }));
+      await writeBanners(seed);
+      console.log(`[storage] banners reseeded (${seed.length} items)`);
+    }
+    return;
+  }
 
   const now = new Date().toISOString();
   const seed = DEFAULT_BANNERS.map((banner) => ({
@@ -433,7 +466,7 @@ async function initBanners() {
     updatedAt: now,
   }));
   await writeBanners(seed);
-  console.log(`[storage] banners reseeded (${seed.length} items)`);
+  console.log(`[storage] banners seeded (${seed.length} items)`);
 }
 
 function toPublicBanner(banner) {
@@ -470,7 +503,9 @@ async function initNavs() {
     return;
   }
 
-  // 码道官方站旧链接自动升级（保留渠道码参数）
+  // 默认不改已有导航；仅 STARTUP_MUTATE_DATA=1 时升级旧码道链接
+  if (!allowStartupDataMutations()) return;
+
   const legacyMaodaoNavUrls = new Set([
     "https://codearts.huaweicloud.com/",
     "https://codearts.huaweicloud.com",
@@ -545,7 +580,11 @@ async function refreshCampaignCache(list) {
 async function initCampaigns() {
   const existing = await readCampaigns();
   if (existing.length > 0) {
-    // 为旧数据补齐活动详情字段，不覆盖已有文案
+    // 默认不改已有活动；仅 STARTUP_MUTATE_DATA=1 时补空字段
+    if (!allowStartupDataMutations()) {
+      await refreshCampaignCache(existing);
+      return;
+    }
     let changed = false;
     const seedMap = Object.fromEntries(
       DEFAULT_CAMPAIGNS.map((item) => [item.id, item]),
@@ -774,14 +813,28 @@ async function refreshCategoryCache(list) {
 }
 
 async function initCategories() {
-  // 旧库可能残留 PH 分类（AI 应用等）；一律与构建场景对齐
-  await syncCategoriesFromBuildScenes();
+  const existing = await readCategories();
+  if (existing.length === 0) {
+    // 空库首次：只建场景分类列表，不改产品
+    await syncCategoriesFromBuildScenes({ remapProducts: false });
+    return;
+  }
+  if (allowStartupDataMutations()) {
+    await syncCategoriesFromBuildScenes({ remapProducts: true });
+    return;
+  }
+  await refreshCategoryCache(existing);
+  console.log(
+    `[storage] categories loaded (${existing.length} items, no rewrite)`,
+  );
 }
 
 /**
- * 分类与客户端构建场景对齐：清除残留旧分类，并回写应用分类字段。
+ * 分类表与构建场景对齐。
+ * @param {{ remapProducts?: boolean }} [opts]
+ *   remapProducts 默认 false：绝不改产品场景；仅当显式 true 才规范化产品分类字段
  */
-async function syncCategoriesFromBuildScenes() {
+async function syncCategoriesFromBuildScenes({ remapProducts = false } = {}) {
   const { DEFAULT_BUILD_SCENES, inferSceneNameFromConfig } = await import(
     "./buildOpsConfig.js"
   );
@@ -825,12 +878,27 @@ async function syncCategoriesFromBuildScenes() {
     });
   }
 
+  // 保留运营已有、但不在默认场景里的分类名（避免部署冲掉「游戏」等自定义场景分类）
+  for (const cat of existing) {
+    const name = String(cat.name || "").trim();
+    if (!name || next.some((c) => c.name === name)) continue;
+    next.push({
+      ...cat,
+      name,
+      enabled: cat.enabled !== false,
+      updatedAt: now,
+    });
+  }
+
   await writeCategories(next);
   console.log(
     `[storage] categories synced from scenes (${next.map((c) => c.name).join("、")})`,
   );
 
-  // 应用分类回写为场景名，与客户端广场筛选一致
+  if (!remapProducts) return;
+
+  // 以下仅 STARTUP_MUTATE_DATA=1 等显式场景：规范化产品分类，合法运营选择仍保留
+  const validNames = new Set(next.map((c) => c.name).filter(Boolean));
   try {
     const [products, topics] = await Promise.all([
       listProducts(),
@@ -841,27 +909,51 @@ async function syncCategoriesFromBuildScenes() {
     );
     let remapped = 0;
     for (const product of products) {
+      const prevCats = Array.isArray(product.categories)
+        ? product.categories.filter(Boolean)
+        : [];
+      const current =
+        String(product.category || "").trim() ||
+        String(prevCats[0] || "").trim();
+
+      if (current && validNames.has(current)) {
+        if (
+          product.category === current &&
+          prevCats.length === 1 &&
+          prevCats[0] === current
+        ) {
+          continue;
+        }
+        product.category = current;
+        product.categories = [current];
+        await writeProduct(product);
+        remapped += 1;
+        continue;
+      }
+
       const sceneName = inferSceneNameFromConfig(
         product,
         topicMap[product.topicId] || "",
         scenes,
       );
-      const category = sceneName && sceneName !== "其他" ? sceneName : "其他";
-      const prevCats = Array.isArray(product.categories)
-        ? product.categories
-        : [];
-      const same =
+      const category =
+        sceneName && validNames.has(sceneName) ? sceneName : "其他";
+      if (
         product.category === category &&
         prevCats.length === 1 &&
-        prevCats[0] === category;
-      if (same) continue;
+        prevCats[0] === category
+      ) {
+        continue;
+      }
       product.category = category;
       product.categories = [category];
       await writeProduct(product);
       remapped += 1;
     }
     if (remapped > 0) {
-      console.log(`[storage] remapped ${remapped} product categories → scenes`);
+      console.log(
+        `[storage] normalized ${remapped} product categories (kept valid admin picks)`,
+      );
     }
   } catch (err) {
     console.warn(
@@ -3394,9 +3486,9 @@ app.put("/api/admin/build-config", requireAdmin, async (req, res) => {
         /* ignore */
       }
     }
-    // 分类与构建场景保持一致
+    // 分类列表与构建场景对齐；不改各应用已选场景
     try {
-      await syncCategoriesFromBuildScenes();
+      await syncCategoriesFromBuildScenes({ remapProducts: false });
     } catch (err) {
       console.warn("[storage] category sync after build-config:", err.message);
     }
