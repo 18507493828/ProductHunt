@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Upload } from "lucide-react";
 import {
+  fetchBuildConfig,
   fetchCampaigns,
   fetchCategoryOptions,
   fetchTopics,
@@ -94,12 +95,19 @@ export default function SubmitProductModal({
     }
 
     Promise.all([
+      fetchBuildConfig().catch(() => null),
       fetchCategoryOptions().catch(() => ({ categories: [] })),
       fetchCampaigns().catch(() => []),
       fetchTopics({ all: true }).catch(() => ({ items: [] })),
-    ]).then(([catRes, campaignList, topicRes]) => {
+    ]).then(([buildConfig, catRes, campaignList, topicRes]) => {
       if (cancelled) return;
-      setCategories(catRes?.categories || []);
+      // 与客户端广场/发布一致：优先用构建场景名
+      const sceneNames = (buildConfig?.scenes || [])
+        .filter((s) => s && s.enabled !== false && s.name)
+        .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0))
+        .map((s) => s.name);
+      const fallback = Array.isArray(catRes?.categories) ? catRes.categories : [];
+      setCategories(sceneNames.length ? sceneNames : fallback);
       setCampaigns(Array.isArray(campaignList) ? campaignList : []);
       const items = topicRes?.items || [];
       setTopicAll(items);
@@ -121,14 +129,11 @@ export default function SubmitProductModal({
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function toggleCategory(category) {
-    setForm((prev) => {
-      const list = Array.isArray(prev.categories) ? prev.categories : [];
-      if (list.includes(category)) {
-        return { ...prev, categories: list.filter((c) => c !== category) };
-      }
-      return { ...prev, categories: [...list, category] };
-    });
+  function selectScene(scene) {
+    setForm((prev) => ({
+      ...prev,
+      categories: [scene],
+    }));
     setError("");
   }
 
@@ -205,18 +210,21 @@ export default function SubmitProductModal({
       return;
     }
     if (!(form.categories || []).length) {
-      setError("请至少选择一个分类");
+      setError("请选择所属场景");
       return;
     }
 
     try {
       setSubmitting(true);
       setError("");
+      const sceneName = (form.categories || [])[0] || "";
       const payload = {
         name: form.name,
         tagline: form.tagline,
         url: form.url,
-        categories: form.categories || [],
+        sceneName,
+        category: sceneName,
+        categories: sceneName ? [sceneName] : [],
         campaign: locked
           ? lockedCampaignId
           : form.campaign || "",
@@ -375,24 +383,23 @@ export default function SubmitProductModal({
 
           <div className="modal-field">
             <span>
-              分类 <span className="field-required">*</span>
-              <span className="field-hint">（可多选）</span>
+              所属场景 <span className="field-required">*</span>
             </span>
             <div className="modal-category-options">
-              {categories.map((category) => {
-                const selected = (form.categories || []).includes(category);
+              {categories.map((scene) => {
+                const selected = (form.categories || [])[0] === scene;
                 return (
                   <button
-                    key={category}
+                    key={scene}
                     type="button"
                     className={
                       selected ? "modal-category active" : "modal-category"
                     }
-                    onClick={() => toggleCategory(category)}
+                    onClick={() => selectScene(scene)}
                     disabled={submitting}
                     aria-pressed={selected}
                   >
-                    {category}
+                    {scene}
                   </button>
                 );
               })}

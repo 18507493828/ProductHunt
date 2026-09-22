@@ -307,7 +307,7 @@ export function inferSceneIdFromText(text) {
   return "";
 }
 
-/** 首页/广场筛选：优先按卡片上的分类标签，没有标签时才从文案推断 */
+/** 首页/广场筛选：优先按卡片上的场景标签，没有标签时才从文案推断 */
 export function productMatchesScene(product, scene) {
   if (!scene) return true;
   const labels = [

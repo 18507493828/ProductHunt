@@ -1222,7 +1222,7 @@ export default function App() {
   }
 
   function onFilterClickCapture(e) {
-    // 拖拽后抬起鼠标会触发 click，这里吞掉，避免误选分类
+    // 拖拽后抬起鼠标会触发 click，这里吞掉，避免误选场景
     if (dragState.current.moved) {
       e.preventDefault();
       e.stopPropagation();
@@ -1646,7 +1646,7 @@ export default function App() {
               <div>
                 <h1 className="ph-section-title">应用广场</h1>
                 <p className="ph-my-sub">
-                  社区开发者用 AI 构建的场景应用 · 支持分类筛选与排序 · 榜单实时更新
+                  社区开发者用 AI 构建的场景应用 · 支持场景筛选与排序 · 榜单实时更新
                 </p>
               </div>
               <button
@@ -1679,7 +1679,7 @@ export default function App() {
                   <div
                     className="ph-filters"
                     role="tablist"
-                    aria-label="场景分类"
+                    aria-label="场景"
                   >
                     <button
                       type="button"
@@ -1741,7 +1741,7 @@ export default function App() {
                         appliedSearch
                           ? `未找到「${appliedSearch}」相关应用`
                           : activeCategory !== "全部"
-                            ? "该分类下还没有应用"
+                            ? "该场景下还没有应用"
                             : "还没有应用，来构建并发布第一个吧"
                       }
                       action={

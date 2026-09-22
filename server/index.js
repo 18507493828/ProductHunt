@@ -886,16 +886,23 @@ function isEnabledCategory(name) {
   return Boolean(name && categoryCache.enabledNames.includes(name));
 }
 
-/** 把用户自定义的场景和话题写入构建配置，并补上对应分类。 */
+/** 把用户自定义的场景和话题写入构建配置，并补上对应场景分类。 */
 async function bindSceneTopic(sceneName, topicName, createdBy = "") {
   const name = String(sceneName || "").trim();
   const topic = String(topicName || "").trim();
-  if (!name && !topic) return "";
+  // 无场景名时不写构建配置（编辑应用常只改场景/话题，避免误报「请填写场景名称」）
+  if (!name) return "";
+  // 仅切换场景、未带话题：直接作为场景名返回，不强制 upsert 话题
+  if (!topic) return name;
   const { upsertSceneTopic } = await import("./buildOpsConfig.js");
   const current = await readBuildConfig();
   const result = upsertSceneTopic(current, name, topic, createdBy);
   if (result.error) {
-    const err = new Error(result.error);
+    const message =
+      result.error === "请填写场景名称"
+        ? "请选择所属场景"
+        : result.error;
+    const err = new Error(message);
     err.status = 400;
     throw err;
   }
@@ -914,6 +921,17 @@ async function bindSceneTopic(sceneName, topicName, createdBy = "") {
     await writeCategories(categories);
   }
   return result.sceneName || "";
+}
+
+/** 从请求体解析场景名：优先 sceneName，其次 categories/category */
+function resolveSceneNameFromBody(body = {}) {
+  const fromScene = String(body.sceneName || "").trim();
+  if (fromScene) return fromScene;
+  if (Array.isArray(body.categories)) {
+    const first = String(body.categories[0] || "").trim();
+    if (first) return first;
+  }
+  return String(body.category || "").trim();
 }
 
 function getDefaultCategoryName() {
@@ -1420,15 +1438,15 @@ app.post("/api/admin/categories", requireAdmin, async (req, res) => {
     const sort = Number(req.body?.sort);
     const enabled = req.body?.enabled !== false;
     if (!name) {
-      return res.status(400).json({ error: "请填写分类名称" });
+      return res.status(400).json({ error: "请填写场景名称" });
     }
     if (name.length > 20) {
-      return res.status(400).json({ error: "分类名称不能超过 20 字" });
+      return res.status(400).json({ error: "场景名称不能超过 20 字" });
     }
 
     const categories = await readCategories();
     if (categories.some((item) => item.name === name)) {
-      return res.status(400).json({ error: "该分类已存在" });
+      return res.status(400).json({ error: "该场景已存在" });
     }
 
     const idBase = (req.body?.id || name)
@@ -1454,7 +1472,7 @@ app.post("/api/admin/categories", requireAdmin, async (req, res) => {
     };
     categories.push(category);
     await writeCategories(categories);
-    res.json({ message: "分类已添加", category: toPublicCategory(category) });
+    res.json({ message: "场景已添加", category: toPublicCategory(category) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1465,22 +1483,22 @@ app.put("/api/admin/categories/:id", requireAdmin, async (req, res) => {
     const categories = await readCategories();
     const index = categories.findIndex((item) => item.id === req.params.id);
     if (index < 0) {
-      return res.status(404).json({ error: "分类不存在" });
+      return res.status(404).json({ error: "场景不存在" });
     }
 
     const name = (req.body?.name || "").trim();
     if (!name) {
-      return res.status(400).json({ error: "请填写分类名称" });
+      return res.status(400).json({ error: "请填写场景名称" });
     }
     if (name.length > 20) {
-      return res.status(400).json({ error: "分类名称不能超过 20 字" });
+      return res.status(400).json({ error: "场景名称不能超过 20 字" });
     }
     if (
       categories.some(
         (item, i) => i !== index && item.name === name,
       )
     ) {
-      return res.status(400).json({ error: "该分类已存在" });
+      return res.status(400).json({ error: "该场景已存在" });
     }
 
     const sort = Number(req.body?.sort);
@@ -1493,7 +1511,7 @@ app.put("/api/admin/categories/:id", requireAdmin, async (req, res) => {
     };
     await writeCategories(categories);
     res.json({
-      message: "分类已更新",
+      message: "场景已更新",
       category: toPublicCategory(categories[index]),
     });
   } catch (err) {
@@ -1506,15 +1524,15 @@ app.delete("/api/admin/categories/:id", requireAdmin, async (req, res) => {
     const categories = await readCategories();
     const index = categories.findIndex((item) => item.id === req.params.id);
     if (index < 0) {
-      return res.status(404).json({ error: "分类不存在" });
+      return res.status(404).json({ error: "场景不存在" });
     }
     if (categories.length <= 1) {
-      return res.status(400).json({ error: "至少保留一个分类" });
+      return res.status(400).json({ error: "至少保留一个场景" });
     }
 
     const [removed] = categories.splice(index, 1);
     await writeCategories(categories);
-    res.json({ message: "分类已删除", category: toPublicCategory(removed) });
+    res.json({ message: "场景已删除", category: toPublicCategory(removed) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2304,7 +2322,7 @@ app.post("/api/products", requireAuth, async (req, res) => {
     let linkedScene = "";
     try {
       linkedScene = await bindSceneTopic(
-        req.body?.sceneName,
+        resolveSceneNameFromBody(req.body),
         topicName,
         req.user?.username || "",
       );
@@ -2329,7 +2347,7 @@ app.post("/api/products", requireAuth, async (req, res) => {
       }
     }
     if (requestedCategories.length === 0) {
-      return res.status(400).json({ error: "请至少选择一个分类" });
+      return res.status(400).json({ error: "请选择所属场景" });
     }
 
     const requestedCampaign = (campaign || "").trim();
@@ -2495,7 +2513,7 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     let linkedScene = "";
     try {
       linkedScene = await bindSceneTopic(
-        req.body?.sceneName,
+        resolveSceneNameFromBody(req.body),
         topicName,
         req.user?.username || "",
       );
@@ -2522,7 +2540,7 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
       }
     }
     if (requestedCategories.length === 0) {
-      return res.status(400).json({ error: "请至少选择一个分类" });
+      return res.status(400).json({ error: "请选择所属场景" });
     }
 
     const requestedCampaign = (campaign || "").trim();

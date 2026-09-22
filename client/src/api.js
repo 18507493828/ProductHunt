@@ -110,63 +110,102 @@ export async function fetchMyProducts() {
   return request("/api/me/products");
 }
 
-export async function submitProduct({
-  name,
-  tagline,
-  url,
-  categories = [],
-  category,
-  description,
-  imageUrl,
-  topicId = "",
-  topicName = "",
-  campaign = "",
-}) {
+export async function submitProduct(payload = {}) {
+  const {
+    name,
+    tagline,
+    url,
+    categories = [],
+    category,
+    sceneName,
+    description,
+    imageUrl,
+    topicId = "",
+    topicName = "",
+    campaign = "",
+    appPlatform,
+    buildToolId,
+    buildToolName,
+    inviteCode,
+    price,
+    originalPrice,
+    buyUrl,
+    purchaseNote,
+  } = payload;
+  const resolvedScene =
+    String(sceneName || category || (categories[0] || "")).trim();
   return request("/api/products", {
     method: "POST",
     body: JSON.stringify({
       name,
       tagline,
       url,
-      categories,
-      category,
+      sceneName: resolvedScene,
+      category: resolvedScene,
+      categories: resolvedScene ? [resolvedScene] : categories,
       description,
       imageUrl,
       topicId,
       topicName,
       campaign,
+      appPlatform,
+      buildToolId,
+      buildToolName,
+      inviteCode,
+      price,
+      originalPrice,
+      buyUrl,
+      purchaseNote,
     }),
   });
 }
 
-export async function updateProduct(
-  id,
-  {
+export async function updateProduct(id, payload = {}) {
+  const {
     name,
     tagline,
     url,
     categories = [],
     category,
+    sceneName,
     description,
     imageUrl,
     topicId = "",
     topicName = "",
     campaign = "",
-  },
-) {
+    appPlatform,
+    buildToolId,
+    buildToolName,
+    inviteCode,
+    price,
+    originalPrice,
+    buyUrl,
+    purchaseNote,
+  } = payload;
+  const resolvedScene =
+    String(sceneName || category || (categories[0] || "")).trim();
   return request(`/api/products/${encodeURIComponent(id)}`, {
     method: "PUT",
     body: JSON.stringify({
       name,
       tagline,
       url,
-      categories,
-      category,
+      sceneName: resolvedScene,
+      category: resolvedScene,
+      categories: resolvedScene ? [resolvedScene] : categories,
       description,
       imageUrl,
       topicId,
       topicName,
       campaign,
+      appPlatform,
+      buildToolId,
+      buildToolName,
+      inviteCode,
+      price,
+      originalPrice,
+      buyUrl,
+      purchaseNote,
     }),
   });
 }

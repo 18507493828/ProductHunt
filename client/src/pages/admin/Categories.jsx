@@ -62,7 +62,7 @@ export default function Categories() {
     e.preventDefault();
     const name = form.name.trim();
     if (!name) {
-      setError("请填写分类名称");
+      setError("请填写场景名称");
       return;
     }
 
@@ -108,7 +108,7 @@ export default function Categories() {
   }
 
   async function handleDelete(id, name) {
-    if (!window.confirm(`确定删除分类「${name}」？已发布资源上的该分类不会自动清除。`)) {
+    if (!window.confirm(`确定删除场景「${name}」？已发布应用上的该场景不会自动清除。`)) {
       return;
     }
     try {
@@ -127,14 +127,14 @@ export default function Categories() {
     <>
       <div className="admin-toolbar">
         <button type="button" className="add-banner-btn" onClick={() => openModal()}>
-          新增分类
+          新增场景
         </button>
       </div>
 
       {error && <div className="error">{error}</div>}
 
       {categories.length === 0 ? (
-        <EmptyState title="还没有分类" />
+        <EmptyState title="还没有场景" />
       ) : (
         <div className="admin-masonry">
           {categories.map((category) => (
@@ -196,8 +196,8 @@ export default function Categories() {
           <form className="modal-card" onSubmit={handleSubmit}>
             <div className="modal-header">
               <div>
-                <p className="modal-eyebrow">分类</p>
-                <h2>{editingId ? "编辑分类" : "新增分类"}</h2>
+                <p className="modal-eyebrow">场景</p>
+                <h2>{editingId ? "编辑场景" : "新增场景"}</h2>
               </div>
               <button
                 type="button"
@@ -211,11 +211,11 @@ export default function Categories() {
 
             <div className="modal-body">
               <label className="modal-field">
-                <span>分类名称 *</span>
+                <span>场景名称 *</span>
                 <input
                   value={form.name}
                   onChange={(e) => updateForm("name", e.target.value)}
-                  placeholder="例如：AI 应用"
+                  placeholder="例如：校园、社交、游戏"
                   maxLength={20}
                   disabled={saving}
                   required

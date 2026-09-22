@@ -6,6 +6,7 @@ import {
   deleteProduct,
   fetchAdminProducts,
   fetchAdminCampaigns,
+  fetchBuildConfig,
   fetchCategoryOptions,
   rejectProduct,
   setProductSpecial,
@@ -74,16 +75,21 @@ export default function Products() {
     fetchAdminCampaigns()
       .then((list) => setCampaigns(Array.isArray(list) ? list : []))
       .catch(() => setCampaigns([]));
-    fetchCategoryOptions()
-      .then((data) => {
-        const list = Array.isArray(data?.categories)
-          ? data.categories
-          : Array.isArray(data)
-            ? data
-            : [];
-        setCategories(list);
-      })
-      .catch(() => setCategories([]));
+    Promise.all([
+      fetchBuildConfig().catch(() => null),
+      fetchCategoryOptions().catch(() => ({ categories: [] })),
+    ]).then(([buildConfig, catRes]) => {
+      const sceneNames = (buildConfig?.scenes || [])
+        .filter((s) => s && s.enabled !== false && s.name)
+        .sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0))
+        .map((s) => s.name);
+      const fallback = Array.isArray(catRes?.categories)
+        ? catRes.categories
+        : Array.isArray(catRes)
+          ? catRes
+          : [];
+      setCategories(sceneNames.length ? sceneNames : fallback);
+    });
   }, []);
 
   async function handleApprove(id) {
@@ -196,12 +202,16 @@ export default function Products() {
             setDraftFilters((prev) => ({ ...prev, category: e.target.value }))
           }
         >
-          <option value="">全部分类</option>
-          {categories.map((item) => (
-            <option key={item.name || item} value={item.name || item}>
-              {item.name || item}
-            </option>
-          ))}
+          <option value="">全部场景</option>
+          {categories.map((item) => {
+            const name = typeof item === "string" ? item : item.name;
+            if (!name) return null;
+            return (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            );
+          })}
         </select>
         <select
           className="admin-filter-select"
@@ -268,7 +278,7 @@ export default function Products() {
                     : [product.category]
                   )
                     .filter(Boolean)
-                    .join("、") || "未分类"}
+                    .join("、") || "未选场景"}
                 </span>
                 <span>{product.submittedBy || "未知"}</span>
                 <span>分享 {product.shareCount ?? 0}</span>

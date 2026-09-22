@@ -15,7 +15,7 @@ export default function ResourceSearchBar({ value, onChange, onSubmit, placehold
         className="ph-search-input"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder || "搜索资源名称、介绍、分类…"}
+        placeholder={placeholder || "搜索资源名称、介绍、场景…"}
         aria-label="搜索资源"
       />
       {value && (

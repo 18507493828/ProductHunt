@@ -108,7 +108,7 @@ export default function CampaignZone({ campaigns = [], onOpenCampaign }) {
         updateIndicator();
         return;
       }
-      // 与分类标签一致：选中项尽量居中，右侧溢出时自动右移
+      // 与场景标签一致：选中项尽量居中，右侧溢出时自动右移
       const target =
         activeEl.offsetLeft - (nav.clientWidth - activeEl.offsetWidth) / 2;
       nav.scrollTo({

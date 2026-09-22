@@ -186,11 +186,11 @@ export default function EcosystemStats({ onCategoryClick, onTopicClick, compact 
       <div className="ph-eco-dashboard-panels">
         <div className="ph-eco-panel">
           <div className="ph-eco-panel-head">
-            <h3 className="ph-eco-panel-title">分类分布</h3>
-            <span className="ph-eco-panel-meta">{categories.length} 个分类</span>
+            <h3 className="ph-eco-panel-title">场景分布</h3>
+            <span className="ph-eco-panel-meta">{categories.length} 个场景</span>
           </div>
           {categories.length === 0 ? (
-            <p className="ph-eco-panel-empty">暂无分类数据</p>
+            <p className="ph-eco-panel-empty">暂无场景数据</p>
           ) : (
             <ul className="ph-eco-category-bars">
               {categories.map((item) => (

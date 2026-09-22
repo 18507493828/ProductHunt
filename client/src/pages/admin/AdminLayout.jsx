@@ -19,7 +19,7 @@ const NAV_GROUPS = [
     label: "内容运营",
     items: [
       { to: "/admin/votes", end: false, label: "投票管理" },
-      { to: "/admin/categories", end: false, label: "分类管理" },
+      { to: "/admin/categories", end: false, label: "场景管理" },
       { to: "/admin/campaigns", end: false, label: "活动管理" },
       { to: "/admin/banners", end: false, label: "轮播管理" },
       { to: "/admin/navs", end: false, label: "导航管理" },
