@@ -20,6 +20,9 @@ server/storage/**
 !server/storage/uploads/
 !server/storage/uploads/.gitkeep
 
+# MySQL 自动备份（含业务数据，勿提交）
+backups/
+
 # Generated archives
 *.zip
 

@@ -22,7 +22,8 @@ module.exports = {
         // 对外访问根地址（落地页 /apps/... 用这个域名，不要用 IP）
         PUBLIC_BASE_URL: "https://vb.csdn.net",
         VIBE_BASE_URL: "https://vb.csdn.net",
-        // 启动时自动 upsert 样例应用名称 + /apps/ 落地页；若要清空远程旧产品再写入：SEED_SCENES_REPLACE=1
+        // 启动时 upsert 样例名称/落地页；禁止设为 1（会清空远程用户上传）
+        // 本地与远程数据库永久分离，不要用本地 dump 覆盖远程
         SEED_SCENES_REPLACE: "0",
       },
     },

@@ -81,6 +81,20 @@ export async function ensureSceneProducts() {
     process.env.SEED_SCENES_REPLACE === "true";
 
   if (replace) {
+    // 防误伤远程：REPLACE 清空仅允许本机，或显式 ALLOW_SEED_CLEAR=1
+    const host = String(process.env.MYSQL_HOST || "127.0.0.1")
+      .trim()
+      .toLowerCase();
+    const local =
+      host === "127.0.0.1" ||
+      host === "localhost" ||
+      host === "::1" ||
+      host === "0.0.0.0";
+    if (!local && process.env.ALLOW_SEED_CLEAR !== "1") {
+      throw new Error(
+        `[blocked] SEED_SCENES_REPLACE 禁止清空非本机库 (MYSQL_HOST=${host})。本地与远程永久分离。`,
+      );
+    }
     const all = await listProducts();
     for (const p of all) await deleteProduct(p.id);
     await query("DELETE FROM shares");

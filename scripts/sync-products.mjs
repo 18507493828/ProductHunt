@@ -1,20 +1,13 @@
 /**
- * 本地 ↔ 远程 MySQL 产品数据同步（部署不会自动同步数据库）
+ * 当前 MYSQL_* 库内的产品工具（默认只动本地）。
+ * 本地与远程数据库永久分离：禁止把本地导出写入远程。
  *
  * 用法：
- *   # 1) 从当前 MYSQL_*（默认本地）导出
- *   node scripts/sync-products.mjs export
+ *   node scripts/sync-products.mjs export      # 导出当前库产品到 JSON
+ *   node scripts/sync-products.mjs patch-urls  # 只改落地页 URL（当前库）
  *
- *   # 2) 只把落地页 URL/形态对齐到 /apps/...（推荐，不丢投票）
- *   node scripts/sync-products.mjs patch-urls
- *
- *   # 3) 用本地导出的 JSON 写入「目标库」（设置目标 MYSQL_*）
- *   MYSQL_HOST=远程主机 MYSQL_USER=... MYSQL_PASSWORD=... MYSQL_DATABASE=... \
- *     node scripts/sync-products.mjs import
- *
- *   # 4) 清空并按场景种子重写（会删掉现有产品）
- *   MYSQL_HOST=... MYSQL_USER=... MYSQL_PASSWORD=... \
- *     npm run seed:scenes --prefix server
+ * import 仅允许写入本机库（127.0.0.1 / localhost）。
+ * 跨环境导入已禁用。
  */
 import fs from "fs/promises";
 import path from "path";
@@ -28,6 +21,22 @@ const DUMP = path.join(__dirname, "data", "products-export.json");
 
 const cmd = process.argv[2] || "patch-urls";
 
+function assertLocalDbOnly(action) {
+  const host = String(process.env.MYSQL_HOST || "127.0.0.1")
+    .trim()
+    .toLowerCase();
+  const local =
+    host === "127.0.0.1" ||
+    host === "localhost" ||
+    host === "::1" ||
+    host === "0.0.0.0";
+  if (!local) {
+    throw new Error(
+      `[blocked] ${action} 拒绝写入非本机库 MYSQL_HOST=${host}。本地与远程数据永久分离。`,
+    );
+  }
+}
+
 async function exportProducts() {
   await initDb();
   const list = await listProducts();
@@ -37,6 +46,7 @@ async function exportProducts() {
 }
 
 async function importProducts() {
+  assertLocalDbOnly("import");
   await initDb();
   const raw = await fs.readFile(DUMP, "utf8");
   const list = JSON.parse(raw);
@@ -57,7 +67,7 @@ async function importProducts() {
     n += 1;
     console.log(`[import] + ${product.name} → ${product.url}`);
   }
-  console.log(`[import] upserted ${n} products into current MYSQL_* database`);
+  console.log(`[import] upserted ${n} products into local MYSQL_* database`);
 }
 
 async function main() {

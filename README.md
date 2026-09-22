@@ -134,8 +134,16 @@ npm run build
 
 pm2 restart vibe-building
 
-本地数据库同步远程数据库
-./scripts/sync-products-to-remote.sh
+**本地与远程数据库永久分离**：禁止把本地数据同步/覆盖到远程。  
+远程备份与恢复请在服务器上手动执行：
 
+```bash
 cd /www/wwwroot/ProductHunt
+./scripts/backup-mysql.sh
+./scripts/restore-mysql-backup.sh        # 仅恢复远程自身备份
+```
+
+```bash
 ssh ubuntu@159.75.116.187
+cd /www/wwwroot/ProductHunt
+```

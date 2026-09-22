@@ -180,7 +180,32 @@ async function seedProducts() {
   return created;
 }
 
+function assertLocalDbOnly() {
+  const host = String(process.env.MYSQL_HOST || "127.0.0.1")
+    .trim()
+    .toLowerCase();
+  const local =
+    host === "127.0.0.1" ||
+    host === "localhost" ||
+    host === "::1" ||
+    host === "0.0.0.0";
+  if (!local) {
+    throw new Error(
+      `[blocked] seed:scenes 会清空并重写产品表，禁止对非本机库执行 (MYSQL_HOST=${host})。本地与远程数据永久分离。`,
+    );
+  }
+  if (
+    process.env.ALLOW_SEED_CLEAR !== "1" &&
+    process.env.NODE_ENV === "production"
+  ) {
+    throw new Error(
+      "[blocked] production 下禁止 seed:scenes 清空产品。若确需本机调试，设 ALLOW_SEED_CLEAR=1。",
+    );
+  }
+}
+
 async function main() {
+  assertLocalDbOnly();
   await initDb();
   console.log("[seed] connected");
   await clearLegacyJson();
