@@ -140,7 +140,7 @@ pm2 restart vibe-building
 
 ```bash
 cd /www/wwwroot/ProductHunt
-./scripts/backup-mysql.sh
+./scripts/backup-mysql.sh  #手动备份远程数据库
 ./scripts/restore-mysql-backup.sh        # 仅恢复远程自身备份
 ```
 

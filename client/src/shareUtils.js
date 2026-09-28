@@ -188,8 +188,22 @@ export async function fetchShareImageBlob(imageUrl) {
   return blobToPngBlob(await res.blob());
 }
 
+/** 仅复制封面图到剪贴板 */
+export async function copyShareImage(imageUrl = "") {
+  const cover = String(imageUrl || "").trim();
+  if (!cover) throw new Error("没有封面图");
+  if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") {
+    throw new Error("当前环境不支持复制图片");
+  }
+  const pngBlob = await fetchShareImageBlob(cover);
+  await navigator.clipboard.write([
+    new ClipboardItem({ "image/png": pngBlob }),
+  ]);
+}
+
 /**
  * 复制分享文案；若有封面则尽量连同图片写入剪贴板。
+ * 注意：部分 App 粘贴会优先取图而丢掉文字，原链接场景请分开复制。
  * @returns {{ copiedImage: boolean }}
  */
 export async function copySharePayload(text, imageUrl = "") {
