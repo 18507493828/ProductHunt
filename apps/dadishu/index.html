@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#7cc84f">
+<title>打地鼠 · 30秒限时挑战</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    background: linear-gradient(180deg, #9fdcff 0%, #c9efff 62%, #ddf6ff 100%);
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    color: #3b2b16;
+  }
+
+  #app {
+    position: relative;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #app.shake { animation: shake .35s linear; }
+  @keyframes shake {
+    0%, 100% { transform: translate(0, 0); }
+    20% { transform: translate(-7px, 4px); }
+    40% { transform: translate(6px, -5px); }
+    60% { transform: translate(-5px, 3px); }
+    80% { transform: translate(4px, -2px); }
+  }
+
+  /* ---------- 天空与云 ---------- */
+  .sky { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+
+  .sun {
+    position: absolute; top: 4vh; right: 8vw;
+    width: clamp(54px, 11vw, 84px); height: clamp(54px, 11vw, 84px);
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 35%, #fff3b0, #ffd54a 58%, #ffc42e);
+    box-shadow: 0 0 0 13px rgba(255, 222, 89, .26), 0 0 42px rgba(255, 210, 70, .5);
+  }
+
+  .cloud {
+    position: absolute;
+    width: clamp(88px, 18vw, 140px); height: clamp(26px, 5.4vw, 40px);
+    background: #fff; border-radius: 999px;
+    opacity: .92;
+    box-shadow: 0 6px 14px rgba(120, 180, 220, .3);
+    animation: drift linear infinite alternate;
+  }
+  .cloud::before, .cloud::after {
+    content: ""; position: absolute; background: #fff; border-radius: 50%;
+  }
+  .cloud::before {
+    width: 55%; height: 150%; left: 14%; top: -72%;
+  }
+  .cloud::after {
+    width: 40%; height: 110%; right: 16%; top: -50%;
+  }
+  .c1 { top: 7vh; left: 6vw; animation-duration: 26s; }
+  .c2 { top: 16vh; left: 44vw; animation-duration: 34s; opacity: .8; transform: scale(.72); }
+  .c3 { top: 5vh; left: 66vw; animation-duration: 30s; opacity: .66; transform: scale(.55); }
+  @keyframes drift {
+    from { margin-left: 0; }
+    to { margin-left: 8vw; }
+  }
+
+  /* ---------- HUD ---------- */
+  #hud {
+    position: relative; z-index: 5;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: clamp(6px, 2vw, 14px);
+    padding: clamp(10px, 2.6vh, 20px) clamp(10px, 3.5vw, 28px) 2px;
+  }
+
+  .hud-card {
+    background: rgba(255, 255, 255, .93);
+    border-radius: 16px;
+    padding: clamp(5px, 1.1vh, 9px) clamp(10px, 2.6vw, 18px);
+    box-shadow: 0 4px 0 rgba(70, 105, 38, .35), 0 8px 16px rgba(30, 60, 20, .14);
+    display: flex; flex-direction: column; align-items: center;
+    min-width: clamp(76px, 20vw, 108px);
+    transition: transform .12s;
+  }
+  .hud-label {
+    font-size: clamp(10px, 2.6vw, 12px);
+    color: #8a7a5c; font-weight: 700; letter-spacing: 3px; text-indent: 3px;
+  }
+  #scoreVal, #comboVal {
+    font-size: clamp(20px, 5.6vw, 28px); font-weight: 900;
+    font-variant-numeric: tabular-nums; line-height: 1.15;
+    color: #4a6b1e;
+  }
+  #comboVal { color: #7a6a4f; }
+
+  .score-card.pop, .combo-card.pop { animation: card-pop .28s cubic-bezier(.34, 1.8, .64, 1); }
+  @keyframes card-pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.16); }
+    100% { transform: scale(1); }
+  }
+  .combo-card.break { animation: card-break .4s ease-out; }
+  @keyframes card-break {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(5px); }
+    75% { transform: translateX(-3px); }
+  }
+
+  .time-card {
+    background: linear-gradient(180deg, #fffdf4, #fff3d6);
+    box-shadow: 0 4px 0 #d99a2b, 0 8px 16px rgba(120, 80, 10, .2);
+    min-width: clamp(88px, 24vw, 128px);
+    padding-top: clamp(3px, .8vh, 7px); padding-bottom: clamp(3px, .8vh, 7px);
+  }
+  #timeVal {
+    font-size: clamp(30px, 9vw, 46px); font-weight: 900; line-height: 1.05;
+    font-variant-numeric: tabular-nums; color: #e8862a;
+  }
+  .time-card.danger #timeVal { color: #e8382a; animation: time-pulse .9s ease-in-out infinite; }
+  .time-card.danger { box-shadow: 0 4px 0 #c0392b, 0 8px 16px rgba(180, 40, 20, .25); }
+  @keyframes time-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.13); }
+  }
+
+  .mult-badge {
+    display: none;
+    font-size: clamp(11px, 3vw, 14px); font-weight: 900;
+    padding: 1px 9px; border-radius: 999px; margin-top: 2px;
+  }
+  .mult-badge.show { display: inline-block; animation: card-pop .25s cubic-bezier(.34, 1.8, .64, 1); }
+  .mult-badge.m1 { background: #eef2e2; color: #7a8a5c; }
+  .mult-badge.m2 { background: #ffedd5; color: #ea580c; }
+  .mult-badge.m3 { background: #fef3c7; color: #b45309; box-shadow: 0 0 0 2px #fbbf24; }
+
+  /* ---------- 草地场地 ---------- */
+  #field {
+    position: relative; z-index: 1; flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: clamp(14px, 3vh, 30px);
+    background: linear-gradient(180deg, #7cc84f 0%, #63b03a 46%, #4f9c2c 100%);
+    touch-action: none;
+  }
+  #field::before {
+    content: ""; position: absolute; top: -11px; left: 0; right: 0; height: 13px;
+    background: radial-gradient(circle at 12px 15px, #7cc84f 10px, transparent 10.8px);
+    background-size: 25px 13px;
+  }
+  #field::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 55% 38% at 18% 12%, rgba(255, 255, 255, .12), transparent),
+      radial-gradient(ellipse 48% 34% at 82% 34%, rgba(20, 60, 0, .08), transparent),
+      radial-gradient(ellipse 60% 40% at 50% 88%, rgba(20, 60, 0, .1), transparent);
+  }
+
+  #grid {
+    position: relative; z-index: 2;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(10px, 2.6vw, 20px);
+    width: min(94vw, 480px, calc(100dvh - 230px));
+  }
+
+  .hole {
+    position: relative;
+    aspect-ratio: 100 / 96;
+    cursor: pointer;
+  }
+  .hole:nth-child(2n) { transform: translateY(3%); }
+
+  .pit {
+    position: absolute; left: 6%; right: 6%; bottom: 4%; height: 30%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 32%, #4a2c15, #2b180a 65%, #1c0f05);
+    box-shadow: inset 0 8px 16px rgba(0, 0, 0, .8), 0 0 0 5px #6b431f, 0 4px 8px rgba(20, 40, 0, .3);
+  }
+
+  .rim {
+    position: absolute; left: 6%; right: 6%; bottom: 4%; height: 30%;
+    border-radius: 50%;
+    clip-path: inset(50% 0 0 0);
+    background: linear-gradient(180deg, #7c4f26, #5d3a1a);
+    box-shadow: inset 0 3px 5px rgba(255, 255, 255, .22);
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .clip {
+    position: absolute; left: 13%; right: 13%; top: 0; bottom: 19%;
+    overflow: hidden;
+    z-index: 2;
+  }
+
+  .actor {
+    position: absolute; left: 50%; bottom: 0; width: 88%;
+    transform: translateX(-50%) translateY(118%);
+    transition: transform .2s ease-in;
+  }
+  .hole.up-mole .actor.mole,
+  .hole.up-bomb .actor.bomb {
+    transform: translateX(-50%) translateY(12%);
+    transition: transform .24s cubic-bezier(.32, 1.6, .6, 1);
+  }
+  .actor > svg { display: block; width: 100%; height: auto; }
+
+  /* 被敲晕 / 爆炸表情与动画（作用于内层 svg，不干扰 actor 定位） */
+  .face-dizzy { opacity: 0; }
+  .hole.bonked .face-normal { opacity: 0; }
+  .hole.bonked .face-dizzy { opacity: 1; }
+  .hole.bonked .mole > svg { animation: squash .2s ease-out; }
+  @keyframes squash {
+    0% { transform: scale(1, 1); }
+    35% { transform: scale(1.12, .82); }
+    100% { transform: scale(1, 1); }
+  }
+
+  .hole.exploded .bomb > svg { animation: boom .32s ease-out forwards; }
+  @keyframes boom {
+    0% { filter: brightness(2.8); transform: scale(1); }
+    40% { filter: brightness(1.8); transform: scale(1.3); opacity: 1; }
+    100% { filter: brightness(1); transform: scale(.35); opacity: 0; }
+  }
+
+  .bomb-ring {
+    transform-box: fill-box; transform-origin: center;
+    animation: ring-pulse 1s ease-in-out infinite;
+  }
+  @keyframes ring-pulse {
+    0%, 100% { transform: scale(1); opacity: .55; }
+    50% { transform: scale(1.12); opacity: .85; }
+  }
+  .bomb-spark { transform-box: fill-box; transform-origin: center; animation: spark-blink .3s steps(2) infinite; }
+  @keyframes spark-blink { 0% { opacity: 1; } 100% { opacity: .35; } }
+
+  /* 草丛点缀 */
+  .grass { position: absolute; width: 26px; height: 15px; z-index: 4; pointer-events: none; }
+  .grass i {
+    position: absolute; bottom: 0; width: 7px; height: 15px;
+    background: linear-gradient(180deg, #4e9a2a, #3e7c1f);
+    border-radius: 60% 60% 20% 20%;
+  }
+  .grass i:nth-child(1) { left: 0; transform: rotate(-20deg); }
+  .grass i:nth-child(2) { left: 9px; height: 18px; }
+  .grass i:nth-child(3) { left: 18px; transform: rotate(20deg); }
+  .g1 { left: -2%; bottom: 12%; }
+  .g2 { right: -3%; top: 16%; }
+
+  /* 飘字 */
+  .float-text {
+    position: absolute; left: 50%; top: 2%;
+    font-weight: 900; white-space: nowrap;
+    pointer-events: none; z-index: 20;
+    animation: float-up .85s ease-out forwards;
+  }
+  @keyframes float-up {
+    0% { opacity: 0; transform: translate(-50%, 14px) scale(.6); }
+    16% { opacity: 1; transform: translate(-50%, 4px) scale(1.05); }
+    100% { opacity: 0; transform: translate(-50%, -48px) scale(1.1); }
+  }
+  .ft1 { color: #fff; text-shadow: 0 2px 0 rgba(60, 90, 20, .6); font-size: clamp(17px, 4.6vw, 23px); }
+  .ft2 { color: #ffb02e; text-shadow: 0 2px 0 rgba(120, 60, 0, .45); font-size: clamp(19px, 5.2vw, 26px); }
+  .ft3 { color: #ffe14a; text-shadow: 0 2px 0 rgba(150, 90, 0, .55), 0 0 12px rgba(255, 220, 80, .8); font-size: clamp(22px, 6vw, 30px); }
+  .ftbomb { color: #ff5252; text-shadow: 0 2px 0 rgba(120, 0, 0, .6); font-size: clamp(19px, 5.2vw, 26px); }
+  .ftmiss { color: #eee7d2; text-shadow: 0 1px 0 rgba(60, 50, 20, .5); font-size: clamp(13px, 3.6vw, 16px); font-weight: 700; }
+
+  /* ---------- 锤子 ---------- */
+  #hammer {
+    position: fixed; left: -300px; top: -300px;
+    width: clamp(64px, 14vw, 96px);
+    transform: translate(-30%, -78%) rotate(-52deg);
+    transform-origin: 50% 92%;
+    pointer-events: none; z-index: 90; opacity: 0;
+    filter: drop-shadow(0 6px 8px rgba(0, 0, 0, .3));
+  }
+  #hammer.swing { animation: swing .27s ease-out; }
+  @keyframes swing {
+    0% { opacity: 1; transform: translate(-30%, -78%) rotate(-58deg); }
+    42% { opacity: 1; transform: translate(-30%, -78%) rotate(16deg); }
+    78% { opacity: 1; transform: translate(-30%, -78%) rotate(10deg); }
+    100% { opacity: 0; transform: translate(-30%, -78%) rotate(10deg); }
+  }
+
+  /* ---------- 音效开关 ---------- */
+  #soundBtn {
+    position: fixed; right: 14px; bottom: 14px; z-index: 95;
+    width: 48px; height: 48px; border-radius: 50%;
+    border: none; cursor: pointer;
+    background: rgba(255, 255, 255, .9);
+    box-shadow: 0 3px 0 rgba(70, 105, 38, .4), 0 6px 14px rgba(0, 0, 0, .18);
+    color: #6b5a3a;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform .12s;
+  }
+  #soundBtn:active { transform: scale(.9); }
+  #soundBtn svg { width: 26px; height: 26px; }
+  #soundBtn .mute-line { display: none; }
+  #soundBtn.off .waves { display: none; }
+  #soundBtn.off .mute-line { display: block; }
+  #soundBtn.off { color: #b8ab94; }
+
+  /* ---------- 遮罩与面板 ---------- */
+  #overlay {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(24, 44, 10, .46);
+    padding: 16px;
+  }
+  #overlay.hidden { display: none; }
+
+  .panel {
+    background: linear-gradient(180deg, #fffdf5, #fdf6e3);
+    border-radius: 26px;
+    padding: clamp(20px, 4vh, 34px) clamp(18px, 5vw, 30px);
+    width: min(92vw, 400px);
+    max-height: 92dvh; overflow-y: auto;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .3), 0 0 0 4px #d9a05b, inset 0 0 0 2px #fff;
+    text-align: center;
+    animation: pop-in .32s cubic-bezier(.34, 1.56, .64, 1);
+  }
+  @keyframes pop-in {
+    from { transform: scale(.78); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .game-title {
+    font-size: clamp(42px, 11.5vw, 60px); font-weight: 900;
+    color: #58a832; letter-spacing: 6px; text-indent: 6px;
+    text-shadow: 0 3px 0 #2e6b12, 0 6px 12px rgba(46, 107, 18, .3);
+    line-height: 1.1;
+  }
+  .subtitle {
+    margin-top: 4px;
+    font-size: clamp(14px, 3.8vw, 17px); font-weight: 700;
+    color: #8a7a5c; letter-spacing: 4px; text-indent: 4px;
+  }
+
+  .legend {
+    display: flex; justify-content: center; gap: 12px;
+    margin: clamp(14px, 3vh, 22px) 0 10px;
+  }
+  .legend-item {
+    flex: 1; max-width: 160px;
+    background: #fff; border-radius: 16px;
+    padding: 10px 8px;
+    box-shadow: 0 3px 0 rgba(180, 150, 90, .35);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .legend-icon { width: 46px; height: 44px; }
+  .legend-icon svg { width: 100%; height: 100%; }
+  .legend-name { font-weight: 900; font-size: 15px; }
+  .legend-score { font-weight: 900; font-size: clamp(18px, 5vw, 22px); color: #4c9a28; }
+  .legend-score.bad { color: #e8382a; }
+  .legend-note { font-size: 11px; color: #a09478; }
+
+  .hint {
+    font-size: clamp(12px, 3.4vw, 14px);
+    color: #7a6a4f; line-height: 1.7;
+    margin: 6px 4px clamp(12px, 2.4vh, 18px);
+  }
+  .hint b { color: #ea580c; }
+
+  .best-line {
+    font-size: clamp(13px, 3.6vw, 15px);
+    color: #7a6a4f; font-weight: 700;
+    margin-bottom: clamp(14px, 3vh, 22px);
+  }
+  .best-line b { color: #e8862a; font-size: 1.25em; font-variant-numeric: tabular-nums; }
+
+  .btn-big {
+    display: inline-block;
+    border: none; cursor: pointer;
+    font-family: inherit;
+    font-size: clamp(18px, 5.2vw, 22px); font-weight: 900;
+    letter-spacing: 4px; text-indent: 4px;
+    color: #fff;
+    background: linear-gradient(180deg, #ffb02e, #f97316);
+    padding: clamp(12px, 2.2vh, 16px) clamp(38px, 12vw, 60px);
+    border-radius: 999px;
+    box-shadow: 0 6px 0 #c2410c, 0 10px 20px rgba(194, 65, 12, .35);
+    transition: transform .1s, box-shadow .1s;
+    touch-action: manipulation;
+  }
+  .btn-big:active {
+    transform: translateY(5px);
+    box-shadow: 0 1px 0 #c2410c, 0 4px 10px rgba(194, 65, 12, .3);
+  }
+
+  .btn-home {
+    display: inline-block;
+    margin-top: 12px;
+    border: none; cursor: pointer;
+    font-family: inherit;
+    font-size: clamp(13px, 3.6vw, 15px); font-weight: 800;
+    letter-spacing: 3px; text-indent: 3px;
+    color: #a1732a;
+    background: rgba(217, 160, 91, .16);
+    padding: 9px 26px;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 2px rgba(217, 160, 91, .45);
+    transition: transform .1s, background .15s;
+    touch-action: manipulation;
+  }
+  .btn-home:hover { background: rgba(217, 160, 91, .28); }
+  .btn-home:active { transform: translateY(3px); }
+
+  .over-title {
+    font-size: clamp(30px, 8.5vw, 42px); font-weight: 900;
+    color: #e8862a; letter-spacing: 4px; text-indent: 4px;
+    text-shadow: 0 3px 0 rgba(180, 100, 20, .35);
+  }
+
+  .final-wrap { margin: clamp(12px, 2.6vh, 20px) 0 6px; position: relative; }
+  .final-label { font-size: clamp(12px, 3.4vw, 14px); color: #a09478; font-weight: 700; letter-spacing: 3px; text-indent: 3px; }
+  .final-score {
+    font-size: clamp(52px, 15vw, 74px); font-weight: 900;
+    color: #4c9a28; line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 3px 0 rgba(46, 107, 18, .25);
+  }
+  .record-badge {
+    display: inline-block;
+    background: linear-gradient(180deg, #ffd54a, #ffb02e);
+    color: #7a4a00;
+    font-size: clamp(12px, 3.4vw, 14px); font-weight: 900;
+    letter-spacing: 2px; text-indent: 2px;
+    padding: 4px 16px; border-radius: 999px;
+    box-shadow: 0 3px 0 #c67f0a, 0 0 16px rgba(255, 200, 60, .8);
+    margin-top: 6px;
+    animation: record-blink 1s ease-in-out infinite;
+  }
+  @keyframes record-blink {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  .result-grid {
+    display: flex; gap: 10px; justify-content: center;
+    margin: clamp(10px, 2.2vh, 16px) 0 clamp(16px, 3vh, 24px);
+  }
+  .result-item {
+    flex: 1; max-width: 150px;
+    background: #fff; border-radius: 16px;
+    padding: 10px 6px;
+    box-shadow: 0 3px 0 rgba(180, 150, 90, .35);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .result-label { font-size: clamp(11px, 3vw, 13px); color: #a09478; font-weight: 700; }
+  .result-value { font-size: clamp(22px, 6.5vw, 30px); font-weight: 900; color: #4a6b1e; font-variant-numeric: tabular-nums; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="sky">
+    <div class="sun"></div>
+    <span class="cloud c1"></span>
+    <span class="cloud c2"></span>
+    <span class="cloud c3"></span>
+  </div>
+
+  <header id="hud">
+    <div class="hud-card score-card" id="scoreCard">
+      <span class="hud-label">得分</span>
+      <span id="scoreVal">0</span>
+    </div>
+    <div class="hud-card time-card" id="timeCard">
+      <span id="timeVal">30</span>
+      <span class="hud-label">秒</span>
+    </div>
+    <div class="hud-card combo-card" id="comboCard">
+      <span class="hud-label">连击</span>
+      <span id="comboVal">—</span>
+      <span class="mult-badge" id="multBadge"></span>
+    </div>
+  </header>
+
+  <main id="field">
+    <div id="grid"></div>
+  </main>
+
+  <button id="soundBtn" aria-label="音效开关">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 9 v6 h4 l5 4.2 V4.8 L8 9 Z" fill="currentColor"/>
+      <g class="waves">
+        <path d="M16 9.2 a4.2 4.2 0 0 1 0 5.6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M18.6 6.8 a8 8 0 0 1 0 10.4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </g>
+      <line class="mute-line" x1="4.5" y1="4.5" x2="20.5" y2="20.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+    </svg>
+  </button>
+
+  <div id="hammer"></div>
+
+  <div id="overlay">
+    <div class="panel" id="startPanel">
+      <h1 class="game-title">打地鼠</h1>
+      <p class="subtitle">30 秒限时挑战</p>
+      <div class="legend">
+        <div class="legend-item">
+          <span class="legend-icon">
+            <svg viewBox="0 0 120 112" aria-hidden="true">
+              <circle cx="36" cy="22" r="12" fill="#7a4a21"/>
+              <circle cx="84" cy="22" r="12" fill="#7a4a21"/>
+              <ellipse cx="60" cy="64" rx="37" ry="44" fill="#96602c"/>
+              <ellipse cx="46" cy="52" rx="7.5" ry="9" fill="#fff"/>
+              <ellipse cx="74" cy="52" rx="7.5" ry="9" fill="#fff"/>
+              <circle cx="48" cy="54.5" r="4.2" fill="#2d1c0e"/>
+              <circle cx="76" cy="54.5" r="4.2" fill="#2d1c0e"/>
+              <ellipse cx="60" cy="66" rx="6.5" ry="5" fill="#e8798f"/>
+              <ellipse cx="60" cy="80" rx="23" ry="24" fill="#d8a86b" opacity=".55"/>
+            </svg>
+          </span>
+          <span class="legend-name">地鼠</span>
+          <span class="legend-score">+10</span>
+          <span class="legend-note">连击可翻倍</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-icon">
+            <svg viewBox="0 0 120 116" aria-hidden="true">
+              <circle cx="60" cy="72" r="33" fill="#26262e"/>
+              <rect x="51" y="32" width="18" height="13" rx="4" fill="#3c3c46"/>
+              <path d="M60 32 C60 22 74 25 76 14" stroke="#c98a3d" stroke-width="5" fill="none" stroke-linecap="round"/>
+              <circle cx="77" cy="11" r="5" fill="#ffb02e"/>
+              <rect x="56.8" y="60" width="6.4" height="19" rx="3.2" fill="#ff4d4d"/>
+              <circle cx="60" cy="86" r="4.2" fill="#ff4d4d"/>
+            </svg>
+          </span>
+          <span class="legend-name">炸弹</span>
+          <span class="legend-score bad">-30</span>
+          <span class="legend-note">并清空连击</span>
+        </div>
+      </div>
+      <p class="hint">连续命中触发 <b>×2 / ×3</b> 倍率<br>打空或地鼠逃走会中断连击，小心炸弹！</p>
+      <div class="best-line">历史最高：<b id="bestStart">0</b></div>
+      <button id="startBtn" class="btn-big">开始游戏</button>
+    </div>
+
+    <div class="panel hidden" id="overPanel">
+      <h2 class="over-title">时间到！</h2>
+      <div class="final-wrap">
+        <div class="final-label">本局得分</div>
+        <div class="final-score" id="finalScore">0</div>
+        <div class="record-badge hidden" id="recordBadge">新纪录！</div>
+      </div>
+      <div class="result-grid">
+        <div class="result-item">
+          <span class="result-label">最高连击</span>
+          <span class="result-value" id="finalCombo">0</span>
+        </div>
+        <div class="result-item">
+          <span class="result-label">历史最高</span>
+          <span class="result-value" id="finalBest">0</span>
+        </div>
+      </div>
+      <button id="againBtn" class="btn-big">再来一局</button>
+      <button id="homeBtn" class="btn-home">回到主页</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 常量 ================= */
+  var GAME_MS = 30000;
+  var HOLE_COUNT = 9;
+  var BOMB_RATE = 0.1;
+  var BASE_SCORE = 10;
+  var BOMB_PENALTY = 30;
+  var CLEAR_MS = 280;
+
+  var MOLE_SVG =
+    '<svg viewBox="0 0 120 112" aria-hidden="true">' +
+    '<circle cx="36" cy="22" r="12" fill="#7a4a21"/>' +
+    '<circle cx="84" cy="22" r="12" fill="#7a4a21"/>' +
+    '<circle cx="36" cy="20" r="5.5" fill="#e8a2a0"/>' +
+    '<circle cx="84" cy="20" r="5.5" fill="#e8a2a0"/>' +
+    '<ellipse cx="60" cy="64" rx="37" ry="44" fill="#96602c"/>' +
+    '<ellipse cx="60" cy="80" rx="23" ry="24" fill="#d8a86b"/>' +
+    '<g class="face-normal">' +
+    '<ellipse cx="46" cy="52" rx="7.5" ry="9" fill="#fff"/>' +
+    '<ellipse cx="74" cy="52" rx="7.5" ry="9" fill="#fff"/>' +
+    '<circle cx="48" cy="54.5" r="4.2" fill="#2d1c0e"/>' +
+    '<circle cx="76" cy="54.5" r="4.2" fill="#2d1c0e"/>' +
+    '<circle cx="46.5" cy="52" r="1.5" fill="#fff"/>' +
+    '<circle cx="74.5" cy="52" r="1.5" fill="#fff"/>' +
+    '</g>' +
+    '<g class="face-dizzy">' +
+    '<path d="M41 47 L51 57 M51 47 L41 57" stroke="#2d1c0e" stroke-width="3.6" stroke-linecap="round" fill="none"/>' +
+    '<path d="M69 47 L79 57 M79 47 L69 57" stroke="#2d1c0e" stroke-width="3.6" stroke-linecap="round" fill="none"/>' +
+    '</g>' +
+    '<ellipse cx="60" cy="64" rx="6.5" ry="5" fill="#e8798f"/>' +
+    '<path d="M51 72 Q60 79 69 72" stroke="#4a2c12" stroke-width="3" fill="none" stroke-linecap="round"/>' +
+    '<rect x="55" y="73" width="4.6" height="7" rx="2" fill="#fff" stroke="#d9c9b4" stroke-width=".8"/>' +
+    '<rect x="60.4" y="73" width="4.6" height="7" rx="2" fill="#fff" stroke="#d9c9b4" stroke-width=".8"/>' +
+    '<ellipse cx="37" cy="64" rx="6" ry="4" fill="#e8798f" opacity=".5"/>' +
+    '<ellipse cx="83" cy="64" rx="6" ry="4" fill="#e8798f" opacity=".5"/>' +
+    '<path d="M31 58 L15 54 M31 64 L16 66" stroke="#5a3a1a" stroke-width="2" stroke-linecap="round" opacity=".6" fill="none"/>' +
+    '<path d="M89 58 L105 54 M89 64 L104 66" stroke="#5a3a1a" stroke-width="2" stroke-linecap="round" opacity=".6" fill="none"/>' +
+    '<ellipse cx="43" cy="102" rx="10.5" ry="7.5" fill="#7a4a21"/>' +
+    '<ellipse cx="77" cy="102" rx="10.5" ry="7.5" fill="#7a4a21"/>' +
+    '</svg>';
+
+  var BOMB_SVG =
+    '<svg viewBox="0 0 120 116" aria-hidden="true">' +
+    '<circle class="bomb-ring" cx="60" cy="72" r="44" fill="none" stroke="#ff5555" stroke-width="4" opacity=".55"/>' +
+    '<path d="M60 32 C60 22 74 25 76 14" stroke="#c98a3d" stroke-width="5" fill="none" stroke-linecap="round"/>' +
+    '<g class="bomb-spark">' +
+    '<circle cx="77" cy="11" r="5" fill="#ffb02e"/>' +
+    '<path d="M77 2 L77 5 M86 11 L83 11 M83 4 L80.6 7" stroke="#ff7a1a" stroke-width="3" stroke-linecap="round" fill="none"/>' +
+    '</g>' +
+    '<rect x="51" y="32" width="18" height="13" rx="4" fill="#3c3c46"/>' +
+    '<circle cx="60" cy="74" r="33" fill="#26262e"/>' +
+    '<ellipse cx="47" cy="61" rx="11" ry="7.5" fill="#55555f" opacity=".9" transform="rotate(-28 47 61)"/>' +
+    '<rect x="56.8" y="60" width="6.4" height="19" rx="3.2" fill="#ff4d4d"/>' +
+    '<circle cx="60" cy="86" r="4.2" fill="#ff4d4d"/>' +
+    '</svg>';
+
+  var HAMMER_SVG =
+    '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+    '<rect x="44" y="30" width="13" height="64" rx="6" fill="#c08444" stroke="#8a5a2b" stroke-width="2.5"/>' +
+    '<rect x="20" y="6" width="60" height="34" rx="11" fill="#8a5a2b"/>' +
+    '<rect x="20" y="6" width="60" height="15" rx="7.5" fill="#a06a33"/>' +
+    '<rect x="70" y="12" width="10" height="22" rx="5" fill="#6b431f"/>' +
+    '</svg>';
+
+  /* ================= DOM ================= */
+  function $(id) { return document.getElementById(id); }
+  var scoreVal = $('scoreVal'), timeVal = $('timeVal'), comboVal = $('comboVal');
+  var multBadge = $('multBadge'), comboCard = $('comboCard'), scoreCard = $('scoreCard');
+  var timeCard = $('timeCard'), grid = $('grid'), field = $('field');
+  var hammer = $('hammer'), overlay = $('overlay');
+  var startPanel = $('startPanel'), overPanel = $('overPanel');
+  var startBtn = $('startBtn'), againBtn = $('againBtn'), homeBtn = $('homeBtn'), soundBtn = $('soundBtn');
+  var bestStart = $('bestStart'), finalScore = $('finalScore');
+  var finalCombo = $('finalCombo'), finalBest = $('finalBest'), recordBadge = $('recordBadge');
+
+  /* ================= 状态 ================= */
+  var state = 'ready';           // ready | playing | over
+  var elapsed = 0;               // 本局已进行毫秒（rAF 累积，后台自动暂停）
+  var lastTs = 0;
+  var rafId = 0;
+  var score = 0;
+  var combo = 0;
+  var maxCombo = 0;
+  var nextSpawnAt = 0;
+  var lastShownSec = -1;
+  var endTimeout = 0;
+  var holes = [];                // { el, type, born, dieAt, clearAt, hit, leaving }
+
+  /* ================= 存储 ================= */
+  function loadBest() {
+    try { return parseInt(localStorage.getItem('mole_best'), 10) || 0; } catch (e) { return 0; }
+  }
+  function saveBest(v) {
+    try { localStorage.setItem('mole_best', String(v)); } catch (e) {}
+  }
+
+  /* ================= 音效（Web Audio 合成） ================= */
+  var FX = (function () {
+    var ctx = null;
+    var noiseBuf = null;
+    var enabled = true;
+    try { enabled = localStorage.getItem('mole_sound') !== '0'; } catch (e) {}
+
+    function ensure() {
+      if (!enabled) return null;
+      if (!ctx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC();
+        var len = Math.floor(ctx.sampleRate * 0.35);
+        noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+        var d = noiseBuf.getChannelData(0);
+        for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      }
+      if (ctx.state === 'suspended') ctx.resume();
+      return ctx;
+    }
+
+    function tone(f0, f1, dur, vol, type, delay) {
+      var c = ensure();
+      if (!c) return;
+      var t0 = c.currentTime + (delay || 0);
+      var o = c.createOscillator();
+      var g = c.createGain();
+      o.type = type || 'sine';
+      o.frequency.setValueAtTime(f0, t0);
+      if (f1 > 0) o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+      g.gain.setValueAtTime(vol, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g);
+      g.connect(c.destination);
+      o.start(t0);
+      o.stop(t0 + dur + 0.03);
+    }
+
+    function noise(dur, vol, f0) {
+      var c = ensure();
+      if (!c) return;
+      var t0 = c.currentTime;
+      var src = c.createBufferSource();
+      src.buffer = noiseBuf;
+      var f = c.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.setValueAtTime(f0, t0);
+      f.frequency.exponentialRampToValueAtTime(120, t0 + dur);
+      var g = c.createGain();
+      g.gain.setValueAtTime(vol, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      src.connect(f);
+      f.connect(g);
+      g.connect(c.destination);
+      src.start(t0);
+      src.stop(t0 + dur);
+    }
+
+    return {
+      get enabled() { return enabled; },
+      unlock: function () { ensure(); },
+      toggle: function () {
+        enabled = !enabled;
+        try { localStorage.setItem('mole_sound', enabled ? '1' : '0'); } catch (e) {}
+        return enabled;
+      },
+      hit: function (mult) {
+        var base = 500 + (mult - 1) * 130;
+        tone(base, base * 0.55, 0.11, 0.32, 'triangle');
+        tone(base * 2, base, 0.08, 0.16, 'sine', 0.02);
+      },
+      miss: function () { tone(230, 140, 0.08, 0.1, 'sine'); },
+      bomb: function () {
+        noise(0.45, 0.55, 1400);
+        tone(110, 38, 0.4, 0.45, 'sawtooth');
+      },
+      tick: function () { tone(1250, 0, 0.06, 0.16, 'square'); },
+      start: function () {
+        tone(392, 0, 0.1, 0.22, 'triangle');
+        tone(523, 0, 0.1, 0.22, 'triangle', 0.12);
+        tone(659, 0, 0.18, 0.22, 'triangle', 0.24);
+      },
+      end: function () {
+        tone(659, 0, 0.12, 0.22, 'triangle');
+        tone(523, 0, 0.12, 0.22, 'triangle', 0.14);
+        tone(392, 0, 0.24, 0.22, 'triangle', 0.28);
+      },
+      record: function () {
+        var seq = [523, 659, 784, 1046];
+        for (var i = 0; i < seq.length; i++) tone(seq[i], 0, 0.12, 0.2, 'triangle', i * 0.09);
+      }
+    };
+  })();
+
+  /* ================= 工具 ================= */
+  function rand(a, b) { return a + Math.random() * (b - a); }
+  function pick(arr) { return arr[(Math.random() * arr.length) | 0]; }
+
+  function replay(el, cls) {
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+  }
+
+  function popText(holeEl, text, cls) {
+    var s = document.createElement('span');
+    s.className = 'float-text ' + cls;
+    s.textContent = text;
+    holeEl.appendChild(s);
+    s.addEventListener('animationend', function () { s.remove(); });
+  }
+
+  /* ================= 难度与倍率 ================= */
+  function progress() { return Math.min(elapsed / GAME_MS, 1); }
+  function stayMs() { return 900 - 480 * progress(); }      // 900ms → 420ms
+  function spawnGap() { return 1000 - 520 * progress(); }   // 1000ms → 480ms
+  function multiplier() { return combo >= 6 ? 3 : combo >= 3 ? 2 : 1; }
+
+  /* ================= HUD ================= */
+  function updateHUD() {
+    scoreVal.textContent = score;
+    if (combo > 0) {
+      comboVal.textContent = combo + ' 连';
+      var m = multiplier();
+      multBadge.textContent = '×' + m;
+      multBadge.className = 'mult-badge show m' + m;
+    } else {
+      comboVal.textContent = '—';
+      multBadge.className = 'mult-badge';
+      multBadge.textContent = '';
+    }
+  }
+
+  function comboBreak(shakeCard) {
+    if (combo > 0) {
+      combo = 0;
+      updateHUD();
+      if (shakeCard) replay(comboCard, 'break');
+    }
+  }
+
+  function popScoreCard() { replay(scoreCard, 'pop'); replay(comboCard, 'pop'); }
+
+  /* ================= 地鼠洞 ================= */
+  function buildHoles() {
+    for (var i = 0; i < HOLE_COUNT; i++) {
+      var el = document.createElement('div');
+      el.className = 'hole';
+      el.dataset.idx = i;
+      el.innerHTML =
+        '<div class="pit"></div>' +
+        '<div class="clip">' +
+        '<div class="actor mole">' + MOLE_SVG + '</div>' +
+        '<div class="actor bomb">' + BOMB_SVG + '</div>' +
+        '</div>' +
+        '<div class="rim"></div>' +
+        '<span class="grass g1"><i></i><i></i><i></i></span>' +
+        '<span class="grass g2"><i></i><i></i><i></i></span>';
+      grid.appendChild(el);
+      holes.push({ el: el, type: null, born: 0, dieAt: 0, clearAt: 0, hit: false, leaving: false });
+    }
+  }
+
+  function clearHole(h) {
+    h.type = null;
+    h.hit = false;
+    h.leaving = false;
+    h.born = 0;
+    h.dieAt = 0;
+    h.clearAt = 0;
+    h.el.classList.remove('up-mole', 'up-bomb', 'bonked', 'exploded');
+  }
+
+  function spawn() {
+    var free = [];
+    for (var i = 0; i < holes.length; i++) if (!holes[i].type) free.push(holes[i]);
+    if (!free.length) return;
+    var hole = pick(free);
+    var isBomb = Math.random() < BOMB_RATE;
+    hole.type = isBomb ? 'bomb' : 'mole';
+    hole.hit = false;
+    hole.leaving = false;
+    hole.born = elapsed;
+    hole.dieAt = elapsed + stayMs() * (isBomb ? rand(1.15, 1.4) : rand(0.9, 1.15));
+    hole.el.classList.add(isBomb ? 'up-bomb' : 'up-mole');
+  }
+
+  function despawn(hole) {
+    hole.leaving = true;
+    hole.clearAt = elapsed + CLEAR_MS;
+    hole.el.classList.remove('up-mole', 'up-bomb');
+  }
+
+  /* ================= 命中处理 ================= */
+  function hammerSwing(x, y) {
+    hammer.style.left = x + 'px';
+    hammer.style.top = y + 'px';
+    replay(hammer, 'swing');
+  }
+
+  function onHit(hole) {
+    if (!hole.type || hole.hit || hole.leaving) return false;
+
+    if (hole.type === 'bomb') {
+      hole.hit = true;
+      score -= BOMB_PENALTY;
+      comboBreak(true);
+      updateHUD();
+      popScoreCard();
+      popText(hole.el, '-' + BOMB_PENALTY, 'ftbomb');
+      hole.el.classList.add('exploded');
+      replay(document.getElementById('app'), 'shake');
+      if (navigator.vibrate) navigator.vibrate(70);
+      FX.bomb();
+      despawn(hole);
+      return true;
+    }
+
+    hole.hit = true;
+    combo += 1;
+    if (combo > maxCombo) maxCombo = combo;
+    var m = multiplier();
+    var gain = BASE_SCORE * m;
+    score += gain;
+    updateHUD();
+    popScoreCard();
+    popText(hole.el, '+' + gain, m === 3 ? 'ft3' : m === 2 ? 'ft2' : 'ft1');
+    hole.el.classList.add('bonked');
+    FX.hit(m);
+    despawn(hole);
+    return true;
+  }
+
+  function onMiss(hole) {
+    var had = combo > 0;
+    comboBreak(true);
+    if (had) {
+      popText(hole.el, '连击中断', 'ftmiss');
+      FX.miss();
+    }
+  }
+
+  /* ================= 输入（pointerdown 触屏无延迟） ================= */
+  field.addEventListener('pointerdown', function (e) {
+    if (state !== 'playing') return;
+    e.preventDefault();
+    hammerSwing(e.clientX, e.clientY);
+    var holeEl = e.target.closest ? e.target.closest('.hole') : null;
+    if (!holeEl) return;
+    var hole = holes[+holeEl.dataset.idx];
+    if (!hole.type) { onMiss(hole); return; }
+    if (hole.hit || hole.leaving) return;   // 同一目标不重复计分
+    onHit(hole);
+  });
+
+  document.addEventListener('contextmenu', function (e) {
+    if (e.target.closest && e.target.closest('#field')) e.preventDefault();
+  });
+
+  /* ================= 主循环（统一调度计时/生成/超时） ================= */
+  function loop(ts) {
+    rafId = requestAnimationFrame(loop);
+    var dt = Math.min(ts - lastTs, 100);
+    lastTs = ts;
+    if (state !== 'playing') return;
+
+    elapsed += dt;
+
+    // 倒计时
+    var remain = Math.max(GAME_MS - elapsed, 0);
+    var sec = Math.ceil(remain / 1000);
+    if (sec !== lastShownSec) {
+      lastShownSec = sec;
+      timeVal.textContent = sec;
+      timeCard.classList.toggle('danger', sec <= 5 && sec > 0);
+      if (sec <= 5 && sec > 0) FX.tick();
+    }
+
+    // 生成
+    if (elapsed >= nextSpawnAt) {
+      spawn();
+      nextSpawnAt = elapsed + spawnGap() * rand(0.8, 1.2);
+    }
+
+    // 超时逃走 / 缩回后清理
+    for (var i = 0; i < holes.length; i++) {
+      var h = holes[i];
+      if (!h.type) continue;
+      if (!h.leaving && elapsed >= h.dieAt) {
+        if (h.type === 'mole') {
+          var had = combo > 0;
+          comboBreak(true);
+          if (had) popText(h.el, '溜了~', 'ftmiss');
+        }
+        despawn(h);
+      } else if (h.leaving && elapsed >= h.clearAt) {
+        clearHole(h);
+      }
+    }
+
+    if (elapsed >= GAME_MS) endGame();
+  }
+
+  /* ================= 开始 / 结束 ================= */
+  function startGame() {
+    clearTimeout(endTimeout);
+    cancelAnimationFrame(rafId);
+    score = 0;
+    combo = 0;
+    maxCombo = 0;
+    elapsed = 0;
+    lastShownSec = -1;
+    nextSpawnAt = 380;
+    for (var i = 0; i < holes.length; i++) clearHole(holes[i]);
+    updateHUD();
+    timeVal.textContent = '30';
+    timeCard.classList.remove('danger');
+    overlay.classList.add('hidden');
+    state = 'playing';
+    lastTs = performance.now();
+    rafId = requestAnimationFrame(loop);
+    FX.start();
+  }
+
+  function endGame() {
+    state = 'over';
+    cancelAnimationFrame(rafId);
+    for (var i = 0; i < holes.length; i++) clearHole(holes[i]);
+    timeCard.classList.remove('danger');
+    timeVal.textContent = '0';
+
+    var best = loadBest();
+    var isRecord = score > best;
+    if (isRecord) saveBest(score);
+    bestStart.textContent = Math.max(score, best);
+
+    FX.end();
+    endTimeout = setTimeout(function () {
+      finalScore.textContent = score;
+      finalCombo.textContent = maxCombo;
+      finalBest.textContent = Math.max(score, best);
+      recordBadge.classList.toggle('hidden', !isRecord);
+      startPanel.classList.add('hidden');
+      overPanel.classList.remove('hidden');
+      overlay.classList.remove('hidden');
+      if (isRecord) FX.record();
+    }, 520);
+  }
+
+  /* ================= 控件 ================= */
+  startBtn.addEventListener('click', function () {
+    FX.unlock();
+    startGame();
+  });
+  againBtn.addEventListener('click', function () {
+    FX.unlock();
+    startGame();
+  });
+  function goHome() {
+    clearTimeout(endTimeout);
+    cancelAnimationFrame(rafId);
+    for (var i = 0; i < holes.length; i++) clearHole(holes[i]);
+    score = 0; combo = 0; maxCombo = 0;
+    updateHUD();
+    timeVal.textContent = '30';
+    timeCard.classList.remove('danger');
+    bestStart.textContent = loadBest();
+    startPanel.classList.remove('hidden');
+    overPanel.classList.add('hidden');
+    overlay.classList.remove('hidden');
+    state = 'ready';
+  }
+  homeBtn.addEventListener('click', function () {
+    FX.unlock();
+    goHome();
+  });
+
+  function syncSoundBtn() {
+    soundBtn.classList.toggle('off', !FX.enabled);
+  }
+  soundBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    FX.toggle();
+    if (FX.enabled) FX.unlock();
+    syncSoundBtn();
+  });
+
+  /* ================= 初始化 ================= */
+  hammer.innerHTML = HAMMER_SVG;
+  buildHoles();
+  bestStart.textContent = loadBest();
+  syncSoundBtn();
+  updateHUD();
+})();
+</script>
+</body>
+</html>

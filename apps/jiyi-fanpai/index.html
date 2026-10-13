@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0b0e1a">
+<title>记忆翻牌</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0b0e1a;
+  --ink: #e2e8f0;
+  --muted: #8b96ad;
+  --cyan: #22d3ee;
+  --purple: #a78bfa;
+  --pink: #f472b6;
+  --gold: #fbbf24;
+}
+html { -webkit-text-size-adjust: 100%; }
+body {
+  min-height: 100vh;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  background:
+    radial-gradient(900px 600px at 80% -10%, rgba(124, 58, 237, .16), transparent 60%),
+    radial-gradient(700px 520px at 0% 100%, rgba(34, 211, 238, .12), transparent 60%),
+    var(--bg);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+body::before, body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  border-radius: 50%;
+  filter: blur(70px);
+  pointer-events: none;
+}
+body::before { width: 46vmax; height: 46vmax; left: -14vmax; top: -16vmax; background: rgba(124, 58, 237, .2); }
+body::after { width: 40vmax; height: 40vmax; right: -12vmax; bottom: -14vmax; background: rgba(34, 211, 238, .14); }
+
+.hidden { display: none !important; }
+.screen {
+  width: 100%;
+  max-width: 720px;
+  padding: 28px 16px 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: auto;
+}
+
+.hero { text-align: center; margin-bottom: 30px; }
+.hero-icon { font-size: 54px; filter: drop-shadow(0 6px 18px rgba(167, 139, 250, .45)); }
+.hero-title {
+  font-size: clamp(36px, 9vw, 54px);
+  font-weight: 800;
+  letter-spacing: 6px;
+  margin: 8px 0 10px;
+  background: linear-gradient(115deg, var(--cyan) 10%, var(--purple) 50%, var(--pink) 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  filter: drop-shadow(0 0 18px rgba(167, 139, 250, .35));
+}
+.hero-sub { color: var(--muted); font-size: 14px; letter-spacing: 1px; }
+
+.levels { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px; }
+.level-card {
+  font-family: inherit;
+  width: 100%;
+  background: linear-gradient(160deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .02));
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 18px;
+  padding: 20px 22px;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition: transform .25s, border-color .25s, box-shadow .25s, background .25s;
+}
+.level-card:hover { transform: translateY(-4px); background: linear-gradient(160deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .04)); }
+.level-card:active { transform: translateY(-1px) scale(.99); }
+.level-card.easy:hover { border-color: rgba(34, 211, 238, .6); box-shadow: 0 10px 34px rgba(34, 211, 238, .2); }
+.level-card.hard:hover { border-color: rgba(244, 114, 182, .6); box-shadow: 0 10px 34px rgba(244, 114, 182, .2); }
+.lv-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.lv-info { display: flex; flex-direction: column; gap: 4px; }
+.lv-name { font-size: 20px; font-weight: 700; }
+.lv-sub { font-size: 13px; color: var(--muted); }
+.dots { display: grid; gap: 4px; width: 88px; flex: none; }
+.dots i {
+  display: block;
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, .13);
+  border: 1px solid rgba(255, 255, 255, .12);
+}
+.lv-best {
+  display: block;
+  margin-top: 14px;
+  padding-top: 11px;
+  border-top: 1px dashed rgba(255, 255, 255, .14);
+  font-size: 13px;
+  color: var(--muted);
+}
+.lv-best.has { color: var(--gold); }
+.tip { margin-top: 26px; font-size: 12px; color: var(--muted); letter-spacing: .5px; }
+
+.hud { width: 100%; max-width: 660px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
+.hud-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hud-level { font-weight: 700; font-size: 17px; letter-spacing: 1px; }
+.hud-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat {
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 12px;
+  padding: 8px 6px;
+  text-align: center;
+}
+.stat-label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+.stat b { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+#board {
+  width: 100%;
+  display: grid;
+  padding: 12px;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 16px;
+}
+#board.easy { max-width: 500px; gap: 10px; --emoji-size: clamp(26px, 8vw, 42px); --q-size: clamp(20px, 6vw, 30px); }
+#board.hard { max-width: 660px; gap: 9px; --emoji-size: clamp(18px, 5.2vw, 32px); --q-size: clamp(14px, 3.8vw, 22px); }
+
+.card {
+  font-family: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  aspect-ratio: 1;
+  perspective: 900px;
+  cursor: pointer;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+.card:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; border-radius: 12px; }
+.card.matched { cursor: default; }
+.card-inner {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform-style: preserve-3d;
+  transition: transform .45s cubic-bezier(.4, .2, .2, 1);
+}
+.card.flipped .card-inner, .card.matched .card-inner { transform: rotateY(180deg); }
+.card-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(0);
+  overflow: hidden;
+}
+.card-face.back {
+  background: linear-gradient(145deg, #2b2154, #171d3d 55%, #14263e);
+  border: 1px solid rgba(167, 139, 250, .35);
+  box-shadow: inset 0 0 18px rgba(124, 58, 237, .25), 0 4px 10px rgba(0, 0, 0, .35);
+}
+.card-face.back::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1.5px solid rgba(34, 211, 238, .4);
+  border-radius: 8px;
+}
+.q {
+  font-size: var(--q-size);
+  font-weight: 800;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.card-face.front {
+  transform: rotateY(180deg);
+  background: linear-gradient(150deg, #1c2b4a, #10203a);
+  border: 1px solid rgba(148, 163, 184, .35);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .35);
+}
+.emoji { font-size: var(--emoji-size); line-height: 1; }
+.card.pop { animation: pop .45s ease; }
+@keyframes pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+.card.matched .card-face.front {
+  border-color: rgba(251, 191, 36, .75);
+  animation: glowpulse 1.8s ease-in-out infinite;
+}
+@keyframes glowpulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(251, 191, 36, .35), inset 0 0 8px rgba(251, 191, 36, .18); }
+  50% { box-shadow: 0 0 20px rgba(251, 191, 36, .6), inset 0 0 12px rgba(251, 191, 36, .28); }
+}
+.card.shake { animation: shake .4s ease; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+@media (hover: hover) {
+  .card:not(.flipped):not(.matched):hover .card-inner { transform: translateY(-3px) rotateY(0deg); }
+  .card:not(.flipped):not(.matched):hover .card-face.back { border-color: rgba(167, 139, 250, .65); box-shadow: inset 0 0 18px rgba(124, 58, 237, .35), 0 8px 18px rgba(0, 0, 0, .4); }
+}
+
+.btn {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 12px;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: transform .2s, background .2s, border-color .2s, filter .2s;
+}
+.btn:hover { background: rgba(255, 255, 255, .13); border-color: rgba(255, 255, 255, .3); }
+.btn:active { transform: scale(.96); }
+.btn.primary { background: linear-gradient(135deg, #7c3aed, #0891b2); border-color: transparent; }
+.btn.primary:hover { filter: brightness(1.18); }
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(5, 8, 18, .72);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.panel {
+  width: 100%;
+  max-width: 360px;
+  background: linear-gradient(165deg, #1b2246, #131834);
+  border: 1px solid rgba(167, 139, 250, .4);
+  border-radius: 20px;
+  padding: 28px 26px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .5), 0 0 40px rgba(124, 58, 237, .25);
+  animation: panelIn .4s cubic-bezier(.34, 1.56, .64, 1);
+}
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(24px) scale(.9); }
+  to { opacity: 1; transform: none; }
+}
+.trophy { font-size: 46px; animation: floaty 2.4s ease-in-out infinite; }
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.panel-title { font-size: 20px; font-weight: 700; margin: 10px 0 4px; letter-spacing: 2px; }
+.result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 18px 0 14px; }
+.record { font-size: 14px; font-weight: 700; color: var(--gold); margin-bottom: 16px; }
+.record.hidden + .panel-btns { margin-top: 4px; }
+.panel-btns { display: flex; gap: 10px; }
+.panel-btns .btn { flex: 1; padding: 11px 12px; }
+
+@media (max-width: 420px) {
+  #board.easy { gap: 8px; padding: 9px; }
+  #board.hard { gap: 6px; padding: 8px; border-radius: 13px; }
+  .stat b { font-size: 15px; }
+  .btn { padding: 8px 12px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<section id="screen-start" class="screen">
+  <div class="hero">
+    <div class="hero-icon">🎴</div>
+    <h1 class="hero-title">记忆翻牌</h1>
+    <p class="hero-sub">翻开卡片，找出所有相同的图案对</p>
+  </div>
+  <div class="levels">
+    <button type="button" class="level-card easy" data-level="easy">
+      <span class="lv-row">
+        <span class="lv-info">
+          <span class="lv-name">简单</span>
+          <span class="lv-sub">4 × 4 · 8 对</span>
+        </span>
+        <span class="dots" data-n="4" aria-hidden="true"></span>
+      </span>
+      <span class="lv-best" id="best-easy">暂无记录</span>
+    </button>
+    <button type="button" class="level-card hard" data-level="hard">
+      <span class="lv-row">
+        <span class="lv-info">
+          <span class="lv-name">困难</span>
+          <span class="lv-sub">6 × 6 · 18 对</span>
+        </span>
+        <span class="dots" data-n="6" aria-hidden="true"></span>
+      </span>
+      <span class="lv-best" id="best-hard">暂无记录</span>
+    </button>
+  </div>
+  <p class="tip">💡 步数越少、用时越短越厉害 · 记录保存在本机浏览器</p>
+</section>
+
+<section id="screen-game" class="screen hidden">
+  <header class="hud">
+    <div class="hud-top">
+      <button type="button" class="btn" id="btn-back">‹ 选难度</button>
+      <span class="hud-level" id="hud-level">简单 4×4</span>
+      <button type="button" class="btn" id="btn-restart">↻ 重开</button>
+    </div>
+    <div class="hud-stats">
+      <div class="stat"><span class="stat-label">步数</span><b id="hud-moves">0</b></div>
+      <div class="stat"><span class="stat-label">用时</span><b id="hud-time">0.0s</b></div>
+      <div class="stat"><span class="stat-label">最佳</span><b id="hud-best">—</b></div>
+    </div>
+  </header>
+  <div id="board" class="easy" aria-label="卡片区"></div>
+</section>
+
+<div id="overlay" class="overlay hidden" role="dialog" aria-modal="true">
+  <div class="panel">
+    <div class="trophy">🏆</div>
+    <h2 class="panel-title">全部配对成功！</h2>
+    <div class="result-grid">
+      <div class="stat"><span class="stat-label">难度</span><b id="res-level">—</b></div>
+      <div class="stat"><span class="stat-label">步数</span><b id="res-moves">0</b></div>
+      <div class="stat"><span class="stat-label">用时</span><b id="res-time">0s</b></div>
+    </div>
+    <p class="record hidden" id="res-record"></p>
+    <div class="panel-btns">
+      <button type="button" class="btn primary" id="btn-again">再来一局</button>
+      <button type="button" class="btn" id="btn-change">换个难度</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const EMOJI_POOL = ['🍎', '🍋', '🍇', '🍓', '🍒', '🥝', '🍉', '🥑', '🌻', '🌈', '⭐', '🌙', '🔥', '⚡', '🎮', '🎯', '🚀', '🎸', '🐳', '🦋', '🍩', '🍕', '🍀', '🐧'];
+  const LEVELS = {
+    easy: { cols: 4, pairs: 8, label: '简单 4×4' },
+    hard: { cols: 6, pairs: 18, label: '困难 6×6' }
+  };
+
+  let level = 'easy';
+  let firstCard = null;
+  let secondCard = null;
+  let lock = false;
+  let matchedPairs = 0;
+  let moves = 0;
+  let started = false;
+  let startTime = 0;
+  let timerId = null;
+  let overlayTimer = null;
+  let memoryTimer = null;
+  let memoryCountdown = null;
+
+  const $ = (id) => document.getElementById(id);
+  const screenStart = $('screen-start');
+  const screenGame = $('screen-game');
+  const board = $('board');
+  const overlay = $('overlay');
+  const hudLevel = $('hud-level');
+  const hudMoves = $('hud-moves');
+  const hudTime = $('hud-time');
+  const hudBest = $('hud-best');
+  const resLevel = $('res-level');
+  const resMoves = $('res-moves');
+  const resTime = $('res-time');
+  const resRecord = $('res-record');
+
+  const shuffle = (arr) => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
+
+  const fmtTime = (ms) => {
+    const s = Math.max(0, ms) / 1000;
+    if (s < 60) return s.toFixed(1) + 's';
+    const m = Math.floor(s / 60);
+    return m + ':' + (s - m * 60).toFixed(1).padStart(4, '0');
+  };
+
+  const bestKey = (lv, kind) => 'memory_best_' + lv + '_' + kind;
+
+  const loadBest = (lv) => {
+    const b = { time: 0, moves: 0 };
+    try {
+      b.time = Number(localStorage.getItem(bestKey(lv, 'time'))) || 0;
+      b.moves = Number(localStorage.getItem(bestKey(lv, 'moves'))) || 0;
+    } catch (e) {}
+    return b;
+  };
+
+  const saveBest = (lv, kind, val) => {
+    try { localStorage.setItem(bestKey(lv, kind), String(val)); } catch (e) {}
+  };
+
+  const bestText = (lv) => {
+    const b = loadBest(lv);
+    return b.time ? b.moves + '步 · ' + fmtTime(b.time) : '';
+  };
+
+  const refreshStartBest = () => {
+    ['easy', 'hard'].forEach((lv) => {
+      const el = $('best-' + lv);
+      const t = bestText(lv);
+      el.textContent = t ? '🏅 ' + t : '暂无记录';
+      el.classList.toggle('has', !!t);
+    });
+  };
+
+  const hideOverlayNow = () => {
+    if (overlayTimer) { clearTimeout(overlayTimer); overlayTimer = null; }
+    overlay.classList.add('hidden');
+  };
+
+  const stopTimer = () => {
+    if (timerId) { clearInterval(timerId); timerId = null; }
+  };
+
+  const fitLayout = () => {
+    screenGame.style.transform = '';
+    screenGame.style.marginBottom = '';
+    const h = screenGame.scrollHeight;
+    const wh = window.innerHeight;
+    if (h > wh * 0.98) {
+      const scale = (wh * 0.96) / h;
+      screenGame.style.transform = 'scale(' + scale + ')';
+      screenGame.style.transformOrigin = 'top center';
+      screenGame.style.marginBottom = ((scale - 1) * h) + 'px';
+    }
+  };
+
+  const startTimer = () => {
+    stopTimer();
+    timerId = setInterval(() => {
+      hudTime.textContent = fmtTime(Date.now() - startTime);
+    }, 100);
+  };
+
+  const buildDots = () => {
+    document.querySelectorAll('.dots').forEach((el) => {
+      const n = Number(el.dataset.n) || 4;
+      el.style.gridTemplateColumns = 'repeat(' + n + ', 1fr)';
+      for (let i = 0; i < n * n; i++) el.appendChild(document.createElement('i'));
+    });
+  };
+
+  const buildBoard = () => {
+    const cfg = LEVELS[level];
+    board.classList.remove('easy', 'hard');
+    board.classList.add(level);
+    board.style.gridTemplateColumns = 'repeat(' + cfg.cols + ', 1fr)';
+    board.innerHTML = '';
+    const syms = shuffle(EMOJI_POOL.slice()).slice(0, cfg.pairs);
+    const deck = shuffle(syms.flatMap((s) => [s, s]));
+    deck.forEach((sym) => {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'card';
+      card.dataset.sym = sym;
+      card.setAttribute('aria-label', '未翻开的卡片');
+      card.innerHTML =
+        '<span class="card-inner">' +
+          '<span class="card-face back"><span class="q">?</span></span>' +
+          '<span class="card-face front"><span class="emoji">' + sym + '</span></span>' +
+        '</span>';
+      card.addEventListener('click', onCardClick);
+      board.appendChild(card);
+    });
+  };
+
+  const onCardClick = (e) => {
+    if (lock) return;
+    const card = e.currentTarget;
+    if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+    if (!started) {
+      started = true;
+      startTime = Date.now();
+      startTimer();
+    }
+    card.classList.add('flipped');
+    card.setAttribute('aria-label', '图案 ' + card.dataset.sym);
+    if (!firstCard) {
+      firstCard = card;
+      return;
+    }
+    secondCard = card;
+    lock = true;
+    moves += 1;
+    hudMoves.textContent = String(moves);
+    const c1 = firstCard;
+    const c2 = secondCard;
+    if (c1.dataset.sym === c2.dataset.sym) {
+      setTimeout(() => {
+        c1.classList.add('matched');
+        c2.classList.add('matched');
+        c1.classList.add('pop');
+        c2.classList.add('pop');
+        firstCard = null;
+        secondCard = null;
+        lock = false;
+        matchedPairs += 1;
+        if (matchedPairs === LEVELS[level].pairs) endGame();
+      }, 460);
+    } else {
+      setTimeout(() => {
+        c1.classList.add('shake');
+        c2.classList.add('shake');
+      }, 360);
+      setTimeout(() => {
+        c1.classList.remove('flipped', 'shake');
+        c2.classList.remove('flipped', 'shake');
+        c1.setAttribute('aria-label', '未翻开的卡片');
+        c2.setAttribute('aria-label', '未翻开的卡片');
+        firstCard = null;
+        secondCard = null;
+        lock = false;
+      }, 460);
+    }
+  };
+
+  const endGame = () => {
+    stopTimer();
+    lock = true;
+    const elapsed = Date.now() - startTime;
+    const prev = loadBest(level);
+    const newTime = !prev.time || elapsed < prev.time;
+    const newMoves = !prev.moves || moves < prev.moves;
+    if (newTime) saveBest(level, 'time', elapsed);
+    if (newMoves) saveBest(level, 'moves', moves);
+    resLevel.textContent = LEVELS[level].label;
+    resMoves.textContent = String(moves);
+    resTime.textContent = fmtTime(elapsed);
+    let text = '';
+    if (newTime && newMoves) text = '🎉 新纪录！最快用时 · 最少步数';
+    else if (newTime) text = '🎉 新纪录！最快用时';
+    else if (newMoves) text = '🎉 新纪录！最少步数';
+    resRecord.textContent = text;
+    resRecord.classList.toggle('hidden', !text);
+    overlayTimer = setTimeout(() => {
+      overlayTimer = null;
+      overlay.classList.remove('hidden');
+    }, 700);
+  };
+
+  const startGame = (lv) => {
+    level = lv;
+    hideOverlayNow();
+    stopTimer();
+    if (memoryTimer) { clearTimeout(memoryTimer); memoryTimer = null; }
+    if (memoryCountdown) { clearInterval(memoryCountdown); memoryCountdown = null; }
+    firstCard = null;
+    secondCard = null;
+    lock = true;
+    matchedPairs = 0;
+    moves = 0;
+    started = false;
+    startTime = 0;
+    hudLevel.textContent = LEVELS[lv].label;
+    hudMoves.textContent = '0';
+    hudTime.textContent = '记忆中 3.0s';
+    const t = bestText(lv);
+    hudBest.textContent = t ? '🏅 ' + t : '—';
+    buildBoard();
+    screenStart.classList.add('hidden');
+    screenGame.classList.remove('hidden');
+    fitLayout();
+    const allCards = board.querySelectorAll('.card');
+    allCards.forEach((c) => c.classList.add('flipped'));
+    let remain = 3000;
+    memoryCountdown = setInterval(() => {
+      remain -= 100;
+      if (remain <= 0) { clearInterval(memoryCountdown); memoryCountdown = null; return; }
+      hudTime.textContent = '记忆中 ' + (remain / 1000).toFixed(1) + 's';
+    }, 100);
+    memoryTimer = setTimeout(() => {
+      memoryTimer = null;
+      allCards.forEach((c) => c.classList.remove('flipped'));
+      lock = false;
+      hudTime.textContent = '0.0s';
+    }, 3000);
+  };
+
+  const goHome = () => {
+    hideOverlayNow();
+    stopTimer();
+    if (memoryTimer) { clearTimeout(memoryTimer); memoryTimer = null; }
+    if (memoryCountdown) { clearInterval(memoryCountdown); memoryCountdown = null; }
+    screenGame.style.transform = '';
+    screenGame.style.marginBottom = '';
+    screenGame.classList.add('hidden');
+    screenStart.classList.remove('hidden');
+    refreshStartBest();
+  };
+
+  document.querySelectorAll('.level-card').forEach((btn) => {
+    btn.addEventListener('click', () => startGame(btn.dataset.level));
+  });
+  $('btn-back').addEventListener('click', goHome);
+  $('btn-restart').addEventListener('click', () => startGame(level));
+  $('btn-again').addEventListener('click', () => startGame(level));
+  $('btn-change').addEventListener('click', goHome);
+
+  window.addEventListener('resize', fitLayout);
+  buildDots();
+  refreshStartBest();
+})();
+</script>
+</body>
+</html>

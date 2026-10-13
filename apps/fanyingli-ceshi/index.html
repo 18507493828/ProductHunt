@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#12121d">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<title>反应力测试</title>
+<style>
+  :root {
+    --bg: #12121d;
+    --red: #e5484d;
+    --green: #15b351;
+    --amber: #b45309;
+    --ink: #ffffff;
+    --ink-dim: rgba(255, 255, 255, 0.62);
+    --card: rgba(255, 255, 255, 0.07);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+    background: #000;
+    color: var(--ink);
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #app {
+    position: fixed;
+    inset: 0;
+    background: var(--stage, var(--bg));
+    transition: background-color 0.18s ease;
+    display: flex;
+    flex-direction: column;
+    touch-action: manipulation;
+    cursor: pointer;
+  }
+  #app[data-state="waiting"] { --stage: var(--red); }
+  #app[data-state="go"] { --stage: var(--green); }
+  #app[data-state="foul"] { --stage: var(--amber); }
+  #app[data-state="finish"] { cursor: default; }
+
+  /* ---------- 顶栏 ---------- */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: calc(14px + env(safe-area-inset-top)) 20px 0;
+  }
+  .dots { display: flex; gap: 9px; }
+  .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.5);
+    transition: background-color 0.25s ease, border-color 0.25s ease;
+  }
+  .dot.done { background: #fff; border-color: #fff; }
+  .dot.current { border-color: #fff; animation: dotPulse 1.1s ease-in-out infinite; }
+  .dot.current.foul {
+    border-color: #ffd166;
+    background: rgba(255, 209, 102, 0.35);
+    animation: none;
+  }
+  @keyframes dotPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.55); }
+    50% { box-shadow: 0 0 0 5px rgba(255, 255, 255, 0); }
+  }
+  .icon-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 0;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.12s ease;
+  }
+  .icon-btn:active { transform: scale(0.88); }
+  .icon-btn.off { background: rgba(255, 255, 255, 0.06); color: rgba(255, 255, 255, 0.4); }
+
+  /* ---------- 主区域 ---------- */
+  main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+    text-align: center;
+  }
+  .panel { max-width: 480px; width: 100%; }
+  .stage-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+
+  /* ---------- 首页 ---------- */
+  .game-title {
+    font-size: clamp(38px, 9vw, 64px);
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    line-height: 1.15;
+    text-shadow: 0 4px 28px rgba(120, 130, 255, 0.25);
+  }
+  .subtitle { margin-top: 10px; font-size: 15px; letter-spacing: 0.28em; color: var(--ink-dim); }
+  .rules {
+    list-style: none;
+    margin: 28px auto 0;
+    max-width: 360px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .rules li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ink-dim);
+  }
+  .rules li b { color: #fff; }
+  .rules i {
+    font-style: normal;
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+  .best-line {
+    margin-top: 24px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card);
+    padding: 10px 20px;
+    border-radius: 999px;
+    font-size: 14px;
+    color: var(--ink-dim);
+  }
+  .best-line b { color: #ffd166; font-size: 16px; }
+  .best-line.dim { opacity: 0.7; }
+
+  /* ---------- 通用元素 ---------- */
+  .cta { margin-top: 30px; font-size: 16px; font-weight: 700; letter-spacing: 0.14em; }
+  .cta.dim { font-size: 13px; font-weight: 500; letter-spacing: 0.08em; color: var(--ink-dim); }
+  .pulse { animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+  .big-text {
+    font-size: clamp(72px, 20vw, 176px);
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-shadow: 0 6px 32px rgba(0, 0, 0, 0.22);
+  }
+  .breathe { animation: breathe 1.5s ease-in-out infinite; }
+  @keyframes breathe { 0%, 100% { opacity: 0.88; } 50% { opacity: 0.55; } }
+  .pop { animation: popIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+  @keyframes popIn {
+    0% { transform: scale(0.4); opacity: 0; }
+    60% { transform: scale(1.12); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .sub-note { font-size: 14px; letter-spacing: 0.2em; opacity: 0.75; }
+
+  /* ---------- 单轮结果 ---------- */
+  .round-label { font-size: 14px; letter-spacing: 0.3em; color: var(--ink-dim); margin-bottom: 14px; }
+  .ms-num {
+    font-size: clamp(64px, 17vw, 148px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .ms-num small { font-size: 0.32em; font-weight: 600; margin-left: 6px; opacity: 0.75; }
+  .verdict { margin-top: 16px; font-size: 16px; color: var(--ink-dim); }
+
+  /* ---------- 犯规页 ---------- */
+  .foul-emoji { font-size: 56px; animation: shake 0.5s ease 0.15s both; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(5px); }
+  }
+  .foul-title { font-size: clamp(34px, 8vw, 52px); font-weight: 900; margin-top: 6px; letter-spacing: 0.06em; }
+  .foul-text { margin-top: 14px; font-size: 15px; line-height: 1.8; color: rgba(255, 255, 255, 0.85); }
+
+  /* ---------- 总成绩页 ---------- */
+  .panel-finish { display: flex; flex-direction: column; align-items: center; }
+  .finish-label { font-size: 14px; letter-spacing: 0.34em; color: var(--ink-dim); }
+  .avg-label { margin-top: 8px; font-size: 13px; letter-spacing: 0.2em; color: var(--ink-dim); }
+  .record-wrap { margin-top: 18px; }
+  .record-banner {
+    display: inline-block;
+    padding: 11px 20px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ffd166, #ff9f43);
+    color: #4a3000;
+    font-weight: 800;
+    font-size: 15px;
+    box-shadow: 0 10px 30px rgba(255, 159, 67, 0.35);
+    animation: bounceIn 0.65s cubic-bezier(0.22, 1.61, 0.36, 1) both;
+  }
+  @keyframes bounceIn {
+    0% { transform: scale(0.6) translateY(10px); opacity: 0; }
+    60% { transform: scale(1.06); }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  .stats { margin-top: 24px; display: flex; gap: 12px; justify-content: center; }
+  .stat {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 14px 0;
+    width: 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+  }
+  .stat-val { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .stat-key { font-size: 12px; color: var(--ink-dim); letter-spacing: 0.1em; }
+  .rank-badge {
+    margin-top: 24px;
+    padding: 10px 26px;
+    border-radius: 999px;
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+  }
+  .rank-text { margin-top: 12px; font-size: 14px; color: var(--ink-dim); line-height: 1.7; }
+  .btn {
+    appearance: none;
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    font-size: 17px;
+    padding: 15px 42px;
+    border-radius: 999px;
+    background: #fff;
+    color: #15151f;
+    margin-top: 28px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    transition: transform 0.12s ease;
+  }
+  .btn:active { transform: scale(0.95); }
+  .kbd-hint { margin-top: 14px; font-size: 12px; color: var(--ink-dim); opacity: 0.7; }
+
+  @media (max-width: 420px) {
+    .stat { width: 84px; padding: 12px 0; }
+    .rules { max-width: 320px; }
+    .rules li { font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+<div id="app" data-state="idle">
+  <header class="topbar">
+    <div class="dots" id="dots" aria-label="轮次进度"></div>
+    <button type="button" class="icon-btn" id="soundBtn"></button>
+  </header>
+  <main id="main"></main>
+</div>
+<script>
+(function () {
+  'use strict';
+
+  var TOTAL = 5;
+  var MIN_DELAY = 2000;
+  var MAX_DELAY = 6000;
+  var GUARD = 400;
+
+  var app = document.getElementById('app');
+  var mainEl = document.getElementById('main');
+  var dotsEl = document.getElementById('dots');
+  var soundBtn = document.getElementById('soundBtn');
+
+  var state = 'idle';
+  var round = 0;
+  var results = [];
+  var foulCount = 0;
+  var goAt = 0;
+  var stateAt = 0;
+  var timer = null;
+  var lastBroke = false;
+  var audioCtx = null;
+  var soundOn = loadSound();
+  var bestAvg = loadBest();
+
+  var ICON_ON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.8 5.2a9.5 9.5 0 0 1 0 13.6"/></svg>';
+  var ICON_OFF = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><line x1="16" y1="9" x2="22" y2="15"/><line x1="22" y1="9" x2="16" y2="15"/></svg>';
+
+  /* ---------- 存取 ---------- */
+  function loadBest() {
+    try {
+      var v = parseInt(localStorage.getItem('react_best'), 10);
+      return Number.isFinite(v) && v > 0 ? v : null;
+    } catch (err) { return null; }
+  }
+  function saveBest(v) {
+    try { localStorage.setItem('react_best', String(v)); } catch (err) {}
+  }
+  function loadSound() {
+    try { return localStorage.getItem('react_sound') !== '0'; } catch (err) { return true; }
+  }
+  function saveSound(on) {
+    try { localStorage.setItem('react_sound', on ? '1' : '0'); } catch (err) {}
+  }
+
+  /* ---------- 音效（Web Audio 合成） ---------- */
+  function ensureAudio() {
+    if (!audioCtx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) {
+        try { audioCtx = new AC(); } catch (err) { audioCtx = null; }
+      }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') { audioCtx.resume(); }
+  }
+  function tone(freq, dur, type, vol, delay) {
+    if (!soundOn || !audioCtx) { return; }
+    if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+    var t0 = audioCtx.currentTime + (delay || 0);
+    var osc = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol || 0.18, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g);
+    g.connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.05);
+  }
+  function playGoSound() { tone(920, 0.14, 'sine', 0.22); tone(1380, 0.1, 'sine', 0.12); }
+  function playFoulSound() { tone(200, 0.28, 'square', 0.12); tone(150, 0.3, 'square', 0.1, 0.06); }
+  function playTick() { tone(660, 0.07, 'triangle', 0.1); }
+  function playDone() { tone(523, 0.12, 'sine', 0.14); tone(659, 0.14, 'sine', 0.14, 0.1); }
+  function playRecord() {
+    tone(523, 0.12, 'sine', 0.16, 0);
+    tone(659, 0.12, 'sine', 0.16, 0.11);
+    tone(784, 0.12, 'sine', 0.16, 0.22);
+    tone(1046, 0.25, 'sine', 0.18, 0.33);
+  }
+
+  /* ---------- 文案 ---------- */
+  function verdict(ms) {
+    if (ms < 120) { return '🐮 神了，你还是人类吗？'; }
+    if (ms < 200) { return '⚡ 神速！'; }
+    if (ms < 250) { return '🔥 相当快！'; }
+    if (ms < 320) { return '👍 不错的水准'; }
+    if (ms < 450) { return '🐢 有点慢哦'; }
+    return '😴 都快睡着了…';
+  }
+  function getRank(avg) {
+    if (avg < 200) { return { name: '电竞级', text: '这手速是装了弹射起步吧？鼠标都要冒烟了！', color: '#b388ff' }; }
+    if (avg < 250) { return { name: '迅捷', text: '快过闪现，队友看了直呼内行！', color: '#30d158' }; }
+    if (avg < 320) { return { name: '正常', text: '稳扎稳打，标准人类水平，超过一半的同类。', color: '#4cc9f0' }; }
+    if (avg < 450) { return { name: '稍慢', text: '反应好像在放假，喝杯咖啡再战一回？', color: '#ffb020' }; }
+    return { name: '需要练', text: '你眨个眼的功夫，测试已经结束了。', color: '#ff6b6b' };
+  }
+
+  /* ---------- 渲染 ---------- */
+  function renderDots() {
+    var html = '';
+    for (var i = 0; i < TOTAL; i++) {
+      var cls = 'dot';
+      if (i < results.length) {
+        cls += ' done';
+      } else if (i === round && (state === 'waiting' || state === 'go')) {
+        cls += ' current';
+      } else if (i === round && state === 'foul') {
+        cls += ' current foul';
+      }
+      html += '<span class="' + cls + '"></span>';
+    }
+    dotsEl.innerHTML = html;
+  }
+  function renderIdle() {
+    var bestHtml = bestAvg
+      ? '<div class="best-line">🏆 历史最佳平均 <b>' + bestAvg + '</b> ms</div>'
+      : '<div class="best-line dim">暂无纪录，等你来创造</div>';
+    mainEl.innerHTML =
+      '<div class="panel">' +
+        '<h1 class="game-title">反应力测试</h1>' +
+        '<p class="subtitle">测一测你的神经反应速度</p>' +
+        '<ul class="rules">' +
+          '<li><i>1</i><span>红色屏幕保持冷静，<b>千万不要点</b></span></li>' +
+          '<li><i>2</i><span>变绿的一瞬间，立刻点击或按<b>空格</b></span></li>' +
+          '<li><i>3</i><span>共 5 轮取平均，抢跑本轮作废重测</span></li>' +
+        '</ul>' +
+        bestHtml +
+        '<div class="cta pulse">点击任意处开始</div>' +
+      '</div>';
+  }
+  function renderWaiting() {
+    mainEl.innerHTML =
+      '<div class="stage-center">' +
+        '<div class="big-text breathe">等待…</div>' +
+        '<div class="sub-note">绿灯亮起前不要点击</div>' +
+      '</div>';
+  }
+  function renderGo() {
+    mainEl.innerHTML =
+      '<div class="stage-center">' +
+        '<div class="big-text pop">点！</div>' +
+      '</div>';
+  }
+  function renderResult() {
+    var ms = results[results.length - 1];
+    var lastRound = results.length >= TOTAL;
+    mainEl.innerHTML =
+      '<div class="panel">' +
+        '<div class="round-label">第 ' + results.length + ' / ' + TOTAL + ' 轮</div>' +
+        '<div class="ms-num pop">' + ms + '<small>ms</small></div>' +
+        '<div class="verdict">' + verdict(ms) + '</div>' +
+        '<div class="cta dim pulse">' + (lastRound ? '马上出成绩…' : '点击或按空格继续') + '</div>' +
+      '</div>';
+  }
+  function renderFoul() {
+    mainEl.innerHTML =
+      '<div class="panel">' +
+        '<div class="foul-emoji">✋</div>' +
+        '<div class="foul-title pop">抢跑啦！</div>' +
+        '<p class="foul-text">第 ' + (round + 1) + ' 轮抢跑作废，需要重测<br>深呼吸，稳住手，等绿了再点</p>' +
+        '<div class="cta pulse">点击重测本轮</div>' +
+      '</div>';
+  }
+  function renderFinish() {
+    var avg = Math.round(results.reduce(function (a, b) { return a + b; }, 0) / results.length);
+    var fastest = Math.min.apply(null, results);
+    var slowest = Math.max.apply(null, results);
+    var rank = getRank(avg);
+    var recordHtml = '';
+    if (lastBroke) {
+      if (bestAvg === null) {
+        recordHtml = '<div class="record-banner">🎉 首个纪录诞生！平均 ' + avg + ' ms</div>';
+      } else {
+        recordHtml = '<div class="record-banner">🎉 新纪录！比历史最佳快了 ' + (bestAvg - avg) + ' ms</div>';
+      }
+      saveBest(avg);
+      bestAvg = avg;
+    }
+    function stat(val, key) {
+      return '<div class="stat"><span class="stat-val">' + val + '</span><span class="stat-key">' + key + '</span></div>';
+    }
+    mainEl.innerHTML =
+      '<div class="panel panel-finish">' +
+        '<div class="finish-label">测试完成</div>' +
+        '<div class="ms-num pop" style="color:' + rank.color + '">' + avg + '<small>ms</small></div>' +
+        '<div class="avg-label">平均反应</div>' +
+        (recordHtml ? '<div class="record-wrap">' + recordHtml + '</div>' : '') +
+        '<div class="stats">' +
+          stat(fastest, '最快') +
+          stat(slowest, '最慢') +
+          stat(foulCount, '犯规') +
+        '</div>' +
+        '<div class="rank-badge" style="color:' + rank.color + ';background:' + rank.color + '22;border:1.5px solid ' + rank.color + '55">' + rank.name + '</div>' +
+        '<p class="rank-text">' + rank.text + '</p>' +
+        '<button type="button" class="btn" id="againBtn">再来一轮组</button>' +
+        '<div class="kbd-hint">按 空格 也可以再战</div>' +
+      '</div>';
+    var againBtn = document.getElementById('againBtn');
+    againBtn.addEventListener('click', function () {
+      ensureAudio();
+      againBtn.blur();
+      startGame();
+    });
+  }
+  function render() {
+    app.dataset.state = state;
+    renderDots();
+    if (state === 'idle') { renderIdle(); }
+    else if (state === 'waiting') { renderWaiting(); }
+    else if (state === 'go') { renderGo(); }
+    else if (state === 'result') { renderResult(); }
+    else if (state === 'foul') { renderFoul(); }
+    else if (state === 'finish') { renderFinish(); }
+  }
+
+  /* ---------- 游戏流程 ---------- */
+  function startGame() {
+    clearTimeout(timer);
+    timer = null;
+    results = [];
+    round = 0;
+    foulCount = 0;
+    startRound();
+  }
+  function startRound() {
+    clearTimeout(timer);
+    timer = null;
+    state = 'waiting';
+    stateAt = performance.now();
+    render();
+    timer = setTimeout(toGreen, MIN_DELAY + Math.random() * (MAX_DELAY - MIN_DELAY));
+  }
+  function toGreen() {
+    if (state !== 'waiting') { return; }
+    timer = null;
+    state = 'go';
+    goAt = performance.now();
+    render();
+    playGoSound();
+  }
+  function recordReaction() {
+    var rt = Math.max(1, Math.round(performance.now() - goAt));
+    results.push(rt);
+    state = 'result';
+    stateAt = performance.now();
+    render();
+    playTick();
+  }
+  function triggerFoul() {
+    clearTimeout(timer);
+    timer = null;
+    foulCount++;
+    state = 'foul';
+    stateAt = performance.now();
+    render();
+    playFoulSound();
+  }
+  function nextRound() {
+    round++;
+    if (round >= TOTAL) { finish(); } else { startRound(); }
+  }
+  function finish() {
+    clearTimeout(timer);
+    timer = null;
+    state = 'finish';
+    stateAt = performance.now();
+    var avg = Math.round(results.reduce(function (a, b) { return a + b; }, 0) / results.length);
+    lastBroke = bestAvg === null || avg < bestAvg;
+    render();
+    if (lastBroke) { playRecord(); } else { playDone(); }
+  }
+  function toIdle() {
+    clearTimeout(timer);
+    timer = null;
+    state = 'idle';
+    stateAt = performance.now();
+    render();
+  }
+
+  /* ---------- 统一输入入口 ---------- */
+  function handleInput() {
+    ensureAudio();
+    var now = performance.now();
+    if (state === 'idle') { startGame(); return; }
+    if (state === 'waiting') { triggerFoul(); return; }
+    if (state === 'go') { recordReaction(); return; }
+    if (state === 'result' || state === 'foul') {
+      if (now - stateAt < GUARD) { return; }
+      if (state === 'result') { nextRound(); } else { startRound(); }
+    }
+  }
+
+  app.addEventListener('pointerdown', function (e) {
+    if (e.button !== undefined && e.button !== 0) { return; }
+    if (state === 'finish') { return; }
+    handleInput();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.code === 'Escape') { toIdle(); return; }
+    if (e.code !== 'Space') { return; }
+    e.preventDefault();
+    if (e.repeat) { return; }
+    if (state === 'finish') {
+      ensureAudio();
+      startGame();
+      return;
+    }
+    handleInput();
+  });
+
+  soundBtn.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+  soundBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    soundOn = !soundOn;
+    saveSound(soundOn);
+    renderSoundBtn();
+    soundBtn.blur();
+    if (soundOn) {
+      ensureAudio();
+      tone(660, 0.07, 'triangle', 0.12);
+    }
+  });
+  function renderSoundBtn() {
+    soundBtn.innerHTML = soundOn ? ICON_ON : ICON_OFF;
+    soundBtn.classList.toggle('off', !soundOn);
+    soundBtn.title = soundOn ? '关闭音效' : '开启音效';
+    soundBtn.setAttribute('aria-label', soundBtn.title);
+  }
+
+  renderSoundBtn();
+  render();
+})();
+</script>
+</body>
+</html>
