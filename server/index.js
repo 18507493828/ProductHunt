@@ -123,8 +123,12 @@ let categoryCache = {
 
 const RANGES = ["today", "week", "month", "quarter", "all"];
 const URL_PATTERN = /^(https?:\/\/.+|\/apps\/[\w.-]+(?:\/[\w.-]*)*\/?)$/i;
-/** 应用访问 / 演示链接：须完整 http(s) */
+/** 购买链接：须完整 http(s) */
 const PRODUCT_URL_PATTERN = /^https?:\/\/.+/i;
+/** 应用访问 / 演示链接：完整 http(s)，或站内托管页 /apps/<slug>/ */
+const DEMO_URL_PATTERN = URL_PATTERN;
+/** 站内托管页地址，如 /apps/my-app/ */
+const HOSTED_PAGE_URL_PATTERN = /^\/apps\/([\w.-]+)\/?$/i;
 // 兼容旧路径 /uploads/x 与反代仅转发 /api 时的 /api/uploads/x
 const IMAGE_URL_PATTERN =
   /^(https?:\/\/.+|\/(?:api\/)?uploads\/[\w.-]+)$/i;
@@ -177,6 +181,10 @@ function localUploadFilename(url) {
 
 const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+/** 站内发布的 HTML 静态页：单文件、体积上限、目录名规则 */
+const MAX_HTML_SIZE = 5 * 1024 * 1024;
+const HTML_MIME_TYPES = ["text/html", "application/xhtml+xml"];
+const APP_SLUG_PATTERN = /^[\w][\w.-]{0,63}$/;
 const AVATAR_COLORS = [
   "#FF5722",
   "#FF7043",
@@ -336,6 +344,8 @@ try {
 }
 // 兼容历史磁盘图片；新上传一律进 MySQL uploads 表
 await fs.mkdir(UPLOADS_DIR, { recursive: true }).catch(() => {});
+// 站内托管的 HTML 静态页根目录（运行时由用户上传写入）
+await fs.mkdir(APPS_DIR, { recursive: true }).catch(() => {});
 
 // 本地小应用静态目录：/apps/<name>/
 app.use(
@@ -416,9 +426,50 @@ const imageUpload = multer({
   },
 });
 
+/** 站内 HTML 静态页上传：仅接受单个 .html / .htm */
+const pageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_HTML_SIZE },
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    if ([".html", ".htm"].includes(ext) || HTML_MIME_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("仅支持单个 .html / .htm 文件"));
+    }
+  },
+});
+
 function makeUploadFilename(originalname = "") {
   const ext = path.extname(originalname || "").toLowerCase() || ".png";
   return `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${ext}`;
+}
+
+/**
+ * 站内 HTML 页目录名：由文件名取 ASCII 部分 + 随机后缀，避免不同用户重名互相覆盖。
+ * 中文文件名一律落到 app-<base36 时间戳>-<随机>。
+ */
+function makeAppSlug(originalname = "") {
+  const raw = path.basename(String(originalname || ""));
+  const base = path.basename(raw, path.extname(raw));
+  const ascii = base
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+    .replace(/-+$/g, "");
+  const suffix = crypto.randomBytes(3).toString("hex");
+  return ascii
+    ? `${ascii}-${suffix}`
+    : `app-${Date.now().toString(36)}-${suffix}`;
+}
+
+/** 判断请求体里的 replace 是否为本站已托管页地址，返回其目录名 */
+function hostedPageSlug(value) {
+  const match = String(value || "").trim().match(HOSTED_PAGE_URL_PATTERN);
+  const slug = match ? match[1] : "";
+  // 防止 ../ 等穿越写法落到 apps/ 之外
+  return APP_SLUG_PATTERN.test(slug) ? slug : "";
 }
 function pickAvatarColor(name = "") {
   const hash = [...name].reduce((acc, ch) => acc + ch.codePointAt(0), 0);
@@ -2089,6 +2140,43 @@ app.post("/api/upload", requireAuth, (req, res) => {
   });
 });
 
+app.post("/api/upload-page", requireAuth, (req, res) => {
+  pageUpload.single("page")(req, res, async (err) => {
+    if (err) {
+      const message =
+        err.code === "LIMIT_FILE_SIZE"
+          ? "HTML 文件不能超过 5MB"
+          : err.message || "HTML 上传失败";
+      return res.status(400).json({ error: message });
+    }
+    if (!req.file?.buffer) {
+      return res.status(400).json({ error: "请选择要上传的 HTML 文件" });
+    }
+    const source = req.file.buffer.toString("utf8");
+    if (!source.trim()) {
+      return res.status(400).json({ error: "HTML 文件内容为空" });
+    }
+
+    try {
+      const replaceSlug = hostedPageSlug(req.body?.replace);
+      const slug = replaceSlug || makeAppSlug(req.file.originalname);
+      const dir = path.join(APPS_DIR, slug);
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, "index.html"), req.file.buffer);
+
+      res.json({
+        message: replaceSlug ? "页面已更新" : "页面已发布",
+        url: `/apps/${slug}/`,
+        slug,
+        size: req.file.size,
+        replaced: Boolean(replaceSlug),
+      });
+    } catch (saveErr) {
+      res.status(500).json({ error: saveErr.message || "页面发布失败" });
+    }
+  });
+});
+
 app.get("/api/products", attachUserIfPresent, async (req, res) => {
   try {
     const range = RANGES.includes(req.query.range) ? req.query.range : "all";
@@ -2396,11 +2484,12 @@ app.post("/api/products", requireAuth, async (req, res) => {
     if (!trimmedUrl) {
       return res.status(400).json({ error: "请填写演示链接" });
     }
-    if (!PRODUCT_URL_PATTERN.test(trimmedUrl)) {
+    if (!DEMO_URL_PATTERN.test(trimmedUrl)) {
       return res
         .status(400)
         .json({
-          error: "演示链接需为完整 http(s) 地址，例如 https://example.com/app",
+          error:
+            "演示链接需为完整 http(s) 地址（如 https://example.com/app），或上传本地 HTML 发布站内地址",
         });
     }
     if (trimmedImageUrl && trimmedImageUrl.length > 500) {
@@ -2462,7 +2551,6 @@ app.post("/api/products", requireAuth, async (req, res) => {
         .json({ error: topicErr.message || "话题处理失败" });
     }
 
-    const isAdmin = req.user.role === "admin";
     const now = new Date().toISOString();
 
     const product = {
@@ -2488,29 +2576,21 @@ app.post("/api/products", requireAuth, async (req, res) => {
       voters: [],
       submittedBy: req.user.username,
       submittedAt: now,
-      status: isAdmin ? "approved" : "pending",
+      status: "pending",
       rejectReason: "",
-      reviewedAt: isAdmin ? now : "",
-      reviewedBy: isAdmin ? req.user.username : "",
+      reviewedAt: "",
+      reviewedBy: "",
     };
 
+    // 提交后一律进入待审核，通过审核时（/api/admin/products/:id/approve）再发放激励
     await writeProduct(product);
-    if (product.status === "approved") {
-      try {
-        await maybeCreateMaodaoGrant(product, req.user.username);
-      } catch (grantErr) {
-        console.warn("[incentive] auto-grant failed:", grantErr.message);
-      }
-    }
 
     if (!topicsForMap) topicsForMap = await readTopics();
     const topicMap = Object.fromEntries(
       topicsForMap.map((t) => [t.id, t.name || ""]),
     );
     res.json({
-      message: isAdmin
-        ? "发布成功，资源已上架"
-        : "提交成功，等待管理员审核",
+      message: "已发布，请等待审核",
       product: toPublicProduct(product, req.user, topicMap),
     });
   } catch (err) {
@@ -2588,9 +2668,10 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     if (!trimmedUrl) {
       return res.status(400).json({ error: "请填写演示链接" });
     }
-    if (!PRODUCT_URL_PATTERN.test(trimmedUrl)) {
+    if (!DEMO_URL_PATTERN.test(trimmedUrl)) {
       return res.status(400).json({
-        error: "演示链接需为完整 http(s) 地址，例如 https://example.com/app",
+        error:
+          "演示链接需为完整 http(s) 地址（如 https://example.com/app），或上传本地 HTML 发布站内地址",
       });
     }
     if (trimmedImageUrl && trimmedImageUrl.length > 500) {

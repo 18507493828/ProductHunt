@@ -106,6 +106,17 @@ export async function uploadImage(file) {
   return request("/api/upload", { method: "POST", body: formData });
 }
 
+/**
+ * 发布本地 HTML 静态页，返回站内可访问地址（/apps/<标识>/）。
+ * replace：传入已发布页地址则覆盖更新，不传则新建。
+ */
+export async function uploadHtmlPage(file, { replace = "" } = {}) {
+  const formData = new FormData();
+  formData.append("page", file);
+  if (replace) formData.append("replace", replace);
+  return request("/api/upload-page", { method: "POST", body: formData });
+}
+
 export async function fetchMyProducts() {
   return request("/api/me/products");
 }

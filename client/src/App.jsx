@@ -19,6 +19,7 @@ import {
   submitProduct,
   updateProduct,
   unpublishProduct,
+  uploadHtmlPage,
   uploadImage,
   voteProduct,
   fetchBuildConfig,
@@ -43,6 +44,7 @@ import PortalHome from "./components/PortalHome";
 import MyWorkspace from "./components/MyWorkspace";
 import BuildWizardModal from "./components/BuildWizardModal";
 import PromoteWizardModal from "./components/PromoteWizardModal";
+import HtmlPublishField from "./components/HtmlPublishField";
 import PeriodRankBoard from "./components/PeriodRankBoard";
 import { applyBuildConfig, getSceneById, getToolById, compareHeatItems, inferSceneIdFromText, productMatchesScene } from "./buildConfig";
 import useBuildCatalog from "./useBuildCatalog";
@@ -50,7 +52,10 @@ import Carousel from "./components/Carousel";
 import {
   APP_PLATFORMS,
   DEFAULT_APP_PLATFORM,
+  PUBLISH_MODES,
+  isHostedAppUrl,
   isValidDemoUrl,
+  toAbsoluteDemoUrl,
 } from "./appPlatforms";
 import { priceFormFromStored } from "./productPricing";
 import { bareTopicName, formatTopicName } from "./topicUtils";
@@ -252,6 +257,8 @@ export default function App() {
     priceMode: "",
     price: "",
   });
+  const [publishMode, setPublishMode] = useState("url");
+  const [htmlPendingFile, setHtmlPendingFile] = useState(null);
 
   const publishScenes = useMemo(() => {
     const me = user?.username || "";
@@ -602,6 +609,8 @@ export default function App() {
     setCustomTopicInput("");
     setSceneAdding(false);
     setTopicAdding(false);
+    setPublishMode(isHostedAppUrl(seed?.url) ? "html" : "url");
+    setHtmlPendingFile(null);
     setForm({
       name: seed?.name || "",
       tagline: seed?.tagline || "",
@@ -706,6 +715,8 @@ export default function App() {
       )?.id ||
       "";
 
+    setPublishMode(isHostedAppUrl(product.url) ? "html" : "url");
+    setHtmlPendingFile(null);
     setForm({
       name: product.name || "",
       tagline: product.tagline || "",
@@ -753,10 +764,28 @@ export default function App() {
     setSubmitSelectedTopicId("");
     setSubmitTopicSuggestOpen(false);
     setSubmitReturnCampaignId("");
+    setHtmlPendingFile(null);
   }
 
   function updateForm(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function switchPublishMode(mode) {
+    if (mode === publishMode) return;
+    setSubmitError("");
+    setPublishMode(mode);
+    setHtmlPendingFile(null);
+    // 两种方式互斥：切换时清掉另一种方式留下的地址
+    setForm((prev) => {
+      if (mode === "html" && !isHostedAppUrl(prev.url)) {
+        return { ...prev, url: "" };
+      }
+      if (mode === "url" && isHostedAppUrl(prev.url)) {
+        return { ...prev, url: "" };
+      }
+      return prev;
+    });
   }
 
   function addCustomScene() {
@@ -1065,13 +1094,23 @@ export default function App() {
       setSubmitError("请选择场景话题");
       return;
     }
-    if (!trimmedUrl) {
-      setSubmitError("请填写应用访问链接");
-      return;
-    }
-    if (!isValidDemoUrl(trimmedUrl)) {
-      setSubmitError("应用访问链接需为完整 http(s) 地址，例如 https://example.com/app");
-      return;
+    if (publishMode === "html") {
+      // 本地 HTML：需要选中的文件（提交时才发布），或已有发布成功且未更换文件的站内地址
+      if (!htmlPendingFile && !isHostedAppUrl(trimmedUrl)) {
+        setSubmitError("请选择要发布的本地 HTML 文件");
+        return;
+      }
+    } else {
+      if (!trimmedUrl) {
+        setSubmitError("请填写应用访问链接");
+        return;
+      }
+      if (!isValidDemoUrl(trimmedUrl)) {
+        setSubmitError(
+          "应用访问链接需为完整 http(s) 地址，例如 https://example.com/app",
+        );
+        return;
+      }
     }
     if (!form.buildToolId || !tool) {
       setSubmitError("请选择构建工具");
@@ -1100,6 +1139,24 @@ export default function App() {
       setSubmitting(true);
       setSubmitError("");
 
+      // 提交即发布：本地 HTML 在提交这一刻才上传，拿到站内地址后再提交应用
+      let publishedUrl = trimmedUrl;
+      const needPublish = publishMode === "html" && Boolean(htmlPendingFile);
+      if (needPublish) {
+        try {
+          const res = await uploadHtmlPage(htmlPendingFile, {
+            replace: isHostedAppUrl(trimmedUrl) ? trimmedUrl : "",
+          });
+          publishedUrl = res.url;
+          // 发布已完成：地址回写表单，后续重试不再重复上传
+          updateForm("url", res.url);
+          setHtmlPendingFile(null);
+        } catch (err) {
+          setSubmitError(err.message || "HTML 发布失败，请稍后重试");
+          return;
+        }
+      }
+
       const isEditing = Boolean(editingProductId);
       const metaLines = [
         `【场景】${scene.name}`,
@@ -1116,7 +1173,7 @@ export default function App() {
       const payload = {
         name: form.name,
         tagline: form.tagline,
-        url: form.url,
+        url: publishedUrl,
         categories: [scene.name],
         campaign: form.campaign || "",
         description,
@@ -1130,9 +1187,11 @@ export default function App() {
         inviteCode: tool.inviteCode || "",
         price,
       };
-      const result = isEditing
-        ? await updateProduct(editingProductId, payload)
-        : await submitProduct(payload);
+      if (isEditing) {
+        await updateProduct(editingProductId, payload);
+      } else {
+        await submitProduct(payload);
+      }
       const returnCampaignId =
         submitReturnCampaignId ||
         (typeof payload.campaign === "string" ? payload.campaign : "");
@@ -1141,6 +1200,8 @@ export default function App() {
       setSubmitSelectedTopicId("");
       setSubmitTopicSuggestOpen(false);
       setSubmitReturnCampaignId("");
+      setPublishMode("url");
+      setHtmlPendingFile(null);
       setForm({
         name: "",
         tagline: "",
@@ -1170,15 +1231,13 @@ export default function App() {
           setCategories(["全部", ...(list || [])]),
         )
         .catch(() => {});
+      const hostedLink = isHostedAppUrl(publishedUrl)
+        ? toAbsoluteDemoUrl(publishedUrl)
+        : "";
+      // 提交后一律进入审核队列
       toast.success(
-        isEditing ? "保存成功" : "提交成功",
-        !isEditing && !isAdmin
-          ? result.message || "已进入审核队列，平均 4 小时内完成"
-          : result.message &&
-              result.message !== "保存成功" &&
-              result.message !== "上传成功"
-            ? result.message
-            : "",
+        isEditing ? "保存成功" : "已发布，请等待审核！",
+        hostedLink ? `站内访问地址：${hostedLink}` : "",
       );
       if (!isEditing && returnCampaignId) {
         navigate(`/campaign/${encodeURIComponent(returnCampaignId)}`);
@@ -2273,18 +2332,64 @@ export default function App() {
                   )}
                 </div>
 
-                <label className="modal-field">
+                <div className="modal-field">
                   <span>
-                    应用访问链接 <span className="field-required">*</span>
+                    发布方式 <span className="field-required">*</span>
                   </span>
-                  <input
-                    value={form.url}
-                    onChange={(e) => updateForm("url", e.target.value)}
-                    placeholder="https://example.com/your-app"
-                    disabled={submitting}
-                    required
-                  />
-                </label>
+                  <div className="modal-category-options">
+                    {PUBLISH_MODES.map((mode) => {
+                      const selected = publishMode === mode.id;
+                      return (
+                        <button
+                          key={mode.id}
+                          type="button"
+                          className={
+                            selected ? "modal-category active" : "modal-category"
+                          }
+                          onClick={() => switchPublishMode(mode.id)}
+                          disabled={submitting}
+                          aria-pressed={selected}
+                          title={mode.tip}
+                        >
+                          {mode.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {publishMode === "url" ? (
+                  <label className="modal-field">
+                    <span>
+                      应用访问链接 <span className="field-required">*</span>
+                    </span>
+                    <input
+                      value={form.url}
+                      onChange={(e) => updateForm("url", e.target.value)}
+                      placeholder="https://example.com/your-app"
+                      disabled={submitting}
+                      required
+                    />
+                  </label>
+                ) : (
+                  <div className="modal-field">
+                    <span>
+                      本地 HTML 文件 <span className="field-required">*</span>
+                    </span>
+                    <HtmlPublishField
+                      value={form.url}
+                      pendingFile={htmlPendingFile}
+                      onPendingFileChange={setHtmlPendingFile}
+                      disabled={submitting}
+                      publishing={
+                        submitting &&
+                        publishMode === "html" &&
+                        Boolean(htmlPendingFile)
+                      }
+                      onError={setSubmitError}
+                    />
+                  </div>
+                )}
 
                 <div className="modal-field">
                   <span>
@@ -2483,14 +2588,14 @@ export default function App() {
                     disabled={submitting}
                   >
                     {submitting
-                      ? editingProductId
-                        ? "保存中..."
-                        : "上传中..."
+                      ? publishMode === "html" && htmlPendingFile
+                        ? "发布中..."
+                        : editingProductId
+                          ? "保存中..."
+                          : "提交中..."
                       : editingProductId
                         ? "保存修改"
-                        : isAdmin
-                          ? "立即发布"
-                          : "提交审核"}
+                        : "提交审核"}
                   </button>
                 </div>
               </form>

@@ -3600,6 +3600,83 @@ a.ph-logo {
 
 .ph-upload-remove:hover { background: rgba(0, 0, 0, 0.75); }
 
+/* 站内发布的 HTML 页：发布成功后的地址卡片 */
+
+.ph-page-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--ph-bg);
+  border: 1px solid var(--ph-border);
+  border-radius: var(--ph-radius);
+}
+
+.ph-page-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ph-page-label { font-size: 12px; color: var(--ph-text-muted); }
+
+.ph-page-url {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ph-text);
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.ph-page-url:hover { text-decoration: underline; }
+
+.ph-page-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.ph-page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--ph-text-secondary);
+  background: transparent;
+  border: 1px solid var(--ph-border);
+  border-radius: var(--ph-radius);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color var(--ph-ease), color var(--ph-ease);
+}
+
+.ph-page-btn:hover { border-color: var(--ph-text-muted); color: var(--ph-text); }
+.ph-page-btn.disabled { opacity: 0.5; pointer-events: none; }
+
+/* 本地 HTML 待发布：文件已选中，提交后才真正上传并生成访问地址 */
+.ph-page-card.pending { border-style: dashed; }
+.ph-page-card.pending .ph-page-label { color: var(--ph-accent); }
+
+.ph-page-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ph-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ph-page-file svg { flex-shrink: 0; color: var(--ph-text-muted); }
+.ph-page-size { flex-shrink: 0; font-size: 12px; color: var(--ph-text-muted); }
+
 .ph-top-avatar img,
 .ph-item-avatar img {
   width: 100%;
@@ -5690,10 +5767,25 @@ a.ph-logo {
 
 .admin-masonry-meta a {
   color: var(--ph-accent);
+  cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+}
+
+.admin-masonry-meta a:hover { text-decoration: underline; }
+
+/* 审核卡片的发布链接：站内发布打标，地址过长省略、悬停可见完整地址 */
+.admin-masonry-link-tag {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 16px;
+  background: var(--ph-accent-soft);
+  color: var(--ph-accent);
 }
 
 .admin-masonry-dims {

@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import EmptyState from "../../components/EmptyState";
 import SubmitProductModal from "../../components/SubmitProductModal";
 import {
+  isHostedAppUrl,
+  toAbsoluteDemoUrl,
+} from "../../appPlatforms";
+import {
   approveProduct,
   deleteProduct,
   fetchAdminProducts,
@@ -286,8 +290,17 @@ export default function Products() {
                   <span className="special-badge">{product.campaignLabel}</span>
                 )}
                 {product.url && (
-                  <a href={product.url} target="_blank" rel="noreferrer noopener">
-                    演示链接
+                  <a
+                    className="admin-masonry-link"
+                    href={product.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    title={toAbsoluteDemoUrl(product.url)}
+                  >
+                    {isHostedAppUrl(product.url) && (
+                      <span className="admin-masonry-link-tag">站内发布</span>
+                    )}
+                    {toAbsoluteDemoUrl(product.url)}
                   </a>
                 )}
                 {product.rejectReason && (

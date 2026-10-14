@@ -8,15 +8,19 @@ import {
   fetchTopics,
   submitProduct,
   updateProduct,
+  uploadHtmlPage,
   uploadImage,
 } from "../api";
-import { useAuth } from "../AuthContext";
 import { useToast } from "../Toast";
 import { useModalMotion } from "../useModalMotion";
+import HtmlPublishField from "./HtmlPublishField";
 import {
   APP_PLATFORMS,
   DEFAULT_APP_PLATFORM,
+  PUBLISH_MODES,
+  isHostedAppUrl,
   isValidDemoUrl,
+  toAbsoluteDemoUrl,
 } from "../appPlatforms";
 
 const EMPTY_FORM = {
@@ -48,7 +52,6 @@ export default function SubmitProductModal({
   lockedCampaignId = "",
   initialCampaignId = "",
 }) {
-  const { isAdmin } = useAuth();
   const toast = useToast();
 
   const [form, setForm] = useState(EMPTY_FORM);
@@ -61,6 +64,8 @@ export default function SubmitProductModal({
   const [topicSuggestOpen, setTopicSuggestOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  const [publishMode, setPublishMode] = useState("url");
+  const [pendingHtmlFile, setPendingHtmlFile] = useState(null);
   const [error, setError] = useState("");
 
   const editingId = editingProduct?.id || "";
@@ -81,6 +86,9 @@ export default function SubmitProductModal({
     })
     .filter((t) => t.name && t.enabled);
   const selectedTool = buildTools.find((t) => t.id === form.buildToolId);
+  // 提交中且正在发布本地 HTML（上传 + 生成地址阶段）
+  const publishingHtml =
+    submitting && publishMode === "html" && Boolean(pendingHtmlFile);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -88,9 +96,11 @@ export default function SubmitProductModal({
 
     setError("");
     setTopicSuggestOpen(false);
+    setPendingHtmlFile(null);
 
     if (editingProduct) {
       setSelectedTopicId(editingProduct.topicId || "");
+      setPublishMode(isHostedAppUrl(editingProduct.url) ? "html" : "url");
       setForm({
         name: editingProduct.name || "",
         tagline: editingProduct.tagline || "",
@@ -113,6 +123,7 @@ export default function SubmitProductModal({
       });
     } else {
       setSelectedTopicId("");
+      setPublishMode("url");
       setForm({
         ...EMPTY_FORM,
         campaign: lockedCampaignId || initialCampaignId || "",
@@ -171,6 +182,23 @@ export default function SubmitProductModal({
 
   function updateForm(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function switchPublishMode(mode) {
+    if (mode === publishMode) return;
+    setError("");
+    setPublishMode(mode);
+    setPendingHtmlFile(null);
+    // 两种方式互斥：切换时清掉另一种方式留下的地址
+    setForm((prev) => {
+      if (mode === "html" && !isHostedAppUrl(prev.url)) {
+        return { ...prev, url: "" };
+      }
+      if (mode === "url" && isHostedAppUrl(prev.url)) {
+        return { ...prev, url: "" };
+      }
+      return prev;
+    });
   }
 
   function selectScene(scene) {
@@ -277,13 +305,23 @@ export default function SubmitProductModal({
       setError("请填写一句话介绍");
       return;
     }
-    if (!trimmedUrl) {
-      setError("请填写演示链接");
-      return;
-    }
-    if (!isValidDemoUrl(trimmedUrl)) {
-      setError("演示链接需为完整 http(s) 地址，例如 https://example.com/app");
-      return;
+    if (publishMode === "html") {
+      // 本地 HTML：需要选中的文件（提交时才发布），或已有发布成功且未更换文件的站内地址
+      if (!pendingHtmlFile && !isHostedAppUrl(trimmedUrl)) {
+        setError("请选择要发布的本地 HTML 文件");
+        return;
+      }
+    } else {
+      if (!trimmedUrl) {
+        setError("请填写演示链接");
+        return;
+      }
+      if (!isValidDemoUrl(trimmedUrl)) {
+        setError(
+          "演示链接需为完整 http(s) 地址，例如 https://example.com/app",
+        );
+        return;
+      }
     }
     if (!(form.categories || []).length) {
       setError("请选择所属场景");
@@ -305,11 +343,30 @@ export default function SubmitProductModal({
     try {
       setSubmitting(true);
       setError("");
+
+      // 提交即发布：本地 HTML 在提交这一刻才上传，拿到站内地址后再提交应用
+      let publishedUrl = trimmedUrl;
+      const needPublish = publishMode === "html" && Boolean(pendingHtmlFile);
+      if (needPublish) {
+        try {
+          const res = await uploadHtmlPage(pendingHtmlFile, {
+            replace: isHostedAppUrl(trimmedUrl) ? trimmedUrl : "",
+          });
+          publishedUrl = res.url;
+          // 发布已完成：地址回写表单，后续重试不再重复上传
+          updateForm("url", res.url);
+          setPendingHtmlFile(null);
+        } catch (err) {
+          setError(err.message || "HTML 发布失败，请稍后重试");
+          return;
+        }
+      }
+
       const sceneName = (form.categories || [])[0] || "";
       const payload = {
         name: form.name,
         tagline: form.tagline,
-        url: form.url,
+        url: publishedUrl,
         sceneName,
         category: sceneName,
         categories: sceneName ? [sceneName] : [],
@@ -332,13 +389,14 @@ export default function SubmitProductModal({
         ? await updateProduct(editingId, payload)
         : await submitProduct(payload);
 
+      setPendingHtmlFile(null);
+      const hostedLink = isHostedAppUrl(publishedUrl)
+        ? toAbsoluteDemoUrl(publishedUrl)
+        : "";
+      // 提交后一律进入审核队列
       toast.success(
-        editingId ? "保存成功" : "上传成功",
-        result.message &&
-          result.message !== "保存成功" &&
-          result.message !== "上传成功"
-          ? result.message
-          : "",
+        editingId ? "保存成功" : "已发布，请等待审核！",
+        hostedLink ? `站内访问地址：${hostedLink}` : "",
       );
       onSuccess?.(result, { editing: Boolean(editingId), campaignId: payload.campaign });
       onClose?.();
@@ -459,18 +517,60 @@ export default function SubmitProductModal({
             />
           </label>
 
-          <label className="modal-field">
+          <div className="modal-field">
             <span>
-              演示链接 <span className="field-required">*</span>
+              发布方式 <span className="field-required">*</span>
             </span>
-            <input
-              value={form.url}
-              onChange={(e) => updateForm("url", e.target.value)}
-              placeholder="https://example.com/your-app"
-              disabled={submitting}
-              required
-            />
-          </label>
+            <div className="modal-category-options">
+              {PUBLISH_MODES.map((mode) => {
+                const selected = publishMode === mode.id;
+                return (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    className={
+                      selected ? "modal-category active" : "modal-category"
+                    }
+                    onClick={() => switchPublishMode(mode.id)}
+                    disabled={submitting}
+                    aria-pressed={selected}
+                    title={mode.tip}
+                  >
+                    {mode.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {publishMode === "url" ? (
+            <label className="modal-field">
+              <span>
+                演示链接 <span className="field-required">*</span>
+              </span>
+              <input
+                value={form.url}
+                onChange={(e) => updateForm("url", e.target.value)}
+                placeholder="https://example.com/your-app"
+                disabled={submitting}
+                required
+              />
+            </label>
+          ) : (
+            <div className="modal-field">
+              <span>
+                本地 HTML 文件 <span className="field-required">*</span>
+              </span>
+              <HtmlPublishField
+                value={form.url}
+                pendingFile={pendingHtmlFile}
+                onPendingFileChange={setPendingHtmlFile}
+                disabled={submitting}
+                publishing={publishingHtml}
+                onError={setError}
+              />
+            </div>
+          )}
 
           <div className="modal-field">
             <span>
@@ -785,14 +885,14 @@ export default function SubmitProductModal({
               disabled={submitting}
             >
               {submitting
-                ? editingId
-                  ? "保存中..."
-                  : "上传中..."
+                ? publishingHtml
+                  ? "发布中..."
+                  : editingId
+                    ? "保存中..."
+                    : "提交中..."
                 : editingId
                   ? "保存修改"
-                  : isAdmin
-                    ? "立即发布"
-                    : "提交审核"}
+                  : "提交审核"}
             </button>
           </div>
         </form>
