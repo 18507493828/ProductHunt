@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>打字测速</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0f1923;--bg2:#16242f;--bg3:#1e3040;--fg:#e6edf3;--fg2:#8b9bb4;--accent:#4fc3f7;--accent2:#2196f3;--danger:#ff5252;--warn:#ffb74d;--ok:#66bb6a;--border:#2a3f52}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:-apple-system,"Microsoft YaHei","微软雅黑",sans-serif;display:flex;flex-direction:column;min-height:100vh;overflow:hidden}
+header{padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--border);text-align:center;flex-shrink:0}
+header h1{font-size:20px;font-weight:600}
+.settings{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;align-items:center;justify-content:center;background:var(--bg);flex-shrink:0}
+.set-group{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.set-group .lbl{font-size:13px;color:var(--fg2);margin-right:4px}
+.set-btn{padding:6px 12px;border-radius:8px;background:var(--bg3);color:var(--fg2);border:1px solid var(--border);cursor:pointer;font-size:13px;transition:all .2s;font-family:inherit}
+.set-btn:hover{background:#28405a;color:var(--fg)}
+.set-btn.active{background:var(--accent2);color:#fff;border-color:var(--accent2)}
+.text-btn{padding:4px 8px;font-size:12px;min-width:32px;text-align:center}
+.text-select{justify-content:center;width:100%;padding-top:4px}
+.start-btn{padding:8px 24px;border-radius:8px;background:var(--ok);color:#fff;border:none;cursor:pointer;font-size:15px;font-family:inherit;transition:all .2s;font-weight:500}
+.start-btn:hover{background:#81c784}
+.start-btn:active{transform:scale(.97)}
+.start-btn.testing{background:var(--danger)}
+.start-btn.testing:hover{background:#ff7878}
+.hist-btn{padding:8px 16px;border-radius:8px;background:var(--bg3);color:var(--fg2);border:1px solid var(--border);cursor:pointer;font-size:13px;font-family:inherit;transition:all .2s}
+.hist-btn:hover{background:#28405a;color:var(--fg)}
+.progress-wrap{height:4px;background:var(--bg3);flex-shrink:0}
+.progress-bar{height:100%;background:var(--accent2);width:0;transition:width .3s linear}
+.text-area{flex:1;overflow-y:auto;padding:20px 20px;margin:0 auto;max-width:800px;width:100%;position:relative}
+.text-display{font-size:24px;line-height:1.8;letter-spacing:.5px;word-break:break-all;min-height:160px}
+.text-display .correct{color:var(--ok)}
+.text-display .wrong{color:var(--danger);background:rgba(255,82,82,.15);border-radius:2px}
+.text-display .pending{color:var(--fg2)}
+.text-display .cursor{background:var(--accent);color:var(--bg);border-radius:2px;animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+.text-input{width:100%;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--fg);font-size:16px;font-family:inherit;margin-top:14px;resize:none;outline:none;transition:border-color .2s,box-shadow .2s}
+.text-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,195,247,.15)}
+.text-input::placeholder{color:var(--fg2)}
+.stats-bar{display:flex;flex-wrap:wrap;gap:16px;padding:10px 20px;background:var(--bg2);border-top:1px solid var(--border);justify-content:center;flex-shrink:0}
+.stat{display:flex;flex-direction:column;align-items:center;min-width:70px}
+.stat .v{font-size:22px;font-weight:600;color:var(--accent)}
+.stat .l{font-size:11px;color:var(--fg2);margin-top:2px}
+.idle-hint{text-align:center;color:var(--fg2);padding:50px 20px;font-size:16px;line-height:1.8}
+.idle-hint .big{font-size:22px;color:var(--fg);margin-bottom:12px}
+.countdown-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:none;align-items:center;justify-content:center;background:rgba(15,25,35,.75);z-index:20;backdrop-filter:blur(2px)}
+.countdown-overlay.show{display:flex}
+.countdown-num{font-size:120px;font-weight:700;color:var(--accent);text-shadow:0 0 40px rgba(79,195,247,.5)}
+.countdown-num.pulse{animation:cdPulse 1s ease-out}
+@keyframes cdPulse{0%{transform:scale(.3);opacity:0}40%{transform:scale(1.3);opacity:1}100%{transform:scale(1);opacity:.85}}
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,25,35,.92);display:flex;align-items:center;justify-content:center;z-index:100;animation:fadeIn .3s;padding:16px}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.result-panel{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:460px;width:100%;max-height:90vh;overflow-y:auto;text-align:center}
+.result-panel h2{font-size:22px;margin-bottom:16px}
+.result-panel .big-wpm{font-size:64px;font-weight:300;color:var(--accent);line-height:1}
+.result-panel .wpm-label{font-size:14px;color:var(--fg2);margin-bottom:18px}
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.result-grid .item{background:var(--bg3);padding:10px;border-radius:8px}
+.result-grid .item .v{font-size:20px;font-weight:600}
+.result-grid .item .l{font-size:11px;color:var(--fg2);margin-top:2px}
+.best-badge{display:inline-block;background:rgba(255,183,77,.15);color:var(--warn);padding:4px 12px;border-radius:12px;font-size:12px;margin-bottom:14px}
+.hist-section{margin:16px 0;text-align:left;background:var(--bg3);border-radius:10px;padding:14px}
+.hist-section .hist-title{font-size:14px;color:var(--fg);margin-bottom:8px;font-weight:600}
+.hist-section .hist-best-row{font-size:13px;color:var(--warn);margin-bottom:8px}
+.hist-section .hist-empty{font-size:13px;color:var(--fg2);text-align:center;padding:8px}
+.hist-list{font-size:12px;color:var(--fg2);line-height:1.7;font-family:Consolas,monospace}
+.hist-list .hist-row{display:flex;justify-content:space-between;padding:2px 4px;border-bottom:1px solid rgba(42,63,82,.4)}
+.hist-list .hist-row:last-child{border-bottom:none}
+.hist-list .hist-row .hr-wpm{color:var(--accent);font-weight:600}
+.hist-list .hist-row.hr-best{color:var(--warn)}
+.hist-list .hist-row.hr-best .hr-wpm{color:var(--warn)}
+.result-panel .again-btn{padding:10px 28px;background:var(--accent2);color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;font-family:inherit;transition:background .2s;margin-top:8px}
+.result-panel .again-btn:hover{background:var(--accent)}
+.history-panel{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto}
+.history-panel h2{text-align:center;font-size:22px;margin-bottom:16px}
+.history-panel .hp-types{display:flex;flex-direction:column;gap:12px}
+.history-panel .hp-type{background:var(--bg3);border-radius:10px;padding:12px}
+.history-panel .hp-type-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:14px}
+.history-panel .hp-type-name{font-weight:600;color:var(--fg)}
+.history-panel .hp-best{color:var(--warn);font-size:13px}
+.history-panel .hp-records{font-size:12px;color:var(--fg2);line-height:1.6;font-family:Consolas,monospace}
+.history-panel .hp-record{display:flex;justify-content:space-between;padding:2px 4px}
+.history-panel .hp-record .hr-wpm{color:var(--accent);font-weight:600}
+.history-panel .hp-empty{color:var(--fg2);text-align:center;padding:6px;font-size:12px}
+.history-panel .close-btn{display:block;margin:18px auto 0;padding:8px 24px;background:var(--bg3);color:var(--fg);border:1px solid var(--border);border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;transition:all .2s}
+.history-panel .close-btn:hover{background:#28405a}
+.history-panel .hp-clear-btn{display:block;margin:8px auto 0;padding:6px 16px;background:transparent;color:var(--danger);border:1px solid var(--danger);border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .2s}
+.history-panel .hp-clear-btn:hover{background:rgba(255,82,82,.15)}
+@media(max-width:480px){
+.text-display{font-size:20px}
+.settings{gap:6px;padding:8px}
+.set-btn{padding:5px 10px;font-size:12px}
+.text-btn{padding:3px 6px;font-size:11px;min-width:28px}
+.stat .v{font-size:18px}
+.stat{min-width:60px}
+.result-panel{padding:20px}
+.result-panel .big-wpm{font-size:52px}
+.countdown-num{font-size:96px}
+}
+@media(max-width:380px){
+.text-display{font-size:18px;line-height:1.7}
+header h1{font-size:18px}
+.set-btn{padding:4px 8px;font-size:11px}
+.text-btn{padding:2px 5px;font-size:10px;min-width:24px}
+.stat .v{font-size:16px}
+.stat .l{font-size:10px}
+.stat{min-width:50px;gap:10px}
+.stats-bar{gap:10px;padding:8px 12px}
+.result-panel{padding:16px}
+.result-panel .big-wpm{font-size:44px}
+.countdown-num{font-size:80px}
+.text-input{font-size:14px;padding:10px}
+}
+</style>
+</head>
+<body>
+<header><h1>打字测速</h1></header>
+<div class="settings">
+<div class="set-group"><span class="lbl">模式</span>
+<button class="set-btn active" data-mode="zh">中文</button>
+<button class="set-btn" data-mode="en">英文</button>
+<button class="set-btn" data-mode="code">代码</button>
+</div>
+<div class="set-group"><span class="lbl">时长</span>
+<button class="set-btn active" data-duration="30">30秒</button>
+<button class="set-btn" data-duration="60">60秒</button>
+<button class="set-btn" data-duration="120">120秒</button>
+</div>
+<div class="set-group text-select" id="textSelect"><span class="lbl">文本</span>
+<button class="set-btn text-btn active" data-text="random">随机</button>
+</div>
+<button class="start-btn" id="startBtn">开始</button>
+<button class="hist-btn" id="histBtn">历史记录</button>
+</div>
+<div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+<div class="text-area" id="textArea">
+<div class="text-display" id="textDisplay"></div>
+<div class="countdown-overlay" id="countdownOverlay"><div class="countdown-num" id="countdownNum">3</div></div>
+<textarea class="text-input" id="textInput" rows="2" placeholder="点击「开始」后在此输入文本…"></textarea>
+</div>
+<div class="stats-bar" id="statsBar">
+<div class="stat"><div class="v" id="statWpm">0</div><div class="l">WPM</div></div>
+<div class="stat"><div class="v" id="statAcc">100%</div><div class="l">准确率</div></div>
+<div class="stat"><div class="v" id="statTyped">0</div><div class="l">已打字数</div></div>
+<div class="stat"><div class="v" id="statErr">0</div><div class="l">错误数</div></div>
+<div class="stat"><div class="v" id="statTime">30</div><div class="l">剩余(秒)</div></div>
+</div>
+<script>
+(function(){
+'use strict';
+var TEXTS={
+zh:{
+30:[
+'清晨的阳光透过薄纱窗帘洒在木质书桌上，温暖而柔和。窗外鸟儿啁啾，新的一天悄然开始，带着无限的可能与希望，让我们满怀热情地迎接每一个瞬间，用心感受生活中的点滴美好。',
+'读书是一种美好的习惯，它能让我们的心灵得到滋养，让思想变得更加深邃和广阔。在字里行间，我们遇见不同的世界，体验各异的人生，与智者进行跨越时空的对话，收获成长的智慧。',
+'春天的微风轻轻吹过田野，带来花草的芬芳。远处山峦在薄雾中若隐若现，宛如一幅水墨画卷徐徐展开。溪水潺潺，燕子呢喃，万物在这温暖的季节里悄然苏醒，生机盎然。',
+'人生就像一条长河，有时平静如镜，有时波涛汹涌。顺境时要懂得感恩与珍惜，逆境时要保持坚韧与勇气。只要心中信念不灭，终能抵达理想的彼岸，看见远方的光芒照亮前路。',
+'夜空中的繁星闪烁着微弱的光芒，每一颗都承载着亿万年的故事。我们仰望星空，感受宇宙的浩瀚与神秘。在这无垠的星海中，地球不过是一粒微尘，人类更是渺小至极却依然伟大。',
+'友情是人生最珍贵的财富之一。真正的朋友会在你困难时伸出援手，在你快乐时真心为你高兴。岁月流转，聚散有时，但真挚的情谊不会因距离而淡漠，不会因时间而褪色半分。',
+'秋天的落叶铺满了林间小道，金黄与火红交织在一起。踩上去发出沙沙的声响，这是大自然最美的乐章。空气中弥漫着桂花的清香，远处的稻田翻起金色的波浪，丰收在望。',
+'学习编程需要耐心和毅力。每一行代码都是解决问题的步骤，每一个程序都是逻辑思维的结晶。从语法学习到项目架构，成长的过程充满挑战也饱含乐趣，需要反复打磨与思考。',
+'海边的浪花一遍遍冲刷着沙滩，带来贝壳和小石子。远处海天相接的地方，几只海鸥在自由地翱翔。潮起潮落，是大海永恒的节奏；日出日落，是岁月不变的轮回，周而复始。',
+'健康的生活方式包括均衡饮食、适量运动和充足睡眠。保持良好习惯，才能拥有充沛精力去追逐梦想。早餐要丰富，工作间隙要活动，夜晚要按时休息，让身心得到充分的恢复。',
+'科技的发展改变了我们的生活。从智能手机到人工智能，每一次进步都让世界变得更加便捷和高效。然而技术也是双刃剑，带来便利的同时也引发新的思考与挑战，需要审慎对待。',
+'清晨的公园里，老人们在打太极，年轻人在晨跑。每个人都在用自己的方式迎接新的一天。露珠挂在草叶尖端，折射着朝阳的光芒，远处传来悠扬的笛声与鸟鸣交织成动人的乐章。',
+'雨后的空气格外清新，泥土的芬芳扑面而来。树叶上挂着晶莹的水珠，在阳光下折射出七彩的光芒。远处的彩虹横跨天际，像一座通往童话的桥梁，孩子们踩着水坑嬉戏欢笑。',
+'书籍是人类进步的阶梯。通过阅读，我们可以跨越时空与智者对话，汲取前人的智慧，照亮前行的道路。从古老的竹简到现代的电子书，载体的形式不断变化，但知识本质从未改变。',
+'山间的小溪潺潺流淌，清澈见底。鱼儿在水中自由游动，偶尔跃出水面，激起一圈圈细小的涟漪。两岸的野花竞相开放，蝴蝶在花丛中翩翩起舞，沿着溪边小径向上攀登，心旷神怡。'
+],
+60:[
+'清晨的阳光透过薄纱窗帘洒在木质书桌上，温暖而柔和。窗外鸟儿啁啾，新的一天悄然开始。咖啡的香气在空气中弥漫，让人精神为之一振。无论昨日如何，今天都是崭新的开始，带着无限可能与希望，让我们满怀热情地迎接每一个瞬间，用心感受生活中的点滴美好。',
+'读书是一种美好的习惯，它能让我们的心灵得到滋养，让思想变得更加深邃和广阔。在字里行间，我们遇见不同的世界，体验各异的人生。一本好书如同一位智者，静静诉说着岁月的智慧。当我们沉浸在阅读中，时间仿佛静止，烦恼暂被遗忘，只剩下心灵与文字的深度对话。',
+'春天的微风轻轻吹过田野，带来花草的芬芳。远处山峦在薄雾中若隐若现，宛如一幅水墨画卷徐徐展开。溪水潺潺，燕子呢喃，万物在这温暖的季节里苏醒。孩子们在草地上奔跑放风筝，笑声回荡在蓝天白云之间，这是大自然最动人的诗篇，也是生命最美好的礼赞与馈赠。',
+'人生就像一条长河，有时平静如镜，有时波涛汹涌。顺境时我们要懂得感恩与珍惜，逆境时我们要保持坚韧与勇气。无论前方有多少险滩暗礁，只要心中信念不灭，终能抵达理想的彼岸。岁月会在脸上刻下痕迹，却无法夺走内心的从容与淡定，这才是真正意义上的成熟与圆满。',
+'夜空中的繁星闪烁着微弱的光芒，每一颗都承载着亿万年的故事。我们仰望星空，感受宇宙的浩瀚与神秘。在这无垠的星海中，地球不过是一粒微尘，人类更是渺小至极。然而正是这渺小的生命，创造了灿烂的文明，用智慧去探索未知，用勇气去追逐梦想，让短暂的存在闪耀永恒光辉。',
+'友情是人生最珍贵的财富之一。真正的朋友会在你困难时伸出援手，在你快乐时真心为你高兴。岁月流转，聚散有时，但真挚的情谊不会因距离而淡漠，不会因时间而褪色。一个眼神，一句问候，便足以唤起无数共同的回忆。珍惜身边的朋友，用心经营每一段友情，让生命因彼此而丰盈。',
+'秋天的落叶铺满了林间小道，金黄与火红交织在一起。踩上去发出沙沙的声响，这是大自然最美的乐章。空气中弥漫着桂花的清香，远处的稻田翻起金色的波浪。收获的季节里，人们脸上洋溢着满足的笑容。春华秋实，岁月轮回，每一个季节都有独特的韵味，值得我们细细品味与珍藏。',
+'学习编程需要耐心和毅力。每一行代码都是解决问题的步骤，每一个程序都是逻辑思维的结晶。从最初的语法学习到复杂项目的架构设计，成长的过程充满挑战也饱含乐趣。遇到bug时不要气馁，那是进步的契机；解决难题后不要骄傲，前方还有更高的山峰。保持好奇持续学习终将成功。',
+'海边的浪花一遍遍冲刷着沙滩，带来贝壳和小石子。远处海天相接的地方，几只海鸥在自由地翱翔。潮起潮落，是大海永恒的节奏；日出日落，是岁月不变的轮回。站在海边，任海风拂面，听涛声拍岸，心中的烦恼仿佛都被卷走，只剩下宁静与辽阔，让人领悟包容与坚韧的力量。',
+'健康的生活方式包括均衡饮食、适量运动和充足睡眠。保持良好习惯，才能拥有充沛精力去追逐梦想。早餐要吃得丰富，为一天的活动提供能量；工作间隙起身活动，避免久坐伤害身体；夜晚按时休息，让身心得到充分恢复。健康不是一蹴而就的目标，而是日复一日的坚持与自律。',
+'科技的发展改变了我们的生活。从智能手机到人工智能，每一次进步都让世界变得更加便捷和高效。然而技术也是双刃剑，它带来便利的同时也引发新的思考：隐私如何保护？伦理如何坚守？人与机器的边界在哪里？面对这些问题，我们需要保持清醒的头脑，让科技真正服务于人类。',
+'清晨的公园里，老人们在打太极，年轻人在晨跑。每个人都在用自己的方式迎接新的一天。露珠挂在草叶尖端，折射着朝阳的光芒。远处传来悠扬的笛声，与鸟鸣交织成一首清晨协奏曲。生活不在远方，就在这寻常的晨光里；幸福无需寻觅，它藏在每一个用心度过的平凡瞬间之中。',
+'雨后的空气格外清新，泥土的芬芳扑面而来。树叶上挂着晶莹的水珠，在阳光下折射出七彩的光芒。远处的彩虹横跨天际，像一座通往童话的桥梁。孩子们踩着水坑嬉戏，欢声笑语回荡在巷弄之间。大自然用一场雨洗涤了尘世的喧嚣，留下的是宁静与生机，让人与万物重新相连。',
+'书籍是人类进步的阶梯。通过阅读，我们可以跨越时空与智者对话，汲取前人的智慧，照亮前行的道路。从古老的竹简到现代的电子书，载体的形式不断变化，但知识的本质从未改变。一本好书能改变一个人的一生，能在迷茫时给予指引，在困境中给予力量，养成阅读习惯将受益终身。',
+'山间的小溪潺潺流淌，清澈见底。鱼儿在水中自由游动，偶尔跃出水面，激起一圈圈细小的涟漪。两岸的野花竞相开放，蝴蝶在花丛中翩翩起舞。沿着溪边小径向上攀登，空气愈发清新，视野愈发开阔。到达山顶时，俯瞰脚下的云海山峦，胸中顿生豪情，大自然的壮美让人心生敬畏。'
+],
+120:[
+'清晨的阳光透过薄纱窗帘洒在木质书桌上，温暖而柔和。窗外鸟儿啁啾，新的一天悄然开始。咖啡的香气在空气中弥漫，让人精神为之一振。无论昨日如何，今天都是崭新的开始，带着无限可能与希望，让我们满怀热情地迎接每一个瞬间，用心感受生活中的点滴美好。生活不会亏待每一个认真对待它的人，那些看似平凡的日常，正是幸福最真实的模样。不必仰望他人的辉煌，专注脚下的路，走好每一步，你终将抵达属于自己的远方。愿你在每个清晨都带着微笑出发，在每个夜晚都带着满足入眠，把日子过成一首温柔而坚定的诗篇。',
+'读书是一种美好的习惯，它能让我们的心灵得到滋养，让思想变得更加深邃和广阔。在字里行间，我们遇见不同的世界，体验各异的人生。一本好书如同一位智者，静静诉说着岁月的智慧。当我们沉浸在阅读中，时间仿佛静止，烦恼暂被遗忘，只剩下心灵与文字的对话。阅读不仅是获取知识的方式，更是一种精神的修行。它让我们在喧嚣中找到宁静，在迷茫中找到方向，在孤独中找到陪伴。从经典名著到前沿科技，从诗歌散文到历史哲学，每一本书都是一扇通往新世界的窗。养成阅读的习惯，让书籍成为你终身的伴侣，你的生命将因此而更加丰盈厚重。',
+'春天的微风轻轻吹过田野，带来花草的芬芳。远处山峦在薄雾中若隐若现，宛如一幅水墨画卷徐徐展开。溪水潺潺，燕子呢喃，万物在这温暖的季节里苏醒。孩子们在草地上奔跑放风筝，笑声回荡在蓝天白云之间，这是大自然最动人的诗篇，也是生命最美好的礼赞。春天是希望的季节，是播种的季节。农民在田间忙碌，把种子撒入泥土，期待秋日的收获。每一粒种子都承载着一个梦想，每一片新绿都诉说着生命的奇迹。让我们也在这美好的季节里，播下理想的种子，用汗水浇灌，用耐心等待，相信时光终会给我们一个满意的答案与丰厚的回报。',
+'人生就像一条长河，有时平静如镜，有时波涛汹涌。顺境时我们要懂得感恩与珍惜，逆境时我们要保持坚韧与勇气。无论前方有多少险滩暗礁，只要心中信念不灭，终能抵达理想的彼岸。岁月会在脸上刻下痕迹，却无法夺走内心的从容与淡定，这才是真正的成熟。每个人的人生都是独一无二的旅程，不必与他人比较，也不必被外界的标准所束缚。找到自己热爱的事物，坚持自己相信的道路，即使走得慢一些，只要方向正确，终会到达想去的地方。生命的意义不在于抵达终点，而在于沿途的风景与成长。愿你我都能活出真实的自己，不负此生不负光阴。',
+'夜空中的繁星闪烁着微弱的光芒，每一颗都承载着亿万年的故事。我们仰望星空，感受宇宙的浩瀚与神秘。在这无垠的星海中，地球不过是一粒微尘，人类更是渺小至极。然而正是这渺小的生命，创造了灿烂的文明，用智慧去探索未知，用勇气去追逐梦想，让短暂的存在闪耀永恒的光辉。从远古的篝火到今日的航天，人类从未停止对星空的向往。那些穿越光年抵达我们眼底的星光，是宇宙写给地球的情书。当我们凝视深渊般的夜空，也在凝视时间本身。保持对未知的敬畏与好奇，这是人类最可贵的品质，也是文明不断前行的动力源泉所在。',
+'友情是人生最珍贵的财富之一。真正的朋友会在你困难时伸出援手，在你快乐时真心为你高兴。岁月流转，聚散有时，但真挚的情谊不会因距离而淡漠，不会因时间而褪色。一个眼神，一句问候，便足以唤起无数共同的回忆。珍惜身边的朋友，用心经营每一段友情，让生命因彼此而更加丰盈美好。朋友不必很多，三五知己足矣。他们见过你最狼狈的样子，却依然选择陪伴；他们了解你最软弱的地方，却从不加以利用。真正的友情建立在相互尊重与理解之上，它不需要刻意维系，却能在关键时刻给予最温暖的力量与支撑。',
+'秋天的落叶铺满了林间小道，金黄与火红交织在一起。踩上去发出沙沙的声响，这是大自然最美的乐章。空气中弥漫着桂花的清香，远处的稻田翻起金色的波浪。收获的季节里，人们脸上洋溢着满足的笑容。春华秋实，岁月轮回，每一个季节都有独特的韵味，值得我们细细品味。秋天也是沉淀的季节，经历了春的萌发、夏的繁茂，万物在秋日里归于从容。人生亦如四季，少年如春，青年如夏，中年如秋，老年如冬。每个阶段都有其不可替代的美好。不必感叹时光流逝，用心活在当下，让生命的每个秋天都结出果实。',
+'学习编程需要耐心和毅力。每一行代码都是解决问题的步骤，每一个程序都是逻辑思维的结晶。从最初的语法学习到复杂项目的架构设计，成长的过程充满挑战也饱含乐趣。遇到bug时不要气馁，那是进步的契机；解决难题后不要骄傲，前方还有更高的山峰。保持好奇，持续学习，你终将成为优秀的工程师。编程不仅是一项技能，更是一种思维方式。它教会我们把复杂问题拆解为简单步骤，用严谨的逻辑去构建解决方案。在这个数字化的时代，懂得编程就是懂得与未来对话的语言，这种结构化思考的能力会让你受益终身。',
+'海边的浪花一遍遍冲刷着沙滩，带来贝壳和小石子。远处海天相接的地方，几只海鸥在自由地翱翔。潮起潮落，是大海永恒的节奏；日出日落，是岁月不变的轮回。站在海边，任海风拂面，听涛声拍岸，心中的烦恼仿佛都被卷走，只剩下宁静与辽阔。大海教会我们包容与坚韧，也让我们懂得生命的广阔。面对浩瀚的海洋，人会感到自身的渺小，却也因此获得一种解脱。那些曾让我们辗转反侧的烦恼，在无垠的海面面前都显得微不足道。大海像一位沉默的智者，用亿万年的耐心告诉我们一切终将过去。',
+'健康的生活方式包括均衡饮食、适量运动和充足睡眠。保持良好习惯，才能拥有充沛精力去追逐梦想。早餐要吃得丰富，为一天的活动提供能量；工作间隙起身活动，避免久坐伤害身体；夜晚按时休息，让身心得到充分恢复。健康不是一蹴而就的目标，而是日复一日的坚持。从今天开始，善待自己的身体，它会以更好的状态回报你。很多人在失去健康后才懂得它的珍贵，其实预防远比治疗简单。每天半小时的运动，每顿饭的合理搭配，每晚规律的作息，这些看似微小的选择累积起来就是生命的质量。',
+'科技的发展改变了我们的生活。从智能手机到人工智能，每一次进步都让世界变得更加便捷和高效。然而技术也是双刃剑，它带来便利的同时也引发新的思考：隐私如何保护？伦理如何坚守？人与机器的边界在哪里？面对这些问题，我们需要保持清醒的头脑，让科技真正服务于人，而不是被科技所裹挟。这才是智慧的态度。未来的世界将更加智能，但人性的温度不应被冰冷的算法取代。我们要学会在传统与创新之间找到平衡，在效率与情感之间做出取舍。技术应该成为拓展人类可能性的工具，而非限制自由的枷锁。',
+'清晨的公园里，老人们在打太极，年轻人在晨跑。每个人都在用自己的方式迎接新的一天。露珠挂在草叶尖端，折射着朝阳的光芒。远处传来悠扬的笛声，与鸟鸣交织成一首清晨协奏曲。生活不在远方，就在这寻常的晨光里；幸福无需寻觅，它藏在每一个用心度过的瞬间。放慢脚步，细细品味，你会发现平凡中自有动人之处。我们总是追逐远方的风景，却忽略了身边的美好。其实一朵花的绽放、一阵风的吹过、一个陌生人的微笑，都值得驻足感受。当我们学会在平凡中发现诗意，生活便不再是一场匆忙的赶路。',
+'雨后的空气格外清新，泥土的芬芳扑面而来。树叶上挂着晶莹的水珠，在阳光下折射出七彩的光芒。远处的彩虹横跨天际，像一座通往童话的桥梁。孩子们踩着水坑嬉戏，欢声笑语回荡在巷弄之间。大自然用一场雨洗涤了尘世的喧嚣，留下的是宁静与生机。我们走在湿润的小路上，感受着大地脉搏的跳动，仿佛与万物重新相连。雨水滋润了干涸的土地，也洗涤了疲惫的心灵。每一场雨都是大地的礼物，每一道彩虹都是天空的承诺。生活中总有风雨，但风雨之后必有晴空，带着这份信念前行就不会惧怕任何阴霾。',
+'书籍是人类进步的阶梯。通过阅读，我们可以跨越时空与智者对话，汲取前人的智慧，照亮前行的道路。从古老的竹简到现代的电子书，载体的形式不断变化，但知识的本质从未改变。一本好书能改变一个人的一生，能在迷茫时给予指引，在困境中给予力量。养成阅读的习惯，让书籍成为你终身的伴侣，你的世界将因此而不同。阅读是一座随身携带的避难所，无论身处何方，只要翻开书页，就能进入一个属于自己的精神王国。在那里没有喧嚣没有纷扰，只有思想与思想的碰撞，灵魂与灵魂的相遇，让阅读成为每日的功课吧。',
+'山间的小溪潺潺流淌，清澈见底。鱼儿在水中自由游动，偶尔跃出水面，激起一圈圈细小的涟漪。两岸的野花竞相开放，蝴蝶在花丛中翩翩起舞。沿着溪边小径向上攀登，空气愈发清新，视野愈发开阔。到达山顶时，俯瞰脚下的云海山峦，胸中顿生豪情。大自然的壮美让人心生敬畏，也让人明白自身的渺小与伟大。登山是一场与自己的对话，每一步都在挑战身体的极限，也在磨砺意志的坚韧。当疲惫袭来，告诉自己再坚持一下；当登顶在望，所有的辛苦都化作喜悦。人生如登山，重要的不是速度而是不断向上的姿态。'
+]
+},
+en:{
+30:[
+'The quick brown fox jumps over the lazy dog. This sentence contains every letter of the English alphabet, making it a perfect typing test for practice.',
+'Reading is a wonderful habit that nourishes the mind and expands our understanding of the world around us every single day in meaningful ways.',
+'Technology has transformed the way we live and work, bringing both opportunities and challenges to modern society in equal and complex measure.',
+'The morning sun rose slowly over the hills, painting the sky with shades of orange and pink and gold across the quiet and peaceful valley.',
+'Learning to code requires patience and practice. Every program is a solution built step by step with care and clear logical thinking process.',
+'Nature offers us incredible beauty, from towering mountains to deep oceans, from vast forests to tiny flowers along the quiet winding path.',
+'Good habits formed today will shape your tomorrow. Small consistent actions lead to remarkable results over time without any fail at all.',
+'The library was a quiet haven of knowledge, where every book held a world waiting to be explored and discovered by curious and eager minds.',
+'Traveling opens the mind to new cultures and perspectives, teaching us that there are many ways to live well on this shared earth of ours.',
+'Success is not final, failure is not fatal: it is the courage to continue that counts in the long run of life and work and steady pursuit.',
+'A healthy lifestyle includes balanced nutrition, regular exercise, and enough rest to keep your body strong and your mind sharp and focused.',
+'The stars shone brightly in the clear night sky, each one a distant sun lighting the vast darkness of space with ancient and enduring fire.',
+'Music has the power to touch the soul, to heal wounds unseen, and to bring people together across every boundary that we may ever know.',
+'The river flowed gently through the valley, carrying leaves and stories from distant mountains down to the waiting and endless open sea.',
+'Kindness costs nothing yet means everything. A warm smile or gentle word can change the course of someone\'s entire day for the better.'
+],
+60:[
+'The quick brown fox jumps over the lazy dog. This sentence contains every letter of the English alphabet, making it a perfect typing test for anyone who wants to improve their speed and accuracy on the keyboard. Practice regularly, and you will see steady progress over time with consistent effort.',
+'Reading is a wonderful habit that nourishes the mind and expands our understanding of the world around us every single day. A good book can transport us to distant lands, introduce us to fascinating characters, and teach us lessons that stay with us for a lifetime of learning and personal growth.',
+'Technology has transformed the way we live and work, bringing both opportunities and challenges to modern society in equal measure. From smartphones to artificial intelligence, each advancement shapes our future in ways we are only beginning to understand and appreciate fully in our daily lives.',
+'The morning sun rose slowly over the hills, painting the sky with shades of orange and pink and gold across the quiet valley. Birds began their songs, dew glistened on the grass, and the world woke gently to another day full of possibility and quiet hope for all who cared to look.',
+'Learning to code requires patience and practice. Every program is a solution built step by step with care and clear thinking. When bugs appear, treat them as chances to learn. When problems seem hard, break them down into smaller pieces you can solve one at a time with focus.',
+'Nature offers us incredible beauty, from towering mountains to deep oceans, from vast forests to tiny flowers along the path. Taking time to walk outside and breathe fresh air can restore the spirit, calm the mind, and remind us of the simple joys that surround us always each day.',
+'Good habits formed today will shape your tomorrow. Small consistent actions lead to remarkable results over time without fail. Whether it is reading, exercise, or learning a new skill, the key is to begin where you are and keep going, one steady step at a time with patience.',
+'The library was a quiet haven of knowledge, where every book held a world waiting to be explored and discovered by curious minds. Rows of shelves stretched high, each volume a doorway to adventure, wisdom, or beauty, offered freely to anyone willing to open the cover and read.',
+'Traveling opens the mind to new cultures and perspectives, teaching us that there are many ways to live well on this earth. Every journey leaves a mark on the traveler, broadening views and deepening compassion for the shared human condition across distant and fascinating lands we visit.',
+'Success is not final, failure is not fatal: it is the courage to continue that counts in the long run of life and work. Each setback carries a lesson, each victory a reminder to stay humble. Keep moving forward with purpose, and the path will reveal itself in due time.',
+'A healthy lifestyle includes balanced nutrition, regular exercise, and enough rest to keep your body strong and mind sharp. Drink water, eat slowly, move often, and sleep well. These simple choices, repeated daily, form the foundation of a long and vibrant and fulfilling active life.',
+'The stars shone brightly in the clear night sky, each one a distant sun lighting the vast darkness of space with ancient fire. Looking up, one could not help but feel small yet connected to something far greater, a mystery that has called to humanity for ages past and will for ages to come.',
+'Music has the power to touch the soul, to heal wounds unseen, and to bring people together across every boundary we know. A single melody can carry memory, hope, and sorrow all at once, speaking a language that every human heart understands without need for any translation at all.',
+'The river flowed gently through the valley, carrying leaves and stories from distant mountains down to the waiting sea. Along its banks, children played, fishermen waited, and old trees watched in silence, as they had for centuries before this quiet and peaceful afternoon in the shade.',
+'Kindness costs nothing yet means everything. A warm smile or gentle word can change the course of someone\'s entire day. In a world that often moves too fast, choosing to be kind is a quiet act of courage that ripples outward in ways we may never fully see or know.'
+],
+120:[
+'The quick brown fox jumps over the lazy dog. This sentence contains every letter of the English alphabet, making it a perfect typing test for anyone who wants to improve their speed and accuracy on the keyboard. Practice regularly, and you will see steady progress over time. Remember that consistency matters more than intensity: fifteen minutes every day will take you further than hours of sporadic effort. Keep your posture relaxed, your fingers curved, and your eyes on the screen rather than the keys. With patience and focus, you will build muscle memory that makes typing feel as natural as breathing, and the words will flow from your fingertips without a second thought or hesitation.',
+'Reading is a wonderful habit that nourishes the mind and expands our understanding of the world around us every single day. A good book can transport us to distant lands, introduce us to fascinating characters, and teach us lessons that stay with us for a lifetime of learning and growth. In a fast-paced age of endless notifications and fleeting content, the quiet act of reading offers a rare refuge. It invites us to slow down, to reflect, to imagine. Whether it is fiction or history, poetry or science, each page turned is a step toward becoming a more thoughtful, empathetic, and informed person. Make time for books, and they will repay you many times over in ways both measurable and unseen throughout your life.',
+'Technology has transformed the way we live and work, bringing% bringing both opportunities and challenges to modern society in equal measure. From smartphones to artificial intelligence, each advancement shapes our future in ways we are only beginning to understand and appreciate fully today. We carry libraries in our pockets, summon knowledge with a question, and connect with people across oceans in an instant. Yet the same tools that empower us can also distract, isolate, and overwhelm. The challenge of our time is not to acquire more technology, but to use it wisely: to let it serve our deeper goals rather than consume our attention. Those who learn to master their tools, rather than be mastered by them, will thrive in the years ahead and lead others by example.',
+'The morning sun rose slowly over the hills, painting the sky with shades of orange and pink and gold across the quiet valley. Birds began their songs, dew glistened on the grass, and the world woke gently to another day full of possibility and quiet hope for all. A farmer walked toward his fields, a child waited for the school bus, and an old man sat on his porch with a cup of coffee, watching the light spread across the land. There is something timeless about such mornings, a reminder that no matter what worries we carry, the world continues its steady rhythm, offering us each day a fresh start and the chance to begin again with renewed energy and quiet purpose in our hearts.',
+'Learning to code requires patience and practice. Every program is a solution built step by step with care and clear thinking. When bugs appear, treat them as chances to learn. When problems seem hard, break them down into smaller pieces you can solve one at a time. Read other people\'s code, write your own, and never be afraid to start over. The best programmers are not those who write perfect code on the first try, but those who keep refining their craft through countless iterations. Over time, you will develop an intuition for elegant solutions, a sense of what makes code clean and maintainable, and the confidence to tackle problems that once seemed impossible. Enjoy the journey, and the skills will follow naturally along the way as you persist.',
+'Nature offers us incredible beauty, from towering mountains to deep oceans, from vast forests to tiny flowers along the path. Taking time to walk outside and breathe fresh air can restore the spirit, calm the mind, and remind us of the simple joys that surround us always. The natural world moves at its own pace, unhurried by deadlines or demands, and in its presence we too can slow down and remember what matters. A single tree can teach us about patience, growth, and resilience. A flowing stream can show us the power of persistence. When we feel lost or overwhelmed, a walk in nature can help us find our footing again, reconnecting us to something larger and more enduring than our daily concerns and worries that weigh us down.',
+'Good habits formed today will shape your tomorrow. Small consistent actions lead to remarkable results over time without fail. Whether it is reading, exercise, or learning a new skill, the key is to begin where you are and keep going, one steady step at a time. Do not wait for the perfect moment or the ideal conditions; they rarely arrive. Instead, start with what you have, however modest, and build from there. Track your progress, celebrate small wins, and forgive yourself when you slip. Habits are not about perfection but about direction. Over months and years, the compounding effect of tiny choices becomes extraordinary, transforming not only what you do but who you are as a person. The future you imagine is built by the habits you choose today and act upon with steady resolve each passing day.',
+'The library was a quiet haven of knowledge, where every book held a world waiting to be explored and discovered by curious minds. Rows of shelves stretched high, each volume a doorway to adventure, wisdom, or beauty, offered freely to anyone willing to read. The scent of old paper and polished wood filled the air, and sunlight streamed through tall windows onto worn reading tables. In this place, time seemed to slow, and the noise of the world outside faded to a distant hum. People came here to study, to dream, to escape, or simply to sit in the company of ideas. A library is one of humanity\'s greatest gifts: a shared inheritance of thought, preserved across generations so that anyone, regardless of means, might partake in its riches and grow wiser for the effort given.',
+'Traveling opens the mind to new cultures and perspectives, teaching us that there are many ways to live well on this earth. Every journey leaves a mark on the traveler, broadening views and deepening compassion for the shared human condition across distant lands. The foods we taste, the languages we hear, the customs we encounter, all remind us that our way is not the only way, and that difference is something to be celebrated rather than feared. Travel also teaches patience and adaptability, as plans go awry and trains run late and the unexpected becomes the norm. In the end, the souvenirs we bring home matter far less than the inner shifts we carry with us, the quiet changes in how we see ourselves and our place in a wider world that surrounds us all.',
+'Success is not final, failure is not fatal: it is the courage to continue that counts in the long run of life and work. Each setback carries a lesson, each victory a reminder to stay humble. Keep moving forward with purpose, and the path will reveal itself in time. The most meaningful achievements are rarely quick or easy; they are built through years of effort, often invisible to others, sometimes invisible even to ourselves. When progress feels slow, remember that a tree grows in silence, and a river carves its channel over centuries. Trust the work you put in, even on days when the results are hard to see. Persistence, more than talent or luck, is what turns modest beginnings into remarkable outcomes. Stay steady, stay curious, and keep going forward each day.',
+'A healthy lifestyle includes balanced nutrition, regular exercise, and enough rest to keep your body strong and mind sharp. Drink water, eat slowly, move often, and sleep well. These simple choices, repeated daily, form the foundation of a long and vibrant life. Health is not built in a single day, nor lost in one; it is the sum of countless small decisions made over years. Listen to your body, and treat it with the care you would give a valued friend. Avoid extremes, and seek sustainability over quick fixes. Movement should be a joy, not a chore; food should nourish both body and spirit. When you feel well, you think well, and you bring more energy and presence to everything you do in your daily life and work and relationships with others around you.',
+'The stars shone brightly in the clear night sky, each one a distant sun lighting the vast darkness of space with ancient fire. Looking up, one could not help but feel small yet connected to something far greater, a mystery that has called to humanity for ages. Generations have gazed at these same stars, telling stories, naming patterns, dreaming of travel among them. Today, our telescopes reveal galaxies billions of light-years away, yet the wonder of a quiet sky remains unchanged. In a world filled with noise and haste, looking up at the stars is a simple act of perspective, a reminder that our worries are small and the universe is vast, and that we are part of an unfolding story far larger than ourselves and our brief concerns that occupy our days and nights on this pale blue dot we call home.',
+'Music has the power to touch the soul, to heal wounds unseen, and to bring people together across every boundary we know. A single melody can carry memory, hope, and sorrow all at once, speaking a language that every human heart understands without translation. From a mother\'s lullaby to a grand symphony, music accompanies us through every stage of life, marking moments we will never forget. It can lift us when we are low, calm us when we are tense, and give voice to feelings we cannot put into words. To make music is to collaborate with sound itself, and to listen deeply is to open a door within. In a fragmented world, music reminds us of our shared humanity, offering harmony where there is discord and rhythm where there is chaos and unrest all around us each day.',
+'The river flowed gently through the valley, carrying leaves and stories from distant mountains down to the waiting sea. Along its banks, children played, fishermen waited, and old trees watched in silence, as they had for centuries before this quiet afternoon. The river asked nothing of anyone, yet gave much: water to drink, fish to catch, a path to follow, and a steady sound that soothes the mind. It did not hurry, yet it never stopped; it did not strive, yet it reached its destination all the same. There is a quiet wisdom in such patience, a lesson for anyone willing to sit by the bank and watch. Life, like a river, flows best when it moves with steady purpose, neither rushing nor resisting, but trusting the way ahead and the journey that unfolds with each passing moment in its own good time.',
+'Kindness costs nothing yet means everything. A warm smile or gentle word can change the course of someone\'s entire day. In a world that often moves too fast, choosing to be kind is a quiet act of courage that ripples outward in ways we may never see. The person who holds a door, the friend who listens without judgment, the stranger who stops to help, all are part of a vast web of goodwill that holds society together. Kindness is not weakness; it requires strength to remain gentle in a harsh world, and wisdom to see the humanity in everyone we meet. When we make kindness a habit, we not only brighten the lives of others, we also lighten our own hearts, building a life of meaning one small act at a time with grace and care for all around us.'
+]
+},
+code:{
+30:[
+'function add(a, b) { return a + b; } const sum = add(3, 5); console.log("Sum:", sum); const mul = (x, y) => x * y; console.log(mul(4, 6));',
+'const arr = [1, 2, 3, 4, 5]; const doubled = arr.map(n => n * 2); const even = doubled.filter(n => n % 2 === 0); console.log(even);',
+'class Person { constructor(name, age) { this.name = name; this.age = age; } greet() { return "Hi, " + this.name; } }',
+'async function fetchData(url) { const res = await fetch(url); if (!res.ok) throw new Error("fail"); return res.json(); }',
+'const result = [1, 2, 3, 4].reduce((acc, cur) => { acc.push(cur * 2); return acc; }, []); console.log(result);',
+'function factorial(n) { if (n <= 1) return 1; return n * factorial(n - 1); } console.log(factorial(5));',
+'const obj = { name: "test", value: 42 }; const { name, value } = obj; console.log(name, value); const arr = [1, 2, 3];',
+'for (let i = 0; i < 10; i++) { if (i % 2 === 0) console.log(i + " is even"); else console.log(i + " is odd"); }',
+'const promise = new Promise((resolve, reject) => { setTimeout(() => resolve("done"), 1000); }); promise.then(v => console.log(v));',
+'const set = new Set([1, 2, 3, 2, 1]); const map = new Map([["a", 1], ["b", 2]]); console.log([...set], map.get("a"));',
+'const filtered = users.filter(u => u.active && u.age > 18).map(u => u.name).sort(); console.log(filtered);',
+'export default class Counter { constructor() { this.count = 0; } inc() { this.count++; } dec() { this.count--; } }',
+'const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };',
+'const swap = (arr, i, j) => { [arr[i], arr[j]] = [arr[j], arr[i]]; }; const arr = [3, 1, 2]; swap(arr, 0, 1); console.log(arr);',
+'const sum = (...nums) => nums.reduce((a, b) => a + b, 0); const avg = (...nums) => sum(...nums) / nums.length; console.log(avg(1, 2, 3));'
+],
+60:[
+'function add(a, b) { return a + b; } const sum = add(3, 5); console.log(sum); const mul = (x, y) => x * y; console.log(mul(4, 6)); const sub = (a, b) => a - b; console.log(sub(10, 3));',
+'const arr = [1, 2, 3, 4, 5]; const doubled = arr.map(n => n * 2); const even = doubled.filter(n => n % 2 === 0); console.log(even); const sum = arr.reduce((a, b) => a + b);',
+'class Person { constructor(name, age) { this.name = name; this.age = age; } greet() { return "Hi, I am " + this.name; } } const p = new Person("Tom", 20); console.log(p.greet());',
+'async function fetchData(url) { try { const res = await fetch(url); if (!res.ok) throw new Error("HTTP " + res.status); return await res.json(); } catch (e) { console.error(e); } }',
+'const result = [1, 2, 3, 4].reduce((acc, cur) => { if (cur % 2 === 0) acc.even.push(cur); else acc.odd.push(cur); return acc; }, { even: [], odd: [] }); console.log(result);',
+'function factorial(n) { if (n <= 1) return 1; return n * factorial(n - 1); } function fib(n) { return n < 2 ? n : fib(n-1) + fib(n-2); } console.log(factorial(5), fib(10));',
+'const obj = { name: "test", value: 42, nested: { a: 1 } }; const { name, value, nested: { a }, ...rest } = obj; console.log(name, value, a, rest);',
+'for (let i = 0; i < 10; i++) { if (i % 2 === 0) console.log(i + " is even"); else if (i % 3 === 0) console.log(i + " div by 3"); else console.log(i + " odd"); }',
+'const promise = new Promise((resolve, reject) => { setTimeout(() => Math.random() > 0.5 ? resolve("ok") : reject("err"), 1000); }); promise.then(console.log).catch(console.error);',
+'const set = new Set([1, 2, 3, 2, 1]); const map = new Map([["a", 1], ["b", 2]]); for (const [k, v] of map) console.log(k, v); console.log([...set]);',
+'const filtered = users.filter(u => u.active && u.age > 18).map(u => ({ name: u.name, age: u.age })).sort((a, b) => a.age - b.age); console.log(filtered);',
+'export default class Counter { constructor(initial = 0) { this.count = initial; } inc(n = 1) { this.count += n; return this; } dec(n = 1) { this.count -= n; return this; } }',
+'const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }; const throttle = (fn, ms) => { let last = 0; return (...a) => { const now = Date.now(); if (now - last >= ms) { last = now; fn(...a); } }; };',
+'const swap = (arr, i, j) => { [arr[i], arr[j]] = [arr[j], arr[i]]; }; const bubbleSort = (arr) => { const a = [...arr]; for (let i = 0; i < a.length; i++) for (let j = 0; j < a.length - i - 1; j++) if (a[j] > a[j+1]) swap(a, j, j+1); return a; }; console.log(bubbleSort([5, 3, 8, 1]));',
+'const sum = (...nums) => nums.reduce((a, b) => a + b, 0); const avg = (...nums) => sum(...nums) / nums.length; const variance = (...nums) => { const m = avg(...nums); return avg(...nums.map(n => (n - m) ** 2)); }; console.log(avg(1,2,3), variance(1,2,3));'
+],
+120:[
+'function add(a, b) { return a + b; } const sum = add(3, 5); console.log(sum); const mul = (x, y) => x * y; console.log(mul(4, 6)); const sub = (a, b) => a - b; console.log(sub(10, 3)); const div = (a, b) => b === 0 ? NaN : a / b; console.log(div(20, 4)); const mod = (a, b) => a % b; console.log(mod(10, 3)); const pow = (a, b) => Math.pow(a, b); console.log(pow(2, 10)); const ops = { add, mul, sub, div, mod, pow }; console.log(ops);',
+'const arr = [1, 2, 3, 4, 5]; const doubled = arr.map(n => n * 2); const even = doubled.filter(n => n % 2 === 0); const sum = even.reduce((a, b) => a + b, 0); console.log("Sum:", sum); const max = Math.max(...arr); const min = Math.min(...arr); console.log("Range:", min, max); const sorted = [...arr].sort((a, b) => b - a); console.log("Sorted:", sorted); const found = arr.find(n => n > 3); console.log("Found:", found); const idx = arr.findIndex(n => n === 3); console.log("Index:", idx);',
+'class Person { constructor(name, age) { this.name = name; this.age = age; } greet() { return "Hi, I am " + this.name; } } class Student extends Person { constructor(name, age, grade) { super(name, age); this.grade = grade; } study() { return this.name + " studies grade " + this.grade; } } const s = new Student("Tom", 20, 10); console.log(s.greet()); console.log(s.study()); const p = new Person("Alice", 30); console.log(p.greet()); console.log(s instanceof Person);',
+'async function fetchData(url) { try { const res = await fetch(url); if (!res.ok) throw new Error("HTTP " + res.status); return await res.json(); } catch (e) { console.error("Failed:", e.message); return null; } } async function main() { const data = await fetchData("/api/data"); if (data) console.log("Data:", data); else console.log("No data"); } main().then(() => console.log("Done")).catch(console.error);',
+'const result = [1, 2, 3, 4, 5, 6].reduce((acc, cur) => { if (cur % 2 === 0) acc.even.push(cur); else acc.odd.push(cur); return acc; }, { even: [], odd: [] }); console.log(result); const flat = [[1, 2], [3, 4], [5, 6]].flat(); console.log(flat); const nested = [1, [2, [3, [4]]]].flat(Infinity); console.log(nested); const unique = [...new Set([1, 1, 2, 2, 3, 3])]; console.log(unique); const chunked = arr => arr.reduce((acc, n, i) => { const idx = Math.floor(i / 2); (acc[idx] = acc[idx] || []).push(n); return acc; }, []); console.log(chunked([1,2,3,4,5,6]));',
+'function factorial(n) { if (n <= 1) return 1; return n * factorial(n - 1); } function fibonacci(n) { if (n < 2) return n; return fibonacci(n - 1) + fibonacci(n - 2); } console.log("5!:", factorial(5)); console.log("Fib(10):", fibonacci(10)); const memo = {}; function fibMemo(n) { if (n in memo) return memo[n]; if (n < 2) return n; return memo[n] = fibMemo(n - 1) + fibMemo(n - 2); } console.log("FibMemo(20):", fibMemo(20)); console.log("FibMemo(30):", fibMemo(30));',
+'const obj = { name: "test", value: 42, nested: { a: 1, b: 2 } }; const { name, value, nested: { a, b }, ...rest } = obj; console.log(name, value, a, b, rest); const merged = { ...obj, extra: "new" }; console.log(merged); const arr1 = [1, 2, 3]; const arr2 = [4, 5, 6]; const combined = [...arr1, ...arr2]; console.log(combined); const [first, second, ...others] = combined; console.log(first, second, others); const swapped = ([a, b] = [b, a], [a, b]); console.log(swapped(1, 2));',
+'for (let i = 0; i < 10; i++) { if (i % 2 === 0) console.log(i + " is even"); else if (i % 3 === 0) console.log(i + " is divisible by 3"); else console.log(i + " is odd"); } const arr = Array.from({ length: 5 }, (_, i) => i * i); console.log(arr); const entries = arr.entries(); for (const [idx, val] of entries) console.log(idx, val); const keys = Object.keys({ a: 1, b: 2, c: 3 }); console.log(keys); const values = Object.values({ a: 1, b: 2, c: 3 }); console.log(values);',
+'const promise = new Promise((resolve, reject) => { setTimeout(() => Math.random() > 0.5 ? resolve("done") : reject(new Error("fail")), 1000); }); promise.then(v => console.log("OK:", v)).catch(e => console.log("Err:", e.message)).finally(() => console.log("end")); Promise.all([Promise.resolve(1), Promise.resolve(2)]).then(vals => console.log("All:", vals)); Promise.race([Promise.resolve(1), Promise.resolve(2)]).then(val => console.log("Race:", val)); Promise.allSettled([Promise.resolve(1), Promise.reject("err")]).then(results => console.log(results));',
+'const set = new Set([1, 2, 3, 2, 1]); const map = new Map([["a", 1], ["b", 2], ["c", 3]]); const weakSet = new WeakSet(); console.log([...set]); for (const [k, v] of map) console.log(k, v); const obj = { id: 1 }; weakSet.add(obj); console.log(weakSet.has(obj)); const weakMap = new WeakMap(); const key = {}; weakMap.set(key, "value"); console.log(weakMap.get(key)); const arr = Array.from(map.values()); console.log(arr); const has = set.has(2); console.log("Has 2:", has); set.add(4); set.delete(1); console.log([...set]);',
+'const users = [{ name: "Tom", age: 20, active: true, role: "admin" }, { name: "Amy", age: 25, active: true, role: "user" }, { name: "Bob", age: 30, active: false, role: "user" }]; const filtered = users.filter(u => u.active && u.age > 18).map(u => ({ name: u.name, age: u.age })).sort((a, b) => a.age - b.age); console.log(filtered); const grouped = users.reduce((acc, u) => { (acc[u.role] = acc[u.role] || []).push(u); return acc; }, {}); console.log(grouped); const totalAge = users.reduce((sum, u) => sum + u.age, 0); console.log("Total age:", totalAge);',
+'export default class Counter { constructor(initial = 0) { this.count = initial; } inc(n = 1) { this.count += n; return this; } dec(n = 1) { this.count -= n; return this; } reset() { this.count = 0; } get value() { return this.count; } set value(v) { this.count = v; } } const c = new Counter(10); c.inc(5).dec(3); console.log(c.value); c.value = 100; console.log(c.value); const c2 = new Counter(); c2.inc(10).inc(20); console.log(c2.value); const c3 = new Counter(50); c3.dec(5).inc(10); console.log(c3.value);',
+'const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }; const throttle = (fn, ms) => { let last = 0; return (...a) => { const now = Date.now(); if (now - last >= ms) { last = now; fn(...a); } }; }; const once = (fn) => { let done = false; return (...a) => { if (!done) { done = true; return fn(...a); } }; }; const memoize = (fn) => { const cache = new Map(); return (...a) => { const key = JSON.stringify(a); if (cache.has(key)) return cache.get(key); const result = fn(...a); cache.set(key, result); return result; }; }; console.log("Utilities created");',
+'const swap = (arr, i, j) => { [arr[i], arr[j]] = [arr[j], arr[i]]; }; const bubbleSort = (arr) => { const a = [...arr]; for (let i = 0; i < a.length; i++) for (let j = 0; j < a.length - i - 1; j++) if (a[j] > a[j+1]) swap(a, j, j+1); return a; }; console.log(bubbleSort([5, 3, 8, 1, 9, 2])); const quickSort = (arr) => { if (arr.length <= 1) return arr; const pivot = arr[0]; const left = arr.slice(1).filter(n => n < pivot); const right = arr.slice(1).filter(n => n >= pivot); return [...quickSort(left), pivot, ...quickSort(right)]; }; console.log(quickSort([5, 3, 8, 1, 9, 2])); const mergeSort = (arr) => { if (arr.length <= 1) return arr; const mid = Math.floor(arr.length / 2); const left = mergeSort(arr.slice(0, mid)); const right = mergeSort(arr.slice(mid)); return merge(left, right); }; function merge(left, right) { const result = []; while (left.length && right.length) result.push(left[0] <= right[0] ? left.shift() : right.shift()); return [...result, ...left, ...right]; } console.log(mergeSort([5, 3, 8, 1]));',
+'const sum = (...nums) => nums.reduce((a, b) => a + b, 0); const avg = (...nums) => sum(...nums) / nums.length; const variance = (...nums) => { const m = avg(...nums); return avg(...nums.map(n => (n - m) ** 2)); }; const std = (...nums) => Math.sqrt(variance(...nums)); console.log("Sum:", sum(1, 2, 3, 4, 5)); console.log("Avg:", avg(1, 2, 3, 4, 5)); console.log("Var:", variance(1, 2, 3, 4, 5)); console.log("Std:", std(1, 2, 3, 4, 5)); const stats = (arr) => ({ sum: sum(...arr), avg: avg(...arr), min: Math.min(...arr), max: Math.max(...arr), std: std(...arr), count: arr.length }); console.log(stats([1, 2, 3, 4, 5])); const median = (arr) => { const sorted = [...arr].sort((a, b) => a - b); const mid = Math.floor(sorted.length / 2); return sorted.length % 2 ? sorted[mid] : avg(sorted[mid - 1], sorted[mid]); }; console.log("Median:", median([1, 2, 3, 4, 5]));'
+]
+}
+};
+var mode='zh';
+var duration=30;
+var textIndex='random';
+var testing=false;
+var countingDown=false;
+var currentText='';
+var startTime=0;
+var timerId=null;
+var errorCount=0;
+var lastInputLen=0;
+var countdownTimerId=null;
+var textDisplay=document.getElementById('textDisplay');
+var textInput=document.getElementById('textInput');
+var textArea=document.getElementById('textArea');
+var startBtn=document.getElementById('startBtn');
+var histBtn=document.getElementById('histBtn');
+var progressBar=document.getElementById('progressBar');
+var statWpm=document.getElementById('statWpm');
+var statAcc=document.getElementById('statAcc');
+var statTyped=document.getElementById('statTyped');
+var statErr=document.getElementById('statErr');
+var statTime=document.getElementById('statTime');
+var textSelect=document.getElementById('textSelect');
+var countdownOverlay=document.getElementById('countdownOverlay');
+var countdownNum=document.getElementById('countdownNum');
+var modeBtns=document.querySelectorAll('[data-mode]');
+var durBtns=document.querySelectorAll('[data-duration]');
+for(var i=0;i<15;i++){
+var btn=document.createElement('button');
+btn.className='set-btn text-btn';
+btn.setAttribute('data-text',String(i));
+btn.textContent=String(i+1);
+textSelect.appendChild(btn);
+}
+var textBtns=textSelect.querySelectorAll('[data-text]');
+function loadTextIndex(){
+try{
+var saved=JSON.parse(localStorage.getItem('typing_text_index')||'{}');
+var key=mode+'_'+duration;
+textIndex=(saved[key]!==undefined)?saved[key]:'random';
+}catch(e){textIndex='random'}
+}
+function saveTextIndex(){
+try{
+var saved=JSON.parse(localStorage.getItem('typing_text_index')||'{}');
+saved[mode+'_'+duration]=textIndex;
+localStorage.setItem('typing_text_index',JSON.stringify(saved));
+}catch(e){}
+}
+function getHistory(m,d){
+try{return JSON.parse(localStorage.getItem('typing_hist_'+m+'_'+d)||'[]')}catch(e){return[]}
+}
+function addHistory(m,d,record){
+var hist=getHistory(m,d);
+hist.unshift(record);
+if(hist.length>10)hist=hist.slice(0,10);
+localStorage.setItem('typing_hist_'+m+'_'+d,JSON.stringify(hist));
+}
+function getBest(m,d){
+return parseInt(localStorage.getItem('typing_best_'+m+'_'+d)||'0');
+}
+function setBest(m,d,wpm){
+localStorage.setItem('typing_best_'+m+'_'+d,String(wpm));
+}
+function formatDate(ts){
+var d=new Date(ts);
+var pad=function(n){return n<10?'0'+n:String(n)};
+return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+function updateSetBtns(){
+for(var i=0;i<modeBtns.length;i++){modeBtns[i].className='set-btn'+(modeBtns[i].getAttribute('data-mode')===mode?' active':'')}
+for(var j=0;j<durBtns.length;j++){durBtns[j].className='set-btn'+(parseInt(durBtns[j].getAttribute('data-duration'))===duration?' active':'')}
+for(var k=0;k<textBtns.length;k++){
+var val=textBtns[k].getAttribute('data-text');
+textBtns[k].className='set-btn text-btn'+(val===String(textIndex)?' active':'');
+}
+}
+for(var i=0;i<modeBtns.length;i++){
+modeBtns[i].addEventListener('click',function(){if(testing||countingDown)return;mode=this.getAttribute('data-mode');loadTextIndex();updateSetBtns()})
+}
+for(var j=0;j<durBtns.length;j++){
+durBtns[j].addEventListener('click',function(){if(testing||countingDown)return;duration=parseInt(this.getAttribute('data-duration'));loadTextIndex();updateSetBtns();statTime.textContent=duration})
+}
+for(var k=0;k<textBtns.length;k++){
+textBtns[k].addEventListener('click',function(){if(testing||countingDown)return;textIndex=this.getAttribute('data-text');saveTextIndex();updateSetBtns()})
+}
+function escapeHtml(s){
+return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function showIdle(){
+textDisplay.innerHTML='<div class="idle-hint"><div class="big">准备好开始了吗？</div>选择模式、时长和文本编号，点击「开始」按钮即可测试打字速度。<br>测试前有3秒倒计时准备时间，过程中可按 ESC 提前结束。</div>';
+textInput.value='';
+textInput.disabled=false;
+statWpm.textContent='0';
+statAcc.textContent='100%';
+statTyped.textContent='0';
+statErr.textContent='0';
+statTime.textContent=duration;
+progressBar.style.width='0%';
+}
+function pickText(){
+var pool=TEXTS[mode][duration];
+if(textIndex==='random'){
+return pool[Math.floor(Math.random()*pool.length)];
+}
+var idx=parseInt(textIndex);
+return pool[idx]||pool[0];
+}
+function renderText(){
+var typed=textInput.value;
+var html='';
+for(var i=0;i<currentText.length;i++){
+var ch=currentText[i];
+var esc=escapeHtml(ch);
+if(i<typed.length){
+if(typed[i]===ch)html+='<span class="correct">'+esc+'</span>';
+else html+='<span class="wrong">'+esc+'</span>';
+}else if(i===typed.length){
+html+='<span class="cursor">'+esc+'</span>';
+}else{
+html+='<span class="pending">'+esc+'</span>';
+}
+}
+textDisplay.innerHTML=html;
+var cursor=textDisplay.querySelector('.cursor');
+if(cursor){
+var cRect=cursor.getBoundingClientRect();
+var tRect=textArea.getBoundingClientRect();
+if(cRect.bottom>tRect.bottom-60){textArea.scrollTop+=cRect.height*2}
+if(cRect.top<tRect.top+20){textArea.scrollTop-=cRect.height*2}
+}
+}
+function renderTextPreview(){
+var html='';
+for(var i=0;i<currentText.length;i++){
+html+='<span class="pending">'+escapeHtml(currentText[i])+'</span>';
+}
+textDisplay.innerHTML=html;
+}
+function updateStats(){
+var typed=textInput.value;
+var correct=0;
+for(var i=0;i<typed.length&&i<currentText.length;i++){
+if(typed[i]===currentText[i])correct++;
+}
+var elapsed=(Date.now()-startTime)/1000;
+var wpm=elapsed>0?Math.round((correct/5)/(elapsed/60)):0;
+var acc=typed.length>0?Math.round(correct/typed.length*100):100;
+statWpm.textContent=wpm;
+statAcc.textContent=acc+'%';
+statTyped.textContent=typed.length;
+statErr.textContent=errorCount;
+var remain=Math.max(0,duration-Math.floor(elapsed));
+statTime.textContent=remain;
+progressBar.style.width=(elapsed/duration*100)+'%';
+return{wpm:wpm,acc:acc,correct:correct,typed:typed.length};
+}
+function disableSettings(disabled){
+var op=disabled?.5:'';
+for(var i=0;i<modeBtns.length;i++)modeBtns[i].style.opacity=op;
+for(var j=0;j<durBtns.length;j++)durBtns[j].style.opacity=op;
+for(var k=0;k<textBtns.length;k++)textBtns[k].style.opacity=op;
+histBtn.style.opacity=op;
+histBtn.style.pointerEvents=disabled?'none':'';
+}
+function startCountdown(){
+countingDown=true;
+currentText=pickText();
+errorCount=0;
+lastInputLen=0;
+textInput.value='';
+textInput.disabled=true;
+startBtn.textContent='结束';
+startBtn.className='start-btn testing';
+disableSettings(true);
+renderTextPreview();
+textArea.scrollTop=0;
+var count=3;
+countdownOverlay.className='countdown-overlay show';
+function tick(){
+countdownNum.className='countdown-num';
+countdownNum.textContent=count>0?String(count):'开始';
+void countdownNum.offsetHeight;
+countdownNum.className='countdown-num pulse';
+}
+tick();
+countdownTimerId=setInterval(function(){
+count--;
+if(count>=0){
+tick();
+}else{
+clearInterval(countdownTimerId);
+countdownTimerId=null;
+countdownOverlay.className='countdown-overlay';
+beginTest();
+}
+},1000);
+}
+function beginTest(){
+countingDown=false;
+testing=true;
+startTime=Date.now();
+textInput.disabled=false;
+textInput.focus();
+renderText();
+timerId=setInterval(function(){
+var s=updateStats();
+if(Date.now()-startTime>=duration*1000){finishTest(s)}
+},100);
+}
+function cancelCountdown(){
+if(countdownTimerId){clearInterval(countdownTimerId);countdownTimerId=null}
+countingDown=false;
+countdownOverlay.className='countdown-overlay';
+startBtn.textContent='开始';
+startBtn.className='start-btn';
+disableSettings(false);
+showIdle();
+}
+function finishTest(stats){
+if(!testing)return;
+testing=false;
+if(timerId){clearInterval(timerId);timerId=null}
+var final=stats||updateStats();
+textInput.disabled=true;
+startBtn.textContent='开始';
+startBtn.className='start-btn';
+disableSettings(false);
+progressBar.style.width='100%';
+var best=getBest(mode,duration);
+var isNewBest=final.wpm>best;
+if(isNewBest){setBest(mode,duration,final.wpm)}
+addHistory(mode,duration,{wpm:final.wpm,acc:final.acc,typed:final.typed,errors:errorCount,date:Date.now()});
+showResultPanel(final,isNewBest,best);
+}
+function buildHistSection(m,d){
+var modeName=m==='zh'?'中文':(m==='en'?'英文':'代码');
+var hist=getHistory(m,d);
+var best=getBest(m,d);
+var html='<div class="hist-section">';
+html+='<div class="hist-title">'+modeName+' · '+d+'秒</div>';
+if(best>0){html+='<div class="hist-best-row">最佳: '+best+' WPM</div>'}
+if(hist.length===0){
+html+='<div class="hist-empty">暂无记录</div>';
+}else{
+html+='<div class="hist-list">';
+for(var i=0;i<hist.length;i++){
+var r=hist[i];
+var isBest=r.wpm===best&&best>0;
+html+='<div class="hist-row'+(isBest?' hr-best':'')+'">';
+html+='<span>#'+(i+1)+'</span>';
+html+='<span class="hr-wpm">'+r.wpm+' WPM</span>';
+html+='<span>'+r.acc+'%</span>';
+html+='<span>'+formatDate(r.date)+'</span>';
+html+='</div>';
+}
+html+='</div>';
+}
+html+='</div>';
+return html;
+}
+function showResultPanel(final,isNewBest,prevBest){
+var overlay=document.createElement('div');
+overlay.className='overlay';
+var modeName=mode==='zh'?'中文':(mode==='en'?'英文':'代码');
+var html='<div class="result-panel"><h2>测试完成 · '+modeName+' · '+duration+'秒</h2>';
+if(isNewBest)html+='<div class="best-badge">新纪录！</div>';
+html+='<div class="big-wpm">'+final.wpm+'</div><div class="wpm-label">WPM（每分钟字数）</div>';
+html+='<div class="result-grid">';
+html+='<div class="item"><div class="v" style="color:var(--ok)">'+final.acc+'%</div><div class="l">准确率</div></div>';
+html+='<div class="item"><div class="v" style="color:var(--accent)">'+final.typed+'</div><div class="l">总字数</div></div>';
+html+='<div class="item"><div class="v" style="color:var(--danger)">'+errorCount+'</div><div class="l">错误数</div></div>';
+html+='<div class="item"><div class="v" style="color:var(--warn)">'+(isNewBest?final.wpm:prevBest)+'</div><div class="l">历史最佳</div></div>';
+html+='</div>';
+html+=buildHistSection(mode,duration);
+html+='<button class="again-btn" id="againBtn">再来一次</button></div>';
+overlay.innerHTML=html;
+document.body.appendChild(overlay);
+document.getElementById('againBtn').addEventListener('click',function(){
+document.body.removeChild(overlay);
+showIdle();
+});
+overlay.addEventListener('click',function(e){if(e.target===overlay){document.body.removeChild(overlay);showIdle()}});
+}
+function showHistoryPanel(){
+var overlay=document.createElement('div');
+overlay.className='overlay';
+var modes=['zh','en','code'];
+var durs=[30,60,120];
+var modeNames={zh:'中文',en:'英文',code:'代码'};
+var html='<div class="history-panel"><h2>历史记录</h2><div class="hp-types">';
+for(var mi=0;mi<modes.length;mi++){
+for(var di=0;di<durs.length;di++){
+var m=modes[mi];
+var d=durs[di];
+var hist=getHistory(m,d);
+var best=getBest(m,d);
+html+='<div class="hp-type">';
+html+='<div class="hp-type-header"><span class="hp-type-name">'+modeNames[m]+' · '+d+'秒</span>';
+if(best>0){html+='<span class="hp-best">最佳 '+best+' WPM</span>'}
+html+='</div>';
+if(hist.length===0){
+html+='<div class="hp-empty">暂无记录</div>';
+}else{
+html+='<div class="hp-records">';
+for(var i=0;i<hist.length;i++){
+var r=hist[i];
+html+='<div class="hp-record">';
+html+='<span>#'+(i+1)+' '+r.wpm+' WPM '+r.acc+'%</span>';
+html+='<span>'+formatDate(r.date)+'</span>';
+html+='</div>';
+}
+html+='</div>';
+}
+html+='</div>';
+}
+}
+html+='</div>';
+html+='<button class="close-btn" id="closeHistBtn">关闭</button>';
+html+='<button class="hp-clear-btn" id="clearHistBtn">清空所有记录</button>';
+html+='</div>';
+overlay.innerHTML=html;
+document.body.appendChild(overlay);
+document.getElementById('closeHistBtn').addEventListener('click',function(){
+document.body.removeChild(overlay);
+});
+document.getElementById('clearHistBtn').addEventListener('click',function(){
+if(!confirm('确定清空所有历史记录吗？此操作不可撤销。'))return;
+var keys=['zh','en','code'];
+var ds=[30,60,120];
+for(var a=0;a<keys.length;a++){
+for(var b=0;b<ds.length;b++){
+localStorage.removeItem('typing_hist_'+keys[a]+'_'+ds[b]);
+localStorage.removeItem('typing_best_'+keys[a]+'_'+ds[b]);
+}
+}
+document.body.removeChild(overlay);
+showHistoryPanel();
+});
+overlay.addEventListener('click',function(e){if(e.target===overlay){document.body.removeChild(overlay)}});
+}
+textInput.addEventListener('input',function(){
+if(!testing)return;
+var typed=textInput.value;
+if(typed.length>lastInputLen){
+var newChars=typed.slice(lastInputLen);
+for(var i=0;i<newChars.length;i++){
+var idx=lastInputLen+i;
+if(idx<currentText.length&&newChars[i]!==currentText[idx])errorCount++;
+}
+}
+lastInputLen=typed.length;
+if(typed.length>=currentText.length){
+var allCorrect=true;
+for(var k=0;k<currentText.length;k++){if(typed[k]!==currentText[k]){allCorrect=false;break}}
+if(allCorrect){var s=updateStats();finishTest(s);return}
+}
+renderText();
+updateStats();
+});
+textInput.addEventListener('keydown',function(e){
+if(!testing)return;
+if(e.key==='Escape'){e.preventDefault();var s=updateStats();finishTest(s)}
+});
+startBtn.addEventListener('click',function(){
+if(countingDown){cancelCountdown();return}
+if(testing){var s=updateStats();finishTest(s)}
+else{startCountdown()}
+});
+histBtn.addEventListener('click',function(){
+if(testing||countingDown)return;
+showHistoryPanel();
+});
+document.addEventListener('keydown',function(e){
+if(e.key==='Escape'){
+if(countingDown){cancelCountdown()}
+else if(testing){var s=updateStats();finishTest(s)}
+}
+});
+loadTextIndex();
+updateSetBtns();
+showIdle();
+})();
+</script>
+</body>
+</html>

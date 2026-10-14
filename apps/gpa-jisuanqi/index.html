@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPA 计算器</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230f1923'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%234fc3f7' font-family='sans-serif'%3EG%3C/text%3E%3C/svg%3E">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0f1923;--bg2:#152638;--card:#1a2c42;--border:#2a4060;--txt:#e6f1ff;--sub:#8aa4c0;--accent:#4fc3f7;--accent2:#7e57c2;--ok:#4caf50;--warn:#ffb74d;--bad:#ef5350;--shadow:0 4px 20px rgba(0,0,0,.4)}
+html,body{height:100%}
+body{background:linear-gradient(160deg,var(--bg) 0%,#0a1219 100%);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh;padding:16px;line-height:1.5}
+.wrap{max-width:960px;margin:0 auto}
+h1{text-align:center;font-size:22px;font-weight:600;margin-bottom:16px;letter-spacing:1px}
+h1 .ic{color:var(--accent)}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.panel h2{font-size:15px;color:var(--sub);margin-bottom:12px;font-weight:500;display:flex;align-items:center;gap:8px}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg .grp{display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;flex:1;min-width:220px}
+.seg .grp .lbl{padding:10px 12px;color:var(--sub);font-size:13px;display:flex;align-items:center;white-space:nowrap;border-right:1px solid var(--border)}
+.seg .grp .opts{display:flex;flex:1}
+.seg .grp button{flex:1;background:transparent;border:0;color:var(--sub);padding:10px 8px;cursor:pointer;font-size:13px;transition:all .2s;font-family:inherit}
+.seg .grp button:hover{color:var(--txt);background:rgba(79,195,247,.08)}
+.seg .grp button.active{background:var(--accent);color:#0a1219;font-weight:600}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px 6px;text-align:center}
+th{color:var(--sub);font-size:12px;font-weight:500;border-bottom:1px solid var(--border)}
+td{border-bottom:1px solid rgba(42,64,96,.4)}
+input,select{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--txt);font-size:14px;font-family:inherit;transition:all .2s}
+input:focus,select:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,195,247,.15)}
+.row{display:grid;grid-template-columns:1.6fr 1fr .8fr 40px;gap:8px;align-items:center;padding:6px 0}
+.row .del{background:var(--bg2);border:1px solid var(--border);color:var(--bad);border-radius:8px;height:38px;cursor:pointer;font-size:18px;transition:all .2s}
+.row .del:hover{background:var(--bad);color:#fff}
+.btn{background:var(--accent);color:#0a1219;border:0;border-radius:10px;padding:11px 16px;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;transition:all .2s;width:100%}
+.btn:hover{background:#5fd0ff;transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--sub)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent);background:rgba(79,195,247,.06)}
+.btn.danger{background:transparent;border:1px solid var(--bad);color:var(--bad)}
+.btn.danger:hover{background:var(--bad);color:#fff}
+.actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+.actions .btn{flex:1;min-width:140px}
+.import-area{border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all .25s;margin-bottom:12px}
+.import-area:hover{border-color:var(--accent);background:rgba(79,195,247,.05)}
+.import-area.drag{border-color:var(--accent);background:rgba(79,195,247,.1)}
+.import-area .icon{font-size:32px;margin-bottom:6px}
+.import-area .txt{font-size:14px;color:var(--sub)}
+.import-area .txt b{color:var(--accent)}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--accent);border-radius:10px;padding:10px 20px;color:var(--txt);font-size:14px;box-shadow:var(--shadow);z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.toast.err{border-color:var(--bad)}
+.result{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.stat .v{font-size:20px;font-weight:700;color:var(--accent)}
+.stat .k{font-size:11px;color:var(--sub);margin-top:2px}
+.gpa-box{text-align:center;padding:18px;background:linear-gradient(135deg,rgba(79,195,247,.12),rgba(126,87,194,.12));border:1px solid var(--accent);border-radius:12px;margin-bottom:12px}
+.gpa-box .lbl{font-size:13px;color:var(--sub);margin-bottom:6px}
+.gpa-box .val{font-size:54px;font-weight:800;color:var(--accent);letter-spacing:2px;line-height:1;transition:all .3s}
+.gpa-box .grade{margin-top:10px;font-size:16px;font-weight:600}
+.empty{text-align:center;color:var(--sub);padding:20px;font-size:13px}
+.hint{text-align:center;color:var(--sub);font-size:12px;margin-top:8px}
+.main-grid{display:grid;grid-template-columns:1fr 300px;gap:14px;align-items:start}
+.right-col{position:sticky;top:16px}
+.right-col .panel{margin-bottom:0}
+@media(max-width:600px){
+.main-grid{grid-template-columns:1fr}
+.right-col{order:-1;position:static}
+.right-col .panel{margin-bottom:14px}
+}
+@media(max-width:520px){
+.row{grid-template-columns:1.4fr 1fr .7fr 36px;gap:6px}
+.gpa-box .val{font-size:44px}
+h1{font-size:19px}
+body{padding:10px}
+.panel{padding:12px;margin-bottom:10px}
+.result{grid-template-columns:repeat(3,1fr);gap:6px}
+.stat{padding:8px}
+.stat .v{font-size:17px}
+}
+@media(max-width:380px){
+.row{grid-template-columns:1.2fr .9fr .6fr 32px;gap:4px}
+.gpa-box .val{font-size:36px}
+input,select{padding:7px 6px;font-size:12px}
+.row .del{height:34px;font-size:16px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1><span class="ic">GPA</span> 计算器</h1>
+
+<div class="panel">
+<h2>● 制式与输入方式</h2>
+<div class="seg">
+<div class="grp">
+<span class="lbl">GPA 制式</span>
+<div class="opts">
+<button id="sys4" class="active">4.0 制</button>
+<button id="sys5">5.0 制</button>
+</div>
+</div>
+<div class="grp">
+<span class="lbl">成绩输入</span>
+<div class="opts">
+<button id="inScore" class="active">百分制</button>
+<button id="inGrade">等级制</button>
+</div>
+</div>
+</div>
+</div>
+
+<div class="main-grid">
+<div class="left-col">
+<div class="panel">
+<h2>● 课程列表</h2>
+<div class="import-area" id="importArea">
+<div class="icon">📂</div>
+<div class="txt"><b>点击导入 Excel 成绩单</b><br>或拖拽 .xlsx 文件到此处</div>
+</div>
+<input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none">
+<table>
+<thead><tr><th>课程名称</th><th>成绩</th><th>学分</th><th></th></tr></thead>
+</table>
+<div id="rows"></div>
+<div class="actions">
+<button class="btn ghost" id="addBtn">+ 添加课程</button>
+</div>
+</div>
+</div>
+<div class="right-col">
+<div class="panel">
+<h2>● 计算结果</h2>
+<div class="result">
+<div class="stat"><div class="v" id="totalCredit">0</div><div class="k">总学分</div></div>
+<div class="stat"><div class="v" id="totalCourse">0</div><div class="k">课程数</div></div>
+<div class="stat"><div class="v" id="avgScore">--</div><div class="k">平均分</div></div>
+</div>
+<div class="gpa-box">
+<div class="lbl">当前 GPA</div>
+<div class="val" id="gpaVal">0.00</div>
+<div class="grade" id="gradeTxt">请添加课程</div>
+</div>
+<div class="actions">
+<button class="btn danger" id="clearBtn">清空所有课程</button>
+</div>
+<div class="hint" id="hint"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+var STORAGE_COURSES="gpa_courses",STORAGE_SYS="gpa_system",STORAGE_IN="gpa_input";
+var $=function(id){return document.getElementById(id)};
+var rowsEl=$("rows"),sys4=$("sys4"),sys5=$("sys5"),inScore=$("inScore"),inGrade=$("inGrade");
+var addBtn=$("addBtn"),clearBtn=$("clearBtn");
+var gpaVal=$("gpaVal"),gradeTxt=$("gradeTxt"),totalCredit=$("totalCredit"),totalCourse=$("totalCourse"),avgScore=$("avgScore"),hint=$("hint");
+
+var state={system:localStorage.getItem(STORAGE_SYS)||"4",input:localStorage.getItem(STORAGE_IN)||"score",courses:[]};
+try{state.courses=JSON.parse(localStorage.getItem(STORAGE_COURSES)||"[]")}catch(e){state.courses=[]}
+if(!Array.isArray(state.courses))state.courses=[];
+
+var GRADE_MAP_4={"A":4.0,"A-":3.7,"B+":3.3,"B":3.0,"B-":2.7,"C+":2.3,"C":2.0,"C-":1.5,"D":1.0,"F":0};
+var GRADE_MAP_5={"A":5.0,"A-":4.5,"B+":4.0,"B":3.5,"B-":3.0,"C+":2.5,"C":2.0,"C-":1.5,"D":1.0,"F":0};
+var GRADE_LIST=["A","A-","B+","B","B-","C+","C","C-","D","F"];
+
+function scoreToPoint(score,sys){
+score=Number(score);
+if(isNaN(score))return null;
+if(sys==="5"){
+if(score>=90)return 5.0;
+if(score>=85)return 4.5;
+if(score>=80)return 4.0;
+if(score>=75)return 3.5;
+if(score>=70)return 3.0;
+if(score>=65)return 2.5;
+if(score>=60)return 2.0;
+return 0;
+}else{
+if(score>=90)return 4.0;
+if(score>=85)return 3.7;
+if(score>=82)return 3.3;
+if(score>=78)return 3.0;
+if(score>=75)return 2.7;
+if(score>=72)return 2.3;
+if(score>=68)return 2.0;
+if(score>=64)return 1.5;
+if(score>=60)return 1.0;
+return 0;
+}
+}
+function gradeToPoint(grade,sys){
+return sys==="5"?GRADE_MAP_5[grade]:GRADE_MAP_4[grade];
+}
+function pointToGrade(point,sys){
+var max=sys==="5"?5.0:4.0;
+var ratio=max===0?0:point/max;
+if(ratio>=0.95)return"优秀";
+if(ratio>=0.80)return"良好";
+if(ratio>=0.65)return"中等";
+if(ratio>=0.50)return"及格";
+return"不及格";
+}
+function gradeColor(txt){
+if(txt==="优秀")return"#4caf50";
+if(txt==="良好")return"#8bc34a";
+if(txt==="中等")return"#ffb74d";
+if(txt==="及格")return"#ffa726";
+return"#ef5350";
+}
+
+function persist(){
+localStorage.setItem(STORAGE_SYS,state.system);
+localStorage.setItem(STORAGE_IN,state.input);
+localStorage.setItem(STORAGE_COURSES,JSON.stringify(state.courses));
+}
+
+function renderSeg(){
+sys4.classList.toggle("active",state.system==="4");
+sys5.classList.toggle("active",state.system==="5");
+inScore.classList.toggle("active",state.input==="score");
+inGrade.classList.toggle("active",state.input==="grade");
+}
+
+function renderRows(){
+rowsEl.innerHTML="";
+if(state.courses.length===0){
+var e=document.createElement("div");
+e.className="empty";e.textContent="暂无课程，点击下方按钮添加";
+rowsEl.appendChild(e);return;
+}
+state.courses.forEach(function(c,i){
+var row=document.createElement("div");
+row.className="row";
+var nameIn=document.createElement("input");
+nameIn.type="text";nameIn.placeholder="课程名称";nameIn.value=c.name||"";
+nameIn.addEventListener("input",function(){state.courses[i].name=nameIn.value;persist();});
+var scoreIn;
+if(state.input==="grade"){
+scoreIn=document.createElement("select");
+var opt=document.createElement("option");opt.value="";opt.textContent="选择等级";scoreIn.appendChild(opt);
+GRADE_LIST.forEach(function(g){var o=document.createElement("option");o.value=g;o.textContent=g;scoreIn.appendChild(o)});
+scoreIn.value=c.score||"";
+}else{
+scoreIn=document.createElement("input");
+scoreIn.type="number";scoreIn.min="0";scoreIn.max="100";scoreIn.step="1";scoreIn.placeholder="0-100";scoreIn.value=c.score||"";
+}
+scoreIn.addEventListener("input",function(){state.courses[i].score=scoreIn.value;persist();compute();});
+scoreIn.addEventListener("change",function(){state.courses[i].score=scoreIn.value;persist();compute();});
+var creditIn=document.createElement("input");
+creditIn.type="number";creditIn.min="0";creditIn.step="0.5";creditIn.placeholder="学分";creditIn.value=c.credit||"";
+creditIn.addEventListener("input",function(){state.courses[i].credit=creditIn.value;persist();compute();});
+var delBtn=document.createElement("button");
+delBtn.className="del";delBtn.textContent="×";delBtn.title="删除";
+delBtn.addEventListener("click",function(){state.courses.splice(i,1);persist();renderRows();compute();});
+row.appendChild(nameIn);row.appendChild(scoreIn);row.appendChild(creditIn);row.appendChild(delBtn);
+rowsEl.appendChild(row);
+});
+}
+
+function compute(){
+var totalC=0,totalP=0,validCount=0,scoreSum=0,scoreCnt=0;
+state.courses.forEach(function(c){
+var credit=parseFloat(c.credit);
+if(isNaN(credit)||credit<=0)return;
+var point=null;
+if(state.input==="grade"){
+if(!c.score)return;
+point=gradeToPoint(c.score,state.system);
+}else{
+var s=parseFloat(c.score);
+if(isNaN(s))return;
+point=scoreToPoint(s,state.system);
+scoreSum+=s;scoreCnt++;
+}
+if(point===null||point===undefined)return;
+totalC+=credit;totalP+=point*credit;validCount++;
+});
+totalCredit.textContent=totalC.toFixed(totalC%1===0?0:1);
+totalCourse.textContent=validCount;
+avgScore.textContent=scoreCnt>0?(scoreSum/scoreCnt).toFixed(1):"--";
+if(validCount===0||totalC===0){
+gpaVal.textContent="0.00";
+gradeTxt.textContent="请添加课程";
+gradeTxt.style.color="var(--sub)";
+hint.textContent="";
+return;
+}
+var gpa=totalP/totalC;
+gpaVal.textContent=gpa.toFixed(2);
+var g=pointToGrade(gpa,state.system);
+gradeTxt.textContent=g;
+gradeTxt.style.color=gradeColor(g);
+var max=state.system==="5"?5.0:4.0;
+hint.textContent="满分 "+max.toFixed(1)+" · 当前 "+(gpa/max*100).toFixed(1)+"%";
+}
+
+function addCourse(){
+state.courses.push({name:"",score:"",credit:""});
+persist();renderRows();compute();
+var inputs=rowsEl.querySelectorAll(".row");
+if(inputs.length){var last=inputs[inputs.length-1];var first=last.querySelector("input");if(first)first.focus()}
+}
+function clearAll(){
+if(state.courses.length===0)return;
+if(!confirm("确定清空所有课程吗？"))return;
+state.courses=[];persist();renderRows();compute();
+}
+function setSys(s){state.system=s;persist();renderSeg();renderRows();compute();}
+function setIn(i){state.input=i;persist();renderSeg();renderRows();compute();}
+
+sys4.addEventListener("click",function(){setSys("4")});
+sys5.addEventListener("click",function(){setSys("5")});
+inScore.addEventListener("click",function(){setIn("score")});
+inGrade.addEventListener("click",function(){setIn("grade")});
+addBtn.addEventListener("click",addCourse);
+clearBtn.addEventListener("click",clearAll);
+
+/* ====== Excel 导入功能 ====== */
+var importArea=$("importArea"),fileInput=$("fileInput"),toastEl=$("toast");
+function showToast(msg,isErr){toastEl.textContent=msg;toastEl.className="toast show"+(isErr?" err":"");setTimeout(function(){toastEl.className="toast";},3000);}
+
+function readZipEntries(buf){
+var entries={},view=new DataView(buf),blen=buf.byteLength;
+var eocd=-1;
+for(var i=blen-22;i>=0&&i>=blen-65557;i--){if(view.getUint32(i,true)===0x06054b50){eocd=i;break;}}
+if(eocd===-1)throw new Error("未找到ZIP目录");
+var cdCount=view.getUint16(eocd+8,true),cdOff=view.getUint32(eocd+16,true);
+var off=cdOff;
+for(var i=0;i<cdCount;i++){
+if(view.getUint32(off,true)!==0x02014b50)break;
+var comp=view.getUint16(off+10,true),cSize=view.getUint32(off+20,true);
+var nLen=view.getUint16(off+28,true),eLen=view.getUint16(off+30,true),cLen=view.getUint16(off+32,true);
+var localOff=view.getUint32(off+42,true);
+var name=new TextDecoder().decode(new Uint8Array(buf,off+46,nLen));
+var lnLen=view.getUint16(localOff+26,true),leLen=view.getUint16(localOff+28,true);
+var dStart=localOff+30+lnLen+leLen,raw=new Uint8Array(buf,dStart,cSize);
+if(comp===0){entries[name]=raw;}
+else if(comp===8){entries[name]=inflateRaw(raw);}
+off+=46+nLen+eLen+cLen;
+}
+return entries;
+}
+function inflateRaw(data){
+var pos=0,bitbuf=0,bitcnt=0,out=[];
+function rb(n){while(bitcnt<n){bitbuf|=data[pos++]<<bitcnt;bitcnt+=8;}var v=bitbuf&((1<<n)-1);bitbuf>>>=n;bitcnt-=n;return v;}
+function bt2(lens){var max=0;for(var i=0;i<lens.length;i++)if(lens[i]>max)max=lens[i];var bl=new Array(max+1).fill(0);for(var i=0;i<lens.length;i++)bl[lens[i]]++;bl[0]=0;var nc=new Array(max+1).fill(0),code=0;for(var b=1;b<=max;b++){code=(code+bl[b-1])<<1;nc[b]=code;}var t={};for(var i=0;i<lens.length;i++){var l=lens[i];if(l>0){if(!t[l])t[l]={};t[l][nc[l]++]=i;}}return t;}
+function rc(t){var c=0,l=0;while(true){c=(c<<1)|rb(1);l++;if(t[l]&&t[l][c]!==undefined)return t[l][c];if(l>15)throw new Error("bad code");}}
+var fl=[],i;for(i=0;i<144;i++)fl.push(8);for(i=0;i<112;i++)fl.push(9);for(i=0;i<24;i++)fl.push(7);for(i=0;i<8;i++)fl.push(8);
+var fd=[];for(i=0;i<32;i++)fd.push(5);var ft=bt2(fl),dt=bt2(fd);
+var lb=[3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
+var le=[0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0];
+var db=[1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577];
+var de=[0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13];
+var co=[16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
+while(true){var bf=rb(1),bty=rb(2);
+if(bty===0){bitbuf=0;bitcnt=0;var len=data[pos++]|(data[pos++]<<8);pos+=2;for(i=0;i<len;i++)out.push(data[pos++]);}
+else{var lt,dtt;if(bty===1){lt=ft;dtt=dt;}else{var hl=rb(5)+257,hd=rb(5)+1,hc=rb(4)+4,cl=new Array(19).fill(0);for(i=0;i<hc;i++)cl[co[i]]=rb(3);var ct=bt2(cl),ll=[];while(ll.length<hl+hd){var s=rc(ct);if(s<16)ll.push(s);else if(s===16){var r=rb(2)+3;for(var j=0;j<r;j++)ll.push(ll[ll.length-1]);}else if(s===17){var r=rb(3)+3;for(var j=0;j<r;j++)ll.push(0);}else{var r=rb(7)+11;for(var j=0;j<r;j++)ll.push(0);}}dtt=bt2(ll.slice(hl));lt=bt2(ll.slice(0,hl));}
+while(true){var s=rc(lt);if(s<256)out.push(s);else if(s===256)break;else{s-=257;var len=lb[s]+rb(le[s]);var ds=rc(dtt);var dist=db[ds]+rb(de[ds]);for(i=0;i<len;i++)out.push(out[out.length-dist]);}}}
+if(bf)break;}
+return new Uint8Array(out);
+}
+function parseSharedStrings(xml){
+var doc=new DOMParser().parseFromString(xml,"text/xml");
+var sis=doc.getElementsByTagName("si"),strings=[];
+for(var i=0;i<sis.length;i++){
+var ts=sis[i].getElementsByTagName("t"),text="";
+for(var j=0;j<ts.length;j++)text+=ts[j].textContent;
+strings.push(text);
+}
+return strings;
+}
+function parseSheet(xml,ss){
+var doc=new DOMParser().parseFromString(xml,"text/xml");
+var rows=doc.getElementsByTagName("row"),data=[];
+for(var i=0;i<rows.length;i++){
+var cells=rows[i].getElementsByTagName("c"),rowData=[];
+for(var j=0;j<cells.length;j++){
+var c=cells[j],ref=c.getAttribute("r")||"",type=c.getAttribute("t");
+var v=c.getElementsByTagName("v")[0],is=c.getElementsByTagName("is")[0],val="";
+if(v){val=type==="s"?(ss[parseInt(v.textContent)]||""):v.textContent;}
+else if(is){var t=is.getElementsByTagName("t")[0];if(t)val=t.textContent;}
+var m=ref.match(/^([A-Z]+)/);
+if(m){var col=0;for(var k=0;k<m[1].length;k++)col=col*26+(m[1].charCodeAt(k)-64);col--;while(rowData.length<col)rowData.push("");rowData[col]=val;}
+}
+if(rowData.length)data.push(rowData);
+}
+return data;
+}
+function extractCourses(sheetData){
+var hdr=-1,colMap={name:-1,score:-1,credit:-1};
+for(var i=0;i<sheetData.length&&i<30;i++){
+var row=sheetData[i];
+for(var j=0;j<row.length;j++){
+var cell=String(row[j]||"").trim();
+if(cell.includes("课程名称")||(cell.includes("课程")&&colMap.name<0))colMap.name=j;
+if(cell.includes("成绩")&&!cell.includes("课程"))colMap.score=j;
+if(cell.includes("学分")&&!cell.includes("应修")&&!cell.includes("已修"))colMap.credit=j;
+}
+if(colMap.name>=0&&colMap.score>=0&&colMap.credit>=0){hdr=i;break;}
+}
+if(hdr===-1)return null;
+var courses=[];
+for(var i=hdr+1;i<sheetData.length;i++){
+var row=sheetData[i],name=String(row[colMap.name]||"").trim(),score=String(row[colMap.score]||"").trim(),credit=String(row[colMap.credit]||"").trim();
+if(!name||name.includes("培养")||name.includes("环节")||name.includes("名称"))continue;
+if(!/^\d+(\.\d+)?$/.test(credit))continue;
+var ps="";
+if(/^\d+$/.test(score))ps=score;
+else if(score==="优")ps="95";else if(score==="良")ps="85";else if(score==="中")ps="75";
+else if(score==="及格")ps="65";else if(score==="不及格")ps="55";
+else if(score==="免修"||score==="免考"||score==="缓考")continue;
+if(ps)courses.push({name:name,score:ps,credit:credit});
+}
+return courses.length>0?courses:null;
+}
+async function importExcel(file){
+try{
+showToast("正在读取...");
+var buf=await new Promise(function(resolve,reject){var fr=new FileReader();fr.onload=function(){resolve(fr.result);};fr.onerror=function(){reject(fr.error);};fr.readAsArrayBuffer(file);});
+var entries=readZipEntries(buf);
+var ssKey=Object.keys(entries).find(function(k){return k.includes("sharedStrings");});
+var sheetKey=Object.keys(entries).find(function(k){return k.includes("worksheets/sheet");});
+if(!sheetKey){showToast("未找到工作表，请确认是.xlsx格式",true);return;}
+var ss=[];
+if(ssKey)ss=parseSharedStrings(new TextDecoder().decode(entries[ssKey]));
+var sheetData=parseSheet(new TextDecoder().decode(entries[sheetKey]),ss);
+var courses=extractCourses(sheetData);
+if(!courses){showToast("未找到课程数据，需包含课程名称/成绩/学分列",true);return;}
+if(state.courses.length>0){
+if(!confirm("当前已有"+state.courses.length+"门课程，确定替换为Excel导入的"+courses.length+"门？\n（取消=追加）")){state.courses=state.courses.concat(courses);}
+else{state.courses=courses;}
+}else{state.courses=courses;}
+state.input="score";persist();renderSeg();renderRows();compute();
+showToast("成功导入"+courses.length+"门课程");
+}catch(e){showToast("导入失败："+e.message,true);}
+}
+importArea.addEventListener("click",function(){fileInput.click();});
+fileInput.addEventListener("change",function(){if(fileInput.files.length>0)importExcel(fileInput.files[0]);fileInput.value="";});
+importArea.addEventListener("dragover",function(e){e.preventDefault();importArea.classList.add("drag");});
+importArea.addEventListener("dragleave",function(){importArea.classList.remove("drag");});
+importArea.addEventListener("drop",function(e){e.preventDefault();importArea.classList.remove("drag");if(e.dataTransfer.files.length>0)importExcel(e.dataTransfer.files[0]);});
+
+renderSeg();renderRows();compute();
+})();
+</script>
+</body>
+</html>

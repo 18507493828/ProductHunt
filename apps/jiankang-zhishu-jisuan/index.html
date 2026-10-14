@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>健康指数计算</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2352a898'/%3E%3Cpath d='M32 50C20 42 12 34 12 25a10 10 0 0 1 20-3 10 10 0 0 1 20 3c0 9-8 17-20 25z' fill='%23fff' opacity='.92'/%3E%3C/svg%3E">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --accent:#52a898;--glow:rgba(82,168,152,.45);
+  --txt:#26343c;--txt2:#5f727c;--txt3:#94a5ae;
+  --border:rgba(110,140,145,.18);
+  --card:rgba(255,255,255,.8);
+  --thin:#6f9fd8;--normal:#58b57a;--over:#e09a50;--obese:#e06550;
+  --chip-soft:rgba(82,168,152,.1);
+}
+html{min-height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--txt);
+  background:linear-gradient(168deg,#f2f8f4 0%,#e8f1ec 46%,#edeff7 100%);
+  background-attachment:fixed;
+  display:flex;justify-content:center;
+  padding:26px 16px 48px;
+}
+.app{width:100%;max-width:760px;display:flex;flex-direction:column;gap:16px;animation:pagein .6s ease both}
+@keyframes pagein{from{opacity:0;translate:0 14px}to{opacity:1;translate:0 0}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;backdrop-filter:blur(10px)}
+
+/* ===== 头部 ===== */
+.head{display:flex;flex-direction:column;gap:14px}
+.title{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#6ec4b4,#4d9d8e);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px var(--glow);flex-shrink:0}
+h1{font-size:21px;font-weight:700;letter-spacing:2px}
+.title p{font-size:12px;color:var(--txt3);margin-top:2px}
+.intro{font-size:13px;color:var(--txt2);line-height:1.8;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 16px;backdrop-filter:blur(10px)}
+.intro b{color:var(--accent)}
+
+/* ===== 两列 ===== */
+.body-cols{display:grid;grid-template-columns:minmax(0,1fr) 252px;gap:16px;align-items:start}
+.main-col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.side-col{position:sticky;top:20px;display:flex;flex-direction:column;gap:12px}
+
+/* ===== 标签页 ===== */
+.tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:4px;backdrop-filter:blur(10px)}
+.tab{flex:1;padding:9px 4px;border:none;border-radius:999px;background:transparent;color:var(--txt2);font-size:13px;cursor:pointer;font-family:inherit;transition:all .3s ease}
+.tab.sel{background:var(--accent);color:#fff;font-weight:600;box-shadow:0 4px 12px var(--glow)}
+
+/* ===== 档案 ===== */
+.card-title{font-size:14px;font-weight:600;color:var(--txt2);letter-spacing:1px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.card-title .hint{font-size:11px;color:var(--txt3);font-weight:400;letter-spacing:0}
+.prow{display:flex;gap:8px;margin-bottom:10px}
+.prow:last-child{margin-bottom:0}
+.sex{display:flex;gap:6px;flex:1}
+.sex button{flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--border);background:transparent;color:var(--txt2);font-size:14px;cursor:pointer;font-family:inherit;transition:all .25s ease}
+.sex button.sel{border-color:var(--accent);color:var(--accent);background:var(--chip-soft);font-weight:600}
+.num{flex:1;display:flex;flex-direction:column;gap:4px}
+.num label{font-size:11px;color:var(--txt3)}
+.num input{width:100%;padding:9px 10px;border-radius:10px;border:1.5px solid var(--border);background:rgba(255,255,255,.6);color:var(--txt);font-size:15px;font-family:inherit;transition:border-color .25s,box-shadow .25s;font-variant-numeric:tabular-nums}
+.num input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--chip-soft)}
+
+/* ===== 面板 ===== */
+.panel{display:none;flex-direction:column;gap:12px}
+.panel.show{display:flex;animation:pfade .4s ease}
+@keyframes pfade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.mod-head{display:flex;justify-content:space-between;align-items:center;padding:0 4px}
+.mod-head .mn{font-size:14px;font-weight:600;color:var(--txt2);letter-spacing:1px}
+.mode-i{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--border);background:transparent;color:var(--txt3);font-size:12px;font-style:italic;font-weight:700;font-family:Georgia,serif;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0;padding:0}
+.mode-i:hover{border-color:var(--accent);color:var(--accent)}
+.calc-btn{padding:13px;border:none;border-radius:14px;background:linear-gradient(135deg,#6ec4b4,#4d9d8e);color:#fff;font-size:15px;font-weight:700;letter-spacing:4px;padding-left:20px;cursor:pointer;font-family:inherit;box-shadow:0 8px 22px var(--glow);transition:transform .25s ease,filter .25s}
+.calc-btn:hover{transform:translateY(-2px);filter:brightness(1.05)}
+.calc-btn:active{transform:translateY(1px)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:7px 12px;border-radius:999px;border:1.5px solid var(--border);background:transparent;color:var(--txt2);font-size:12px;cursor:pointer;font-family:inherit;transition:all .2s}
+.chip.sel{border-color:var(--accent);color:var(--accent);background:var(--chip-soft);font-weight:600}
+
+/* ===== 结果卡 ===== */
+.result-card{display:none}
+.result-card.show{display:block;animation:pfade .45s ease}
+.big-line{display:flex;align-items:baseline;gap:10px;justify-content:center;margin:4px 0 14px}
+.big-num{font-size:46px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;transition:color .8s}
+.big-unit{font-size:13px;color:var(--txt3)}
+.level{display:inline-block;padding:5px 16px;border-radius:999px;font-size:13px;font-weight:600;color:#fff;letter-spacing:2px}
+.note{font-size:12px;color:var(--txt3);text-align:center;line-height:1.7;margin-top:12px}
+
+/* ===== 刻度条 ===== */
+.gauge{margin:6px 0 4px}
+.gauge-track{position:relative;height:12px;border-radius:999px}
+.gauge-pin{position:absolute;top:50%;left:50%;width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid var(--txt);transform:translate(-50%,-50%);transition:left .9s cubic-bezier(.34,1.2,.5,1),border-color .9s;box-shadow:0 2px 8px rgba(0,0,0,.25);z-index:2}
+.gauge-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);margin-top:6px;padding:0 2px}
+
+/* ===== 多数字结果 ===== */
+.tri{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.tcell{background:rgba(255,255,255,.55);border:1px solid var(--border);border-radius:12px;padding:12px 6px;text-align:center}
+.tcell b{font-size:21px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;transition:color .8s}
+.tcell span{display:block;font-size:10px;color:var(--txt3);margin-top:3px;letter-spacing:1px}
+
+/* ===== 历史 ===== */
+.hist-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.hist-arrow{font-size:11px;color:var(--txt3);transition:transform .3s ease}
+.hist.open .hist-arrow{transform:rotate(180deg)}
+.hist-list{list-style:none;margin-top:10px;display:none;flex-direction:column;gap:7px}
+.hist.open .hist-list{display:flex}
+.hist-item{display:flex;justify-content:space-between;gap:6px;font-size:12px;color:var(--txt2);padding:8px 10px;background:rgba(255,255,255,.55);border-radius:10px}
+.hist-item .lv{font-weight:600;white-space:nowrap}
+.hist-empty{font-size:12px;color:var(--txt3);text-align:center;padding:8px 0 0;display:none}
+.hist-empty.show{display:block}
+
+/* ===== 信息弹窗 ===== */
+.mask{position:fixed;inset:0;background:rgba(30,50,55,.35);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
+.mask.show{display:flex;animation:maskin .25s ease}
+@keyframes maskin{from{opacity:0}to{opacity:1}}
+.modal{background:#fff;border-radius:18px;width:100%;max-width:400px;max-height:80vh;overflow:auto;box-shadow:0 24px 60px rgba(30,60,55,.25);animation:modalin .3s cubic-bezier(.34,1.2,.5,1)}
+@keyframes modalin{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:15px 20px;border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:16px;font-weight:700}
+.modal-head .close{cursor:pointer;border:none;background:transparent;color:var(--txt3);font-size:22px;line-height:1;padding:2px 8px;border-radius:8px}
+.modal-head .close:hover{background:rgba(0,0,0,.06);color:var(--txt)}
+.modal-body{padding:14px 20px 20px;font-size:13.5px;color:var(--txt2);line-height:1.9}
+.modal-body .ib{display:block;font-weight:700;color:var(--txt);margin:12px 0 2px;font-size:12px;letter-spacing:2px}
+.modal-body .ib:first-child{margin-top:0}
+
+/* ===== toast ===== */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(8px);background:rgba(38,52,60,.92);color:#fff;padding:10px 22px;border-radius:999px;font-size:13px;letter-spacing:1px;opacity:0;transition:opacity .35s ease,transform .35s ease;z-index:99;pointer-events:none;box-shadow:0 8px 24px rgba(30,60,55,.3)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:860px){
+  .app{max-width:430px}
+  .body-cols{grid-template-columns:1fr}
+  .side-col{position:static}
+}
+@media(max-width:380px){
+  .big-num{font-size:38px}
+  .prow{flex-wrap:wrap}
+  .num{min-width:45%}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="head">
+    <div class="title">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 21C6.5 17 2 12.8 2 8.5A5.5 5.5 0 0 1 12 5a5.5 5.5 0 0 1 10 3.5c0 4.3-4.5 8.5-10 12.5z" fill="#fff" opacity=".92"/><path d="M5 12h4l1.5-3 3 6L15 12h4" stroke="#4d9d8e" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <h1>健康指数计算</h1>
+        <p>了解身体，从数字开始</p>
+      </div>
+    </div>
+    <div class="intro">输入一次个人档案，即可一键测算 <b>BMI、每日代谢、体脂率、腰臀比</b> 四项核心指标。每项都配有健康区间与通俗解读，档案自动保存、全项共用——帮你快速了解身体状况。点击各指标旁的 ⓘ 查看原理与适用场景。</div>
+  </header>
+
+  <div class="body-cols">
+  <div class="main-col">
+
+  <div class="tabs" id="tabs">
+    <button class="tab sel" data-t="bmi">BMI</button>
+    <button class="tab" data-t="bmr">每日代谢</button>
+    <button class="tab" data-t="bfr">体脂率</button>
+    <button class="tab" data-t="whr">腰臀比</button>
+  </div>
+
+  <div class="card profile">
+    <div class="card-title">个人档案 <span class="hint">自动保存，各项共用</span></div>
+    <div class="prow">
+      <div class="sex">
+        <button id="sexM" class="sel">♂ 男</button>
+        <button id="sexF">♀ 女</button>
+      </div>
+    </div>
+    <div class="prow">
+      <div class="num"><label>年龄（岁）</label><input type="number" id="fAge" min="2" max="120" value="25"></div>
+      <div class="num"><label>身高（cm）</label><input type="number" id="fH" min="80" max="250" value="170"></div>
+      <div class="num"><label>体重（kg）</label><input type="number" id="fW" min="20" max="300" value="60"></div>
+    </div>
+  </div>
+
+  <div class="panel show" id="p-bmi">
+    <div class="mod-head"><span class="mn">身体质量指数 BMI</span><button class="mode-i" data-info="bmi">i</button></div>
+    <button class="calc-btn" data-calc="bmi">计算 BMI</button>
+    <div class="card result-card" id="r-bmi">
+      <div class="big-line"><span class="big-num" id="v-bmi">0</span><span class="big-unit">kg/m²</span></div>
+      <div style="text-align:center"><span class="level" id="lv-bmi">—</span></div>
+      <div class="gauge">
+        <div class="gauge-track" id="gt-bmi"><div class="gauge-pin" id="gp-bmi"></div></div>
+        <div class="gauge-labels"><span>14</span><span>偏瘦</span><span>正常</span><span>超重</span><span>34</span></div>
+      </div>
+      <div class="note" id="n-bmi"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="p-bmr">
+    <div class="mod-head"><span class="mn">每日代谢 BMR / TDEE</span><button class="mode-i" data-info="bmr">i</button></div>
+    <div class="card">
+      <div class="card-title">日常活动量</div>
+      <div class="chips" id="actChips">
+        <button class="chip" data-a="1.2">久坐</button>
+        <button class="chip sel" data-a="1.375">轻度</button>
+        <button class="chip" data-a="1.55">中度</button>
+        <button class="chip" data-a="1.725">高度</button>
+        <button class="chip" data-a="1.9">极高度</button>
+      </div>
+    </div>
+    <button class="calc-btn" data-calc="bmr">计算代谢</button>
+    <div class="card result-card" id="r-bmr">
+      <div class="tri">
+        <div class="tcell"><b id="v-bmr">0</b><span>BMR 基础代谢</span></div>
+        <div class="tcell"><b id="v-tdee">0</b><span>每日消耗</span></div>
+        <div class="tcell"><b id="v-intake">0</b><span>减脂建议</span></div>
+      </div>
+      <div class="note" id="n-bmr"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="p-bfr">
+    <div class="mod-head"><span class="mn">体脂率 Body Fat</span><button class="mode-i" data-info="bfr">i</button></div>
+    <button class="calc-btn" data-calc="bfr">计算体脂率</button>
+    <div class="card result-card" id="r-bfr">
+      <div class="big-line"><span class="big-num" id="v-bfr">0</span><span class="big-unit">%</span></div>
+      <div style="text-align:center"><span class="level" id="lv-bfr">—</span></div>
+      <div class="gauge">
+        <div class="gauge-track" id="gt-bfr"><div class="gauge-pin" id="gp-bfr"></div></div>
+        <div class="gauge-labels" id="gl-bfr"><span>3</span><span></span><span></span><span></span><span>45</span></div>
+      </div>
+      <div class="note" id="n-bfr"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="p-whr">
+    <div class="mod-head"><span class="mn">腰臀比 WHR</span><button class="mode-i" data-info="whr">i</button></div>
+    <div class="card">
+      <div class="card-title">围度测量 <span class="hint">cm</span></div>
+      <div class="prow">
+        <div class="num"><label>腰围（最细处）</label><input type="number" id="fWaist" min="40" max="200" value="75"></div>
+        <div class="num"><label>臀围（最宽处）</label><input type="number" id="fHip" min="50" max="220" value="95"></div>
+      </div>
+    </div>
+    <button class="calc-btn" data-calc="whr">计算腰臀比</button>
+    <div class="card result-card" id="r-whr">
+      <div class="big-line"><span class="big-num" id="v-whr">0</span><span class="big-unit">WHR</span></div>
+      <div style="text-align:center"><span class="level" id="lv-whr">—</span></div>
+      <div class="note" id="n-whr"></div>
+    </div>
+  </div>
+
+  </div>
+  <div class="side-col">
+    <div class="card hist open" id="histBox">
+      <div class="hist-head" id="histHead">
+        <div class="card-title" style="margin:0">最近记录</div>
+        <span class="hist-arrow">▼</span>
+      </div>
+      <ul class="hist-list" id="histList"></ul>
+      <div class="hist-empty" id="histEmpty">暂无计算记录</div>
+    </div>
+  </div>
+  </div>
+
+<div style="text-align:center;font-size:11px;line-height:1.8;color:var(--txt3);padding:12px 4px 2px;letter-spacing:.3px">免责声明：各项指数依据通用公式估算，仅作日常健康参考，不构成医学诊断或用药依据；具体健康评估请以专业医疗机构检查结果为准。</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="mask" id="infoMask">
+  <div class="modal">
+    <div class="modal-head"><h3 id="infoTitle"></h3><button class="close" id="infoClose">×</button></div>
+    <div class="modal-body" id="infoBody"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id)};
+
+/* ===================== 工具 ===================== */
+function pad(n){return(n<10?"0":"")+n;}
+function animateNum(el,to,dec){
+  var from=parseFloat(el.dataset.v||"0")||0;
+  var t0=performance.now();
+  (function step(n){
+    var t=Math.min(1,(n-t0)/700);
+    var e=.5-.5*Math.cos(Math.PI*t);
+    el.textContent=(from+(to-from)*e).toFixed(dec);
+    if(t<1)requestAnimationFrame(step);else{el.textContent=to.toFixed(dec);el.dataset.v=to;}
+  })(t0);
+}
+function setGauge(pinId,val,min,max){
+  var pct=Math.max(0,Math.min(100,(val-min)/(max-min)*100));
+  $(pinId).style.left=pct+"%";
+}
+
+/* ===================== 档案 ===================== */
+function getProfile(){
+  return{
+    male:$("sexM").classList.contains("sel"),
+    age:parseFloat($("fAge").value),
+    h:parseFloat($("fH").value),
+    w:parseFloat($("fW").value)
+  };
+}
+function profileValid(p){
+  if(isNaN(p.age)||p.age<2||p.age>120){toast("请输入有效年龄（2-120）");return false;}
+  if(isNaN(p.h)||p.h<80||p.h>250){toast("请输入有效身高（80-250cm）");return false;}
+  if(isNaN(p.w)||p.w<20||p.w>300){toast("请输入有效体重（20-300kg）");return false;}
+  return true;
+}
+$("sexM").onclick=function(){$("sexM").classList.add("sel");$("sexF").classList.remove("sel");};
+$("sexF").onclick=function(){$("sexF").classList.add("sel");$("sexM").classList.remove("sel");};
+(function restoreProfile(){
+  try{
+    var p=JSON.parse(localStorage.getItem("health_profile")||"null");
+    if(!p)return;
+    if(p.male){$("sexM").classList.add("sel");$("sexF").classList.remove("sel");}
+    else{$("sexF").classList.add("sel");$("sexM").classList.remove("sel");}
+    $("fAge").value=p.age;$("fH").value=p.h;$("fW").value=p.w;
+  }catch(e){}
+})();
+function saveProfile(){
+  var p=getProfile();
+  if(!profileValid(p))return;
+  localStorage.setItem("health_profile",JSON.stringify(p));
+}
+
+/* ===================== 指标说明 ===================== */
+var INFO={
+ bmi:{t:"BMI · 身体质量指数",
+   what:"BMI（Body Mass Index）是衡量人体胖瘦程度与健康风险的常用指标，计算方式为 体重(kg) ÷ 身高(m)²。",
+   why:"世界卫生组织与中国卫健委都用它做快速筛查。中国成人标准：<18.5 偏瘦，18.5–24 正常，24–28 超重，≥28 肥胖。",
+   use:"适合普通成年人的初步体重评估；但运动员、孕妇、儿童及肌肉量大者需结合体脂率等指标综合判断。"},
+ bmr:{t:"每日代谢 · BMR / TDEE",
+   what:"BMR（基础代谢率）是身体维持心跳、呼吸等基本生命活动所需的最低热量；TDEE 是叠加日常活动后的每日总消耗。",
+   why:"采用 Mifflin-St Jeor 公式估算 BMR（公认准确度较高的公式），再乘以活动系数 1.2–1.9 得到 TDEE。",
+   use:"制定减脂或增肌饮食计划时估算每日热量；减脂一般建议在 TDEE 基础上留出 300–500 kcal 的缺口。"},
+ bfr:{t:"体脂率 · Body Fat Rate",
+   what:"体脂率指体内脂肪重量占总体重的百分比，比 BMI 更能反映真实的胖瘦结构。",
+   why:"采用 Deurenberg 公式，根据 BMI、年龄、性别进行估算，无需专业设备即可粗略得到结果。",
+   use:"关注身材线条、健身增肌效果时作为参考；若需要精确数值，建议用 DEXA、皮脂钳或体脂秤多方法交叉验证。"},
+ whr:{t:"腰臀比 · WHR",
+   what:"WHR = 腰围 ÷ 臀围，用来反映脂肪在腰腹部的分布情况。",
+   why:"腹部脂肪（中心性肥胖）与心血管疾病、糖尿病风险密切相关，比单纯的体重更能体现健康风险。",
+   use:"评估中心性肥胖风险。男性 ≥0.9、女性 ≥0.85 提示风险升高；建议加强核心运动并控制饮食。"}
+};
+function openInfo(k){
+  var o=INFO[k];if(!o)return;
+  $("infoTitle").textContent=o.t;
+  $("infoBody").innerHTML='<span class="ib">是什么</span>'+o.what+'<span class="ib">原理</span>'+o.why+'<span class="ib">适用场景</span>'+o.use;
+  $("infoMask").classList.add("show");
+}
+function closeInfo(){$("infoMask").classList.remove("show");}
+document.querySelectorAll(".mode-i").forEach(function(b){
+  b.onclick=function(){openInfo(this.dataset.info);};
+});
+$("infoClose").onclick=closeInfo;
+$("infoMask").onclick=function(ev){if(ev.target===this)closeInfo();};
+document.addEventListener("keydown",function(e){if(e.key==="Escape")closeInfo();});
+
+/* ===================== 计算 ===================== */
+var COLORS={thin:"var(--thin)",normal:"var(--normal)",over:"var(--over)",obese:"var(--obese)"};
+
+function calcBMI(){
+  var p=getProfile();
+  if(!profileValid(p))return;
+  saveProfile();
+  var bmi=p.w/Math.pow(p.h/100,2);
+  var lv,note;
+  if(bmi<18.5){lv="thin";note="体重偏轻，建议适当增加营养摄入，保证足够蛋白质与热量。";}
+  else if(bmi<24){lv="normal";note="体重正常，请保持均衡饮食与规律运动的好习惯。";}
+  else if(bmi<28){lv="over";note="体重超重，建议控制饮食并增加有氧运动，每周减重 0.5-1kg 为宜。";}
+  else{lv="obese";note="已达到肥胖标准，建议咨询医生或营养师，制定科学的减重计划。";}
+  var ideal1=(18.5*Math.pow(p.h/100,2)).toFixed(1),ideal2=(24*Math.pow(p.h/100,2)).toFixed(1);
+  note+=" 你的理想体重范围为 "+ideal1+" - "+ideal2+" kg。";
+  animateNum($("v-bmi"),bmi,1);
+  var lvEl=$("lv-bmi");
+  lvEl.textContent={thin:"偏瘦",normal:"正常",over:"超重",obese:"肥胖"}[lv];
+  lvEl.style.background=COLORS[lv];
+  $("v-bmi").style.color=COLORS[lv];
+  setGauge("gp-bmi",bmi,14,34);
+  $("gp-bmi").style.borderColor={thin:"#6f9fd8",normal:"#58b57a",over:"#e09a50",obese:"#e06550"}[lv];
+  $("n-bmi").textContent=note;
+  $("r-bmi").classList.add("show");
+  saveRecord("BMI",bmi.toFixed(1),{thin:"偏瘦",normal:"正常",over:"超重",obese:"肥胖"}[lv]);
+}
+
+var actFactor=1.375;
+$("actChips").querySelectorAll(".chip").forEach(function(ch){
+  ch.onclick=function(){
+    $("actChips").querySelectorAll(".chip").forEach(function(c){c.classList.remove("sel");});
+    ch.classList.add("sel");
+    actFactor=parseFloat(ch.dataset.a);
+  };
+});
+
+function calcBMR(){
+  var p=getProfile();
+  if(!profileValid(p))return;
+  saveProfile();
+  var bmr=10*p.w+6.25*p.h-5*p.age+(p.male?5:-161);
+  var tdee=bmr*actFactor;
+  var intake=tdee-300;
+  animateNum($("v-bmr"),bmr,0);
+  animateNum($("v-tdee"),tdee,0);
+  animateNum($("v-intake"),intake,0);
+  var actName=["久坐","轻度","中度","高度","极高度"][["1.2","1.375","1.55","1.725","1.9"].indexOf(String(actFactor))];
+  $("n-bmr").textContent="Mifflin-St Jeor 公式。按「"+actName+"」活动量计算，每日消耗约 "+Math.round(tdee)+" kcal；减脂建议每日摄入约 "+Math.round(intake)+" kcal（缺口 300 kcal）。";
+  $("r-bmr").classList.add("show");
+  saveRecord("每日代谢",Math.round(tdee)+" kcal","TDEE·"+actName);
+}
+
+function calcBFR(){
+  var p=getProfile();
+  if(!profileValid(p))return;
+  saveProfile();
+  var bmi=p.w/Math.pow(p.h/100,2);
+  var bfr=1.2*bmi+0.23*p.age-5.4-(p.male?10.8:0);
+  var male=p.male;
+  var bands=male
+    ?[{max:6,n:"必需脂肪",c:"#6f9fd8"},{max:13,n:"运动员",c:"#58b57a"},{max:17,n:"健康",c:"#4da88a"},{max:24,n:"可接受",c:"#e09a50"},{max:99,n:"肥胖",c:"#e06550"}]
+    :[{max:14,n:"必需脂肪",c:"#6f9fd8"},{max:20,n:"运动员",c:"#58b57a"},{max:24,n:"健康",c:"#4da88a"},{max:31,n:"可接受",c:"#e09a50"},{max:99,n:"肥胖",c:"#e06550"}];
+  var band=bands.find(function(b){return bfr<b.max;})||bands[4];
+  var lvEl=$("lv-bfr");
+  lvEl.textContent=band.n;
+  lvEl.style.background=band.c;
+  $("v-bfr").style.color=band.c;
+  animateNum($("v-bfr"),bfr,1);
+  var min=male?3:8;
+  setGauge("gp-bfr",bfr,min,45);
+  $("gp-bfr").style.borderColor=band.c;
+  var g="linear-gradient(to right";
+  var prev=0;
+  bands.forEach(function(b){
+    var pct=Math.min(100,(Math.min(b.max,45)-min)/(45-min)*100);
+    g+=","+b.c+" "+prev+"%,"+b.c+" "+pct+"%";
+    prev=pct;
+  });
+  g+=")";
+  $("gt-bfr").style.background=g;
+  var labels=$("gl-bfr").querySelectorAll("span");
+  if(male){labels[1].textContent="6";labels[2].textContent="13";labels[3].textContent="24";}
+  else{labels[1].textContent="14";labels[2].textContent="20";labels[3].textContent="31";}
+  $("n-bfr").textContent="Deurenberg 估算公式（基于 BMI），实际体脂率因肌肉量与体型而异，可作为参考趋势。";
+  $("r-bfr").classList.add("show");
+  saveRecord("体脂率",bfr.toFixed(1)+"%",band.n);
+}
+
+function calcWHR(){
+  var waist=parseFloat($("fWaist").value),hip=parseFloat($("fHip").value);
+  if(isNaN(waist)||waist<40||waist>200){toast("请输入有效腰围（40-200cm）");return;}
+  if(isNaN(hip)||hip<50||hip>220){toast("请输入有效臀围（50-220cm）");return;}
+  var p=getProfile();
+  var whr=waist/hip;
+  var male=p.male;
+  var lv,note;
+  if(male){
+    if(whr<0.9){lv="normal";note="腰臀比健康，腹部脂肪堆积风险低，请继续保持。";}
+    else if(whr<1.0){lv="over";note="腰臀比偏高，存在腹部脂肪堆积风险，建议加强核心运动并控制饮食。";}
+    else{lv="obese";note="腰臀比过高，中心性肥胖风险较高，建议咨询医生并制定减脂计划。";}
+  }else{
+    if(whr<0.8){lv="normal";note="腰臀比健康，腹部脂肪堆积风险低，请继续保持。";}
+    else if(whr<0.85){lv="over";note="腰臀比偏高，存在腹部脂肪堆积风险，建议加强核心运动并控制饮食。";}
+    else{lv="obese";note="腰臀比过高，中心性肥胖风险较高，建议咨询医生并制定减脂计划。";}
+  }
+  animateNum($("v-whr"),whr,2);
+  var lvEl=$("lv-whr");
+  lvEl.textContent={normal:"健康",over:"风险",obese:"高危"}[lv];
+  lvEl.style.background=COLORS[lv];
+  $("v-whr").style.color=COLORS[lv];
+  $("n-whr").textContent="WHR = 腰围 ÷ 臀围。男性 <0.9 健康，0.9-1.0 风险，≥1.0 高危；女性 <0.8 健康，0.8-0.85 风险，≥0.85 高危。";
+  $("r-whr").classList.add("show");
+  saveRecord("腰臀比",whr.toFixed(2),{normal:"健康",over:"风险",obese:"高危"}[lv]);
+}
+
+$("fAge").addEventListener("change",saveProfile);
+$("fH").addEventListener("change",saveProfile);
+$("fW").addEventListener("change",saveProfile);
+$("fWaist").addEventListener("change",saveProfile);
+$("fHip").addEventListener("change",saveProfile);
+
+/* ===================== 标签页 ===================== */
+$("tabs").querySelectorAll(".tab").forEach(function(t){
+  t.onclick=function(){
+    $("tabs").querySelectorAll(".tab").forEach(function(x){x.classList.remove("sel");});
+    t.classList.add("sel");
+    ["bmi","bmr","bfr","whr"].forEach(function(k){
+      $("p-"+k).classList.toggle("show",t.dataset.t===k);
+    });
+  };
+});
+
+/* ===================== 计算按钮 ===================== */
+var CALCS={bmi:calcBMI,bmr:calcBMR,bfr:calcBFR,whr:calcWHR};
+document.querySelectorAll(".calc-btn").forEach(function(b){
+  b.onclick=function(){CALCS[b.dataset.calc]();};
+});
+
+/* ===================== 历史 ===================== */
+function saveRecord(type,value,level){
+  var recs;
+  try{recs=JSON.parse(localStorage.getItem("health_records")||"[]");}catch(e){recs=[];}
+  recs.unshift({ts:Date.now(),type:type,value:value,level:level});
+  if(recs.length>30)recs=recs.slice(0,30);
+  localStorage.setItem("health_records",JSON.stringify(recs));
+  renderHistory();
+}
+function renderHistory(){
+  var recs;
+  try{recs=JSON.parse(localStorage.getItem("health_records")||"[]");}catch(e){recs=[];}
+  var ul=$("histList");
+  ul.innerHTML="";
+  if(recs.length===0){$("histEmpty").classList.add("show");return;}
+  $("histEmpty").classList.remove("show");
+  var n=$("histBox").classList.contains("open")?8:4;
+  for(var i=0;i<recs.length&&i<n;i++){
+    var r=recs[i],d=new Date(r.ts);
+    var li=document.createElement("li");
+    li.className="hist-item";
+    li.innerHTML='<span>'+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes())+' · '+r.type+'</span><span class="lv" style="color:var(--accent)">'+r.value+' · '+r.level+'</span>';
+    ul.appendChild(li);
+  }
+}
+$("histHead").onclick=function(){$("histBox").classList.toggle("open");renderHistory();};
+
+/* ===================== toast ===================== */
+var toastTimer=null;
+function toast(msg){
+  var t=$("toast");
+  t.textContent=msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){t.classList.remove("show");},2200);
+}
+
+/* ===================== 启动 ===================== */
+renderHistory();
+
+})();
+</script>
+</body>
+</html>

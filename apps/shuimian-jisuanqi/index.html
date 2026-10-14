@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>睡眠计算器</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%237b83eb'/%3E%3Cpath d='M44 36a16 16 0 1 1-16-16 12 12 0 0 0 16 16z' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --accent:#7b83eb;--accent2:#5a63d8;--glow:rgba(123,131,235,.35);
+  --txt:#2a2f45;--txt2:#666d88;--txt3:#9aa0b8;
+  --border:rgba(120,130,175,.18);
+  --card:rgba(255,255,255,.82);
+  --soft:rgba(123,131,235,.10);
+  --ok:#4caf78;--good:#8bc34a;--warn:#e09a50;--bad:#e06550;
+}
+html{min-height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--txt);
+  background:linear-gradient(168deg,#f4f5fd 0%,#eef0fa 46%,#f3f1fc 100%);
+  background-attachment:fixed;
+  min-height:100vh;display:flex;justify-content:center;padding:24px 16px 46px;
+}
+.app{width:100%;max-width:640px;display:flex;flex-direction:column;gap:14px;animation:pagein .55s ease both}
+@keyframes pagein{from{opacity:0;translate:0 12px}to{opacity:1;translate:0 0}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;backdrop-filter:blur(10px)}
+
+/* ===== 头部 ===== */
+.title{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#9aa0f3,#5a63d8);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px var(--glow);flex-shrink:0}
+h1{font-size:21px;font-weight:700;letter-spacing:2px}
+.title p{font-size:12px;color:var(--txt3);margin-top:2px}
+.intro{font-size:13px;color:var(--txt2);line-height:1.8;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px 15px;backdrop-filter:blur(10px)}
+.intro b{color:var(--accent)}
+.sec-title{font-size:14px;font-weight:600;color:var(--txt2);letter-spacing:1px;margin-bottom:12px}
+
+/* ===== 标签页 ===== */
+.tabs{display:flex;gap:6px;background:rgba(246,247,253,.8);border:1px solid var(--border);border-radius:999px;padding:4px;margin-bottom:14px}
+.tabs button{flex:1;background:transparent;border:0;color:var(--txt2);padding:11px 6px;cursor:pointer;font-size:12.5px;border-radius:999px;font-family:inherit;transition:all .3s ease;white-space:nowrap}
+.tabs button.active{background:var(--accent);color:#fff;font-weight:600;box-shadow:0 4px 12px var(--glow)}
+.field{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.field:last-child{margin-bottom:0}
+.field label{color:var(--txt2);font-size:13px;min-width:82px}
+input[type="time"]{background:rgba(246,247,253,.9);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--txt);font-size:16px;font-family:inherit;transition:border-color .25s,box-shadow .25s;color-scheme:light;font-variant-numeric:tabular-nums}
+input[type="time"]:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--soft)}
+/* ===== 自定义时间选择（滑块，时/分独立，可连续拖动） ===== */
+.field-col{flex-direction:column;align-items:stretch;gap:8px}
+.field-col label{min-width:0}
+.tpick{display:flex;align-items:center;gap:12px}
+.tpick input[type="range"]{-webkit-appearance:none;appearance:none;height:6px;border-radius:999px;background:rgba(120,130,175,.22);outline:none;min-width:0}
+.tpick .th{flex:1}
+.tpick .tm{flex:1.6}
+.tpick input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid #fff;box-shadow:0 2px 8px var(--glow);transition:transform .15s}
+.tpick input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+.tpick input[type="range"]::-moz-range-thumb{width:16px;height:16px;border:2px solid #fff;border-radius:50%;background:var(--accent);cursor:pointer}
+.tpick .tv{font-size:17px;font-weight:800;color:var(--accent);min-width:64px;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.btn{background:linear-gradient(135deg,#9aa0f3,#5a63d8);color:#fff;border:0;border-radius:12px;padding:12px 18px;cursor:pointer;font-size:14px;font-weight:700;font-family:inherit;box-shadow:0 8px 20px var(--glow);transition:transform .2s ease,filter .2s;letter-spacing:1px}
+.btn:hover{transform:translateY(-2px);filter:brightness(1.05)}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:transparent;border:1.5px solid var(--border);color:var(--txt2);box-shadow:none}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent);background:var(--soft)}
+.now{font-size:34px;font-weight:800;color:var(--accent);text-align:center;margin:6px 0;font-variant-numeric:tabular-nums;letter-spacing:2px}
+.now-hint{text-align:center;color:var(--txt3);font-size:13px;margin-bottom:12px}
+.center{text-align:center}
+
+/* ===== 推荐卡 ===== */
+.cards{display:flex;flex-direction:column;gap:9px}
+.rcard{background:rgba(246,247,253,.7);border:1.5px solid var(--border);border-radius:12px;padding:13px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px;animation:slideIn .35s ease both}
+@keyframes slideIn{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
+.rcard.ideal{border-color:var(--ok);background:linear-gradient(135deg,rgba(76,175,120,.10),rgba(246,247,253,.7))}
+.rcard.recommend{border-color:var(--accent);background:linear-gradient(135deg,rgba(123,131,235,.10),rgba(246,247,253,.7))}
+.rcard .time{font-size:26px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+.rcard.ideal .time{color:var(--ok)}
+.rcard .meta{font-size:12px;color:var(--txt2);text-align:right;line-height:1.6}
+.rcard .meta b{color:var(--txt)}
+.tag{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:700;margin-top:3px}
+.tag.ideal{background:var(--ok);color:#fff}
+.tag.recommend{background:var(--accent);color:#fff}
+.tag.normal{background:rgba(120,130,175,.14);color:var(--txt2)}
+
+/* ===== 时间轴 ===== */
+.timeline{position:relative;height:62px;margin:6px 0 2px}
+.timeline .track{position:absolute;left:0;right:0;top:32px;height:5px;background:rgba(120,130,175,.16);border-radius:3px}
+.timeline .pt{position:absolute;top:23px;width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 2px 8px rgba(90,99,216,.35);transform:translateX(-50%);cursor:default;transition:transform .2s}
+.timeline .pt.ideal{background:var(--ok)}
+.timeline .pt .lab{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--txt2);white-space:nowrap;font-weight:600}
+.timeline .pt .tlb{position:absolute;top:26px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--txt3);white-space:nowrap}
+.timeline .startLab,.timeline .endLab{position:absolute;top:8px;font-size:10px;color:var(--txt3)}
+.timeline .startLab{left:0}.timeline .endLab{right:0}
+
+/* ===== 质量 ===== */
+.quality{text-align:center;padding:16px;border-radius:14px;margin-top:10px;animation:slideIn .35s ease both}
+.quality .score{font-size:46px;font-weight:800;line-height:1}
+.quality .lbl{font-size:14px;margin-top:6px;font-weight:600}
+.quality .dur{font-size:13px;color:var(--txt2);margin-top:4px}
+.q-excellent{background:linear-gradient(135deg,rgba(76,175,120,.14),rgba(246,247,253,.6));border:1.5px solid var(--ok)}.q-excellent .score,.q-excellent .lbl{color:var(--ok)}
+.q-good{background:linear-gradient(135deg,rgba(139,195,74,.14),rgba(246,247,253,.6));border:1.5px solid var(--good)}.q-good .score,.q-good .lbl{color:#6a9a35}
+.q-mid{background:linear-gradient(135deg,rgba(224,154,80,.14),rgba(246,247,253,.6));border:1.5px solid var(--warn)}.q-mid .score,.q-mid .lbl{color:var(--warn)}
+.q-bad{background:linear-gradient(135deg,rgba(224,101,80,.14),rgba(246,247,253,.6));border:1.5px solid var(--bad)}.q-bad .score,.q-bad .lbl{color:var(--bad)}
+
+/* ===== 小贴士 ===== */
+.tips{list-style:none;display:flex;flex-direction:column;gap:8px}
+.tips li{background:var(--soft);border-left:3px solid var(--accent);border-radius:8px;padding:10px 13px;font-size:13px;color:var(--txt2);line-height:1.7}
+.tips li b{color:var(--txt)}
+
+/* ===== 历史 ===== */
+.hist{display:flex;flex-wrap:wrap;gap:6px}
+.hist .h{background:rgba(246,247,253,.7);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:11px;color:var(--txt2);font-variant-numeric:tabular-nums}
+.hist .h b{color:var(--accent)}
+.hist-empty{font-size:12px;color:var(--txt3)}
+
+@media(max-width:420px){
+  .rcard .time{font-size:22px}
+  .now{font-size:28px}
+  .quality .score{font-size:38px}
+  .field label{min-width:74px}
+  .tabs button{font-size:11px;padding:11px 3px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="title">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" width="24" height="24"><path d="M19 15.5A8 8 0 0 1 8.5 5 8 8 0 1 0 19 15.5z" fill="#fff"/><path d="M16 4.5v2M19.5 6l-1.4 1.4" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".7"/></svg>
+      </div>
+      <div>
+        <h1>睡眠计算器</h1>
+        <p>按睡眠周期，找到最佳入眠点</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="intro">人的睡眠以约 <b>90 分钟</b> 为一个周期，在周期结束时（浅睡眠阶段）醒来最清爽。输入起床时间可倒推推荐入睡点，或记录此刻入睡来推算起床时间；还可对昨晚睡眠时长做质量评分。</div>
+
+  <div class="card">
+    <div class="sec-title">模式选择</div>
+    <div class="tabs">
+      <button id="tab1" class="active">我想几点起床</button>
+      <button id="tab2">我现在去睡</button>
+      <button id="tab3">午睡</button>
+    </div>
+    <div id="mode1">
+      <div class="field field-col">
+        <label>期望起床时间</label>
+        <div class="tpick" id="tpWake">
+          <input type="range" class="th" min="0" max="23" value="7">
+          <div class="tv">07:00</div>
+          <input type="range" class="tm" min="0" max="59" value="0">
+        </div>
+      </div>
+      <div class="center" style="margin-top:12px"><button class="btn" id="calc1">推荐入睡时间</button></div>
+    </div>
+    <div id="mode2" style="display:none">
+      <div class="now" id="nowTime">--:--</div>
+      <div class="now-hint">点击下方按钮，以此刻为入睡时间</div>
+      <div class="center"><button class="btn" id="calc2">我现在去睡，算起床时间</button></div>
+    </div>
+    <div id="mode3" style="display:none">
+      <div class="field field-col">
+        <label>午睡开始时间</label>
+        <div class="tpick" id="tpNap">
+          <input type="range" class="th" min="0" max="23" value="13">
+          <div class="tv">13:00</div>
+          <input type="range" class="tm" min="0" max="59" value="0">
+        </div>
+      </div>
+      <div class="center" style="margin-top:12px"><button class="btn" id="calc3">推荐醒来时间</button></div>
+      <div class="now-hint" style="margin-top:10px">午睡建议 20-30 分钟，避免进入深睡导致醒后更困</div>
+    </div>
+  </div>
+
+  <div class="card" id="resultPanel" style="display:none">
+    <div class="sec-title">推荐时间</div>
+    <div class="timeline" id="timeline"></div>
+    <div class="cards" id="cards"></div>
+  </div>
+
+  <div class="card">
+    <div class="sec-title">睡眠质量评分</div>
+    <div class="field field-col"><label>昨晚入睡</label>
+      <div class="tpick" id="tpQ1">
+        <input type="range" class="th" min="0" max="23" value="23">
+        <div class="tv">23:30</div>
+        <input type="range" class="tm" min="0" max="59" value="30">
+      </div>
+    </div>
+    <div class="field field-col"><label>今早起床</label>
+      <div class="tpick" id="tpQ2">
+        <input type="range" class="th" min="0" max="23" value="7">
+        <div class="tv">07:00</div>
+        <input type="range" class="tm" min="0" max="59" value="0">
+      </div>
+    </div>
+    <div style="margin-top:6px"><button class="btn ghost" id="qCalc" style="width:100%">计算睡眠质量</button></div>
+    <div class="quality q-good" id="qBox" style="display:none">
+      <div class="score" id="qScore">--</div>
+      <div class="lbl" id="qLbl">--</div>
+      <div class="dur" id="qDur">--</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sec-title">睡眠小贴士</div>
+    <ul class="tips">
+      <li><b>固定作息</b>：每天尽量同一时间入睡和起床，稳定生物钟比睡多久更重要。</li>
+      <li><b>睡前避光</b>：睡前 1 小时减少手机/电脑蓝光，调暗灯光，给大脑"该睡了"的信号。</li>
+      <li><b>避开咖啡因</b>：下午 2 点后不喝咖啡、浓茶、可乐，咖啡因半衰期约 5-6 小时。</li>
+      <li><b>适宜环境</b>：卧室保持 18-22℃、安静、黑暗；必要时使用耳塞或眼罩。</li>
+      <li><b>白日运动</b>：白天适量有氧运动有助深睡，但睡前 2 小时避免剧烈运动。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="sec-title">历史记录</div>
+    <div class="hist" id="histBox"></div>
+  </div>
+
+  <div style="text-align:center;font-size:11px;line-height:1.8;color:var(--txt3);padding:12px 4px 2px;letter-spacing:.3px">免责声明：本工具依据多数人 90 分钟睡眠周期给出作息参考，不构成任何医学诊断或治疗建议；若长期失眠或存在睡眠障碍，请咨询专业医生。</div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+var KEY_WAKE="sleep_wake_time",KEY_HIST="sleep_history";
+var $=function(id){return document.getElementById(id)};
+var tab1=$("tab1"),tab2=$("tab2"),tab3=$("tab3"),mode1=$("mode1"),mode2=$("mode2"),mode3=$("mode3");
+var calc1=$("calc1"),nowTime=$("nowTime"),calc2=$("calc2"),calc3=$("calc3");
+var resultPanel=$("resultPanel"),cards=$("cards"),timeline=$("timeline");
+var qCalc=$("qCalc"),qBox=$("qBox"),qScore=$("qScore"),qLbl=$("qLbl"),qDur=$("qDur");
+var histBox=$("histBox");
+
+/* 自定义时间选择：小时/分钟各自独立滑块，互不联动 */
+function bindTimePick(id){
+  var root=$(id),hs=root.querySelector(".th"),ms=root.querySelector(".tm"),v=root.querySelector(".tv");
+  function upd(){v.textContent=pad(parseInt(hs.value,10))+":"+pad(parseInt(ms.value,10));}
+  hs.addEventListener("input",upd);ms.addEventListener("input",upd);
+  upd();
+  return{
+    get:function(){return pad(parseInt(hs.value,10))+":"+pad(parseInt(ms.value,10));},
+    set:function(s){var p=String(s).split(":");hs.value=parseInt(p[0],10)||0;ms.value=parseInt(p[1],10)||0;upd();}
+  };
+}
+var tpWake=bindTimePick("tpWake"),tpQ1=bindTimePick("tpQ1"),tpQ2=bindTimePick("tpQ2"),tpNap=bindTimePick("tpNap");
+
+var CYCLE=90,FALL_ASLEEP=15,currentMode=1;
+
+function pad(n){return(n<10?"0":"")+n;}
+function parseHM(s){var p=s.split(":");return{h:parseInt(p[0],10),m:parseInt(p[1],10)};}
+function hmToMin(h,m){return h*60+m;}
+function minToHM(min){min=((min%1440)+1440)%1440;var h=Math.floor(min/60),m=min%60;return pad(h)+":"+pad(m);}
+function fmtDur(min){var h=Math.floor(min/60),m=min%60;if(h===0)return m+" 分钟";if(m===0)return h+" 小时";return h+" 小时 "+m+" 分";}
+function nowStr(){var d=new Date();return pad(d.getHours())+":"+pad(d.getMinutes());}
+
+function buildTimes(baseMin,kind){
+  var arr=[],cycles=[6,5,4,7,3];
+  cycles.forEach(function(c){
+    var dur=c*CYCLE,t;
+    if(kind==="sleep")t=baseMin-dur-FALL_ASLEEP;
+    else t=baseMin+dur+FALL_ASLEEP;
+    arr.push({time:minToHM(t),cycles:c,duration:dur});
+  });
+  arr.sort(function(a,b){return b.cycles-a.cycles;});
+  return arr;
+}
+function tagFor(c){
+  if(c===6)return{cls:"ideal",txt:"理想"};
+  if(c===5)return{cls:"recommend",txt:"推荐"};
+  return{cls:"normal",txt:"可选"};
+}
+function renderCards(times,kind){
+  cards.innerHTML="";
+  times.forEach(function(t,i){
+    var tag=tagFor(t.cycles);
+    var card=document.createElement("div");
+    card.className="rcard "+tag.cls;
+    card.style.animationDelay=(i*0.05)+"s";
+    var left=document.createElement("div");left.className="time";left.textContent=t.time;
+    var right=document.createElement("div");right.className="meta";
+    var durTxt=kind==="sleep"?"需睡 "+fmtDur(t.duration):"可睡 "+fmtDur(t.duration);
+    right.innerHTML="<b>"+t.cycles+"</b> 个周期 · "+durTxt+"<br><span class='tag "+tag.cls+"'>"+tag.txt+"</span>";
+    card.appendChild(left);card.appendChild(right);
+    cards.appendChild(card);
+  });
+}
+function renderTimeline(times,baseMin){
+  timeline.innerHTML="";
+  timeline.appendChild(Object.assign(document.createElement("div"),{className:"track"}));
+  /* 以「相对基准时间的偏移」为坐标：跨午夜的点自然展开，避免两端密集、中间空缺与标签重叠 */
+  var pts=times.map(function(t){
+    var p=parseHM(t.time),m=p.h*60+p.m;
+    var off=m-baseMin;
+    off=((off%1440)+1440)%1440;
+    if(off>720)off-=1440;
+    return{off:off,time:t.time,cycles:t.cycles};
+  });
+  var offs=pts.map(function(p){return p.off;});
+  var lo=Math.min.apply(null,offs),hi=Math.max.apply(null,offs);
+  if(hi-lo<30){lo-=15;hi+=15;}
+  var span=hi-lo||60;
+  pts.forEach(function(pt){
+    var pct=6+((pt.off-lo)/span)*88;
+    var el=document.createElement("div");
+    el.className="pt "+(pt.cycles===6?"ideal":(pt.cycles===5?"recommend":""));
+    el.style.left=pct+"%";
+    var lab=document.createElement("div");lab.className="lab";lab.textContent=pt.time;el.appendChild(lab);
+    var tlb=document.createElement("div");tlb.className="tlb";tlb.textContent=pt.cycles+"周期";el.appendChild(tlb);
+    timeline.appendChild(el);
+  });
+}
+function doMode1(){
+  var w=parseHM(tpWake.get());
+  if(isNaN(w.h)||isNaN(w.m)){alert("请输入有效的起床时间");return;}
+  var baseMin=hmToMin(w.h,w.m);
+  localStorage.setItem(KEY_WAKE,tpWake.get());
+  var times=buildTimes(baseMin,"sleep");
+  resultPanel.style.display="block";
+  renderCards(times,"sleep");
+  renderTimeline(times,baseMin);
+  pushHistory({type:"wake",wake:tpWake.get()});
+  renderHist();
+}
+function doMode2(){
+  var s=nowStr();nowTime.textContent=s;
+  var p=parseHM(s),baseMin=hmToMin(p.h,p.m);
+  var times=buildTimes(baseMin,"wake");
+  resultPanel.style.display="block";
+  renderCards(times,"wake");
+  renderTimeline(times,baseMin);
+  pushHistory({type:"sleep",sleep:s});
+  renderHist();
+}
+function doMode3(){
+  var p=parseHM(tpNap.get()),baseMin=hmToMin(p.h,p.m);
+  var naps=[
+    {add:20,title:"小睡",desc:"浅睡，醒后最清醒",cls:"ideal",tag:"理想"},
+    {add:40,title:"标准",desc:"可能进入深睡，醒后略困",cls:"recommend",tag:"推荐"},
+    {add:90,title:"完整",desc:"一个完整睡眠周期",cls:"normal",tag:"可选"}
+  ];
+  resultPanel.style.display="block";
+  cards.innerHTML="";
+  naps.forEach(function(n,i){
+    var card=document.createElement("div");
+    card.className="rcard "+n.cls;
+    card.style.animationDelay=(i*0.05)+"s";
+    var left=document.createElement("div");left.className="time";left.textContent=minToHM(baseMin+n.add);
+    var right=document.createElement("div");right.className="meta";
+    right.innerHTML=n.title+" "+n.add+" 分钟 · "+n.desc+"<br><span class='tag "+n.cls+"'>"+n.tag+"</span>";
+    card.appendChild(left);card.appendChild(right);
+    cards.appendChild(card);
+  });
+  timeline.innerHTML="";
+  timeline.appendChild(Object.assign(document.createElement("div"),{className:"track"}));
+  var span=100;
+  naps.forEach(function(n){
+    var el=document.createElement("div");
+    el.className="pt "+(n.cls==="ideal"?"ideal":(n.cls==="recommend"?"recommend":""));
+    el.style.left=((n.add)/span*100)+"%";
+    var lab=document.createElement("div");lab.className="lab";lab.textContent=minToHM(baseMin+n.add);el.appendChild(lab);
+    var tlb=document.createElement("div");tlb.className="tlb";tlb.textContent=n.add+"分钟";el.appendChild(tlb);
+    timeline.appendChild(el);
+  });
+  pushHistory({type:"nap",nap:tpNap.get()});
+  renderHist();
+}
+function pushHistory(rec){
+  var arr=[];
+  try{arr=JSON.parse(localStorage.getItem(KEY_HIST)||"[]");}catch(e){arr=[];}
+  rec.ts=Date.now();
+  arr.unshift(rec);arr=arr.slice(0,10);
+  localStorage.setItem(KEY_HIST,JSON.stringify(arr));
+}
+function renderHist(){
+  var arr=[];
+  try{arr=JSON.parse(localStorage.getItem(KEY_HIST)||"[]");}catch(e){arr=[];}
+  histBox.innerHTML="";
+  if(arr.length===0){histBox.innerHTML='<span class="hist-empty">暂无记录</span>';return;}
+  arr.forEach(function(h){
+    var d=document.createElement("div");d.className="h";
+    var date=new Date(h.ts);
+    var ds=(date.getMonth()+1)+"/"+date.getDate()+" "+pad(date.getHours())+":"+pad(date.getMinutes());
+    if(h.type==="wake")d.innerHTML=ds+" 起床 <b>"+h.wake+"</b>";
+    else if(h.type==="nap")d.innerHTML=ds+" 午睡 <b>"+h.nap+"</b>";
+    else d.innerHTML=ds+" 入睡 <b>"+h.sleep+"</b>";
+    histBox.appendChild(d);
+  });
+}
+function calcQuality(){
+  var s=parseHM(tpQ1.get()),w=parseHM(tpQ2.get());
+  if(isNaN(s.h)||isNaN(w.h)){alert("请输入有效时间");return;}
+  var sMin=hmToMin(s.h,s.m),wMin=hmToMin(w.h,w.m);
+  var dur=wMin-sMin;
+  if(dur<=0)dur+=1440;
+  qBox.style.display="block";
+  qDur.textContent="睡眠时长 "+fmtDur(dur);
+  var hours=dur/60,cls,lbl,score;
+  if(hours>=7&&hours<=9){cls="q-excellent";lbl="优";score="A";}
+  else if(hours>=6&&hours<7){cls="q-good";lbl="良";score="B";}
+  else if(hours>=5&&hours<6){cls="q-mid";lbl="中";score="C";}
+  else{cls="q-bad";lbl="差";score="D";}
+  qBox.className="quality "+cls;
+  qScore.textContent=score;
+  qLbl.textContent=lbl+" · "+hours.toFixed(1)+" 小时";
+}
+function activateTab(n){
+  currentMode=n;
+  [[tab1,1],[tab2,2],[tab3,3]].forEach(function(x){x[0].classList.toggle("active",x[1]===n);});
+  mode1.style.display=n===1?"block":"none";
+  mode2.style.display=n===2?"block":"none";
+  mode3.style.display=n===3?"block":"none";
+  if(n===2)tickNow();
+}
+tab1.addEventListener("click",function(){activateTab(1);});
+tab2.addEventListener("click",function(){activateTab(2);});
+tab3.addEventListener("click",function(){activateTab(3);});
+function tickNow(){if(currentMode===2)nowTime.textContent=nowStr();}
+setInterval(tickNow,1000);
+calc1.addEventListener("click",doMode1);
+calc2.addEventListener("click",doMode2);
+calc3.addEventListener("click",doMode3);
+qCalc.addEventListener("click",calcQuality);
+
+var savedWake=localStorage.getItem(KEY_WAKE);
+if(savedWake)tpWake.set(savedWake);
+renderHist();
+})();
+</script>
+</body>
+</html>

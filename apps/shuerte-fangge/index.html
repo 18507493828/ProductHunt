@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>舒尔特方格</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%233a9ad9'/%3E%3Cg fill='%23fff'%3E%3Crect x='12' y='12' width='11' height='11' rx='2'/%3E%3Crect x='26.5' y='12' width='11' height='11' rx='2'/%3E%3Crect x='41' y='12' width='11' height='11' rx='2'/%3E%3Crect x='12' y='26.5' width='11' height='11' rx='2'/%3E%3Crect x='26.5' y='26.5' width='11' height='11' rx='2'/%3E%3Crect x='41' y='26.5' width='11' height='11' rx='2'/%3E%3Crect x='12' y='41' width='11' height='11' rx='2'/%3E%3Crect x='26.5' y='41' width='11' height='11' rx='2'/%3E%3Crect x='41' y='41' width='11' height='11' rx='2'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --accent:#3a9ad9;--accent2:#2f7fbe;--glow:rgba(58,154,217,.35);
+  --txt:#26343c;--txt2:#5f727c;--txt3:#94a5ae;
+  --border:rgba(110,140,145,.18);
+  --card:rgba(255,255,255,.82);
+  --ok:#4caf78;--bad:#e06550;
+  --soft:rgba(58,154,217,.10);
+}
+html{min-height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--txt);
+  background:linear-gradient(168deg,#f3f8fc 0%,#eaf1f8 48%,#eef3fb 100%);
+  background-attachment:fixed;
+  min-height:100vh;display:flex;justify-content:center;padding:24px 16px 46px;
+}
+.app{width:100%;max-width:640px;display:flex;flex-direction:column;gap:14px;animation:pagein .55s ease both}
+@keyframes pagein{from{opacity:0;translate:0 12px}to{opacity:1;translate:0 0}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;backdrop-filter:blur(10px)}
+
+/* ===== 头部 ===== */
+.title{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#5fb2e6,#2f7fbe);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px var(--glow);flex-shrink:0}
+h1{font-size:21px;font-weight:700;letter-spacing:2px}
+.title p{font-size:12px;color:var(--txt3);margin-top:2px}
+.intro{font-size:13px;color:var(--txt2);line-height:1.8;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px 15px;backdrop-filter:blur(10px)}
+.intro b{color:var(--accent)}
+
+/* ===== 区块标题 ===== */
+.sec-title{font-size:14px;font-weight:600;color:var(--txt2);letter-spacing:1px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.sec-title .hint{font-size:11px;color:var(--txt3);font-weight:400;letter-spacing:0}
+
+/* ===== 设置 ===== */
+.setting{display:flex;flex-direction:column;gap:10px}
+.srow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.slabel{font-size:13px;color:var(--txt2);min-width:56px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.chip{padding:7px 13px;border-radius:999px;border:1.5px solid var(--border);background:transparent;color:var(--txt2);font-size:12.5px;cursor:pointer;font-family:inherit;transition:all .2s}
+.chip:hover{border-color:rgba(58,154,217,.5)}
+.chip.sel{border-color:var(--accent);color:var(--accent);background:var(--soft);font-weight:600}
+.play-btn{padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#5fb2e6,#2f7fbe);color:#fff;font-size:15px;font-weight:700;letter-spacing:4px;padding-left:18px;cursor:pointer;font-family:inherit;box-shadow:0 8px 22px var(--glow);transition:transform .2s ease,filter .2s;margin-top:2px}
+.play-btn:hover{transform:translateY(-2px);filter:brightness(1.05)}
+.play-btn:active{transform:translateY(1px)}
+.play-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+
+/* ===== 训练区 ===== */
+.timer{text-align:center;font-size:42px;font-weight:800;color:var(--accent);letter-spacing:2px;font-variant-numeric:tabular-nums;margin-bottom:10px}
+.timer .ms{font-size:20px;color:var(--txt3)}
+.stage-empty{text-align:center;color:var(--txt3);font-size:14px;padding:40px 0}
+.grid{display:grid;gap:7px;margin:0 auto;width:100%;max-width:460px;aspect-ratio:1/1}
+.cell{background:rgba(246,249,253,.85);border:1.5px solid var(--border);border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--txt);cursor:pointer;transition:all .15s ease;user-select:none;font-variant-numeric:tabular-nums}
+.cell:hover{border-color:var(--accent);background:var(--soft);color:var(--accent)}
+.cell.done{background:rgba(76,175,120,.16);border-color:var(--ok);color:var(--ok);cursor:default;transform:scale(.94)}
+.cell.err{animation:shake .4s}
+@keyframes shake{0%,100%{translate:0 0}25%{translate:-5px 0;background:rgba(224,101,80,.2)}75%{translate:5px 0;background:rgba(224,101,80,.2)}}
+.grid[data-s="3"] .cell{font-size:38px}
+.grid[data-s="4"] .cell{font-size:29px}
+.grid[data-s="5"] .cell{font-size:23px}
+.grid[data-s="6"] .cell{font-size:18px}
+.countdown{text-align:center;font-size:92px;font-weight:800;color:var(--accent);padding:30px 0;animation:pop .5s}
+@keyframes pop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.15);opacity:1}100%{transform:scale(1)}}
+/* 预览态：与游戏态等大的空方格，保证训练区高度始终一致、居中准确 */
+#stage{position:relative}
+.cell.preview{background:rgba(246,249,253,.45);border-style:dashed;border-color:rgba(110,140,145,.28);cursor:default}
+.cell.preview:hover{border-color:rgba(110,140,145,.28);background:rgba(246,249,253,.45);color:transparent}
+/* 倒计时叠加在方格之上，不改变训练区高度 */
+.cd-ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:88px;font-weight:800;color:var(--accent);background:rgba(255,255,255,.72);backdrop-filter:blur(2px);border-radius:12px;z-index:4;animation:pop .45s}
+
+/* ===== 统计 ===== */
+.best{text-align:center;padding:12px;background:linear-gradient(135deg,rgba(58,154,217,.08),rgba(126,108,255,.08));border:1px solid rgba(58,154,217,.4);border-radius:12px;margin-bottom:12px}
+.best .lbl{font-size:12px;color:var(--txt3)}
+.best .v{font-size:26px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.result{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px}
+.stat{background:rgba(246,249,253,.7);border:1px solid var(--border);border-radius:12px;padding:12px 6px;text-align:center}
+.stat .v{font-size:19px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.stat .k{font-size:10.5px;color:var(--txt3);margin-top:3px}
+.tip{background:var(--soft);border-left:3px solid var(--accent);border-radius:8px;padding:11px 13px;color:var(--txt2);font-size:13px;line-height:1.7;margin-bottom:12px}
+.tip b{color:var(--accent2)}
+.hist{display:flex;flex-wrap:wrap;gap:6px}
+.hist .h{background:rgba(246,249,253,.7);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:11px;color:var(--txt2);font-variant-numeric:tabular-nums}
+.hist .h b{color:var(--accent)}
+.hist-empty{font-size:12px;color:var(--txt3)}
+
+/* ===== 暂停 / 退出 ===== */
+#stageCard{position:relative}
+.game-ctrl{display:none;gap:8px;justify-content:flex-end}
+.game-ctrl.show{display:flex}
+.gc-btn{padding:8px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--txt2);font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;transition:all .2s}
+.gc-btn:hover{border-color:var(--accent);color:var(--accent)}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);border-radius:16px;z-index:10;text-align:center;padding:20px}
+.overlay.hide{display:none}
+.ov-title{font-size:20px;font-weight:700;color:var(--txt)}
+.ov-sub{font-size:12.5px;color:var(--txt3);line-height:1.7}
+.ov-btns{display:flex;gap:10px}
+.ov-btn{padding:10px 22px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--txt2);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:transform .2s}
+.ov-btn.primary{background:linear-gradient(135deg,#5fb2e6,#2f7fbe);color:#fff;border-color:transparent;box-shadow:0 6px 16px var(--glow)}
+.ov-btn:hover{transform:translateY(-1px)}
+
+@media(max-width:420px){
+  .grid{gap:5px}
+  .grid[data-s="3"] .cell{font-size:30px}
+  .grid[data-s="4"] .cell{font-size:23px}
+  .grid[data-s="5"] .cell{font-size:18px}
+  .grid[data-s="6"] .cell{font-size:14px}
+  .timer{font-size:34px}
+  .countdown{font-size:72px}
+  .result{grid-template-columns:1fr 1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="title">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="#fff"><rect x="3" y="3" width="5" height="5" rx="1.2"/><rect x="9.5" y="3" width="5" height="5" rx="1.2"/><rect x="16" y="3" width="5" height="5" rx="1.2"/><rect x="3" y="9.5" width="5" height="5" rx="1.2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1.2"/><rect x="16" y="9.5" width="5" height="5" rx="1.2"/><rect x="3" y="16" width="5" height="5" rx="1.2"/><rect x="9.5" y="16" width="5" height="5" rx="1.2"/><rect x="16" y="16" width="5" height="5" rx="1.2"/></svg>
+      </div>
+      <div>
+        <h1>舒尔特方格</h1>
+        <p>注意力 · 视觉搜索训练</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="intro">舒尔特方格是经典的注意力训练法：在打乱的方格中<b>按规则依次点出数字</b>。速度越快，说明视觉搜索与专注力越强。可选择 3×3 至 6×6 方格与正序 / 倒序 / 奇数 / 偶数模式，完成后统计反应时间并与历史最佳对比。</div>
+
+  <div class="card setting">
+    <div class="sec-title">训练设置</div>
+    <div class="srow">
+      <span class="slabel">方格</span>
+      <div class="chips" id="sizeChips">
+        <button class="chip" data-size="3">3×3</button>
+        <button class="chip sel" data-size="4">4×4</button>
+        <button class="chip" data-size="5">5×5</button>
+        <button class="chip" data-size="6">6×6</button>
+      </div>
+    </div>
+    <div class="srow">
+      <span class="slabel">模式</span>
+      <div class="chips" id="modeChips">
+        <button class="chip sel" data-mode="asc">正序</button>
+        <button class="chip" data-mode="desc">倒序</button>
+        <button class="chip" data-mode="odd">奇数</button>
+        <button class="chip" data-mode="even">偶数</button>
+      </div>
+    </div>
+    <button class="play-btn" id="startBtn">开始训练</button>
+  </div>
+
+  <div class="game-ctrl" id="gameCtrl">
+    <button class="gc-btn" id="pauseBtn" type="button" title="暂停">⏸ 暂停</button>
+    <button class="gc-btn" id="quitBtn" type="button" title="退出">✕ 退出</button>
+  </div>
+  <div class="card" id="stageCard">
+    <div class="sec-title">训练区</div>
+    <div class="timer" id="timer">0.00<span class="ms">s</span></div>
+    <div id="stage"><div class="stage-empty">点击「开始训练」，按提示顺序尽快点出数字</div></div>
+    <div class="overlay hide" id="overlay"></div>
+  </div>
+
+  <div class="card">
+    <div class="sec-title">统计与记录 <span class="hint">最近 20 条</span></div>
+    <div class="best" id="bestBox" style="display:none">
+      <div class="lbl">本规格历史最佳</div>
+      <div class="v" id="bestVal">--</div>
+    </div>
+    <div class="result" id="statBox" style="display:none">
+      <div class="stat"><div class="v" id="avgRt">--</div><div class="k">平均反应(ms)</div></div>
+      <div class="stat"><div class="v" id="minRt">--</div><div class="k">最快(ms)</div></div>
+      <div class="stat"><div class="v" id="maxRt">--</div><div class="k">最慢(ms)</div></div>
+    </div>
+    <div class="tip" id="tipBox" style="display:none"></div>
+    <div class="hist" id="histBox"></div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+var KEY_HISTORY="schulte_history";
+var bestKey=function(size,mode){return"schulte_best_"+size+"_"+mode};
+var $=function(id){return document.getElementById(id)};
+var stage=$("stage"),timerEl=$("timer"),startBtn=$("startBtn");
+var bestBox=$("bestBox"),bestVal=$("bestVal"),statBox=$("statBox");
+var avgRt=$("avgRt"),minRt=$("minRt"),maxRt=$("maxRt"),tipBox=$("tipBox"),histBox=$("histBox");
+
+var size=4,mode="asc";
+var running=false;
+var numbers=[],order=[],idx=0;
+var startTime=0,lastClickTime=0,reactions=[];
+var rafId=null,countdownTimer=null;
+var paused=false,pauseAt=0;
+var overlay=$("overlay"),pauseBtn=$("pauseBtn"),quitBtn=$("quitBtn"),gameCtrl=$("gameCtrl");
+
+/* 音效 */
+var ac=null;
+function beep(freq,dur,type,vol){
+  try{
+    if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();
+    if(ac.state==="suspended")ac.resume();
+    var o=ac.createOscillator(),g=ac.createGain();
+    o.type=type||"sine";o.frequency.value=freq;
+    g.gain.setValueAtTime(0.0001,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(vol||0.07,ac.currentTime+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+dur);
+    o.connect(g);g.connect(ac.destination);
+    o.start();o.stop(ac.currentTime+dur);
+  }catch(e){}
+}
+
+$("sizeChips").querySelectorAll(".chip").forEach(function(b){
+  b.addEventListener("click",function(){if(running)return;
+    $("sizeChips").querySelectorAll(".chip").forEach(function(x){x.classList.remove("sel");});
+    b.classList.add("sel");size=parseInt(b.dataset.size,10);renderPreview();renderHist();renderBest();});
+});
+$("modeChips").querySelectorAll(".chip").forEach(function(b){
+  b.addEventListener("click",function(){if(running)return;
+    $("modeChips").querySelectorAll(".chip").forEach(function(x){x.classList.remove("sel");});
+    b.classList.add("sel");mode=b.dataset.mode;renderHist();renderBest();});
+});
+
+function shuffle(arr){for(var i=arr.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=arr[i];arr[i]=arr[j];arr[j]=t;}return arr;}
+function buildNumbers(){
+  var total=size*size,all=[];
+  if(mode==="asc"||mode==="desc"){for(var i=1;i<=total;i++)all.push(i);}
+  else if(mode==="odd"){for(var i=1;i<=total*2;i+=2)all.push(i);}
+  else{for(var i=2;i<=total*2;i+=2)all.push(i);}
+  return shuffle(all).slice(0,total);
+}
+function buildOrder(nums){
+  var sorted=nums.slice().sort(function(a,b){return a-b;});
+  if(mode==="desc")sorted.reverse();
+  return sorted;
+}
+function fmtTime(ms){return(ms/1000).toFixed(2);}
+function pad(n){return(n<10?"0":"")+n;}
+function modeName(m){return m==="asc"?"正序":m==="desc"?"倒序":m==="odd"?"奇数":"偶数";}
+
+function renderBest(){
+  var v=localStorage.getItem(bestKey(size,mode));
+  if(v){bestBox.style.display="block";bestVal.textContent=fmtTime(parseFloat(v))+"s";}
+  else bestBox.style.display="none";
+}
+function renderHist(){
+  var arr=[];
+  try{arr=JSON.parse(localStorage.getItem(KEY_HISTORY)||"[]");}catch(e){arr=[];}
+  histBox.innerHTML="";
+  if(arr.length===0){histBox.innerHTML='<span class="hist-empty">暂无记录</span>';return;}
+  arr.slice(0,20).forEach(function(h){
+    var d=document.createElement("div");d.className="h";
+    d.innerHTML=h.size+"×"+h.size+" "+modeName(h.mode)+" <b>"+fmtTime(h.time)+"s</b>";
+    histBox.appendChild(d);
+  });
+}
+function pushHistory(time){
+  var arr=[];
+  try{arr=JSON.parse(localStorage.getItem(KEY_HISTORY)||"[]");}catch(e){arr=[];}
+  arr.unshift({size:size,mode:mode,time:time,ts:Date.now()});
+  arr=arr.slice(0,20);
+  localStorage.setItem(KEY_HISTORY,JSON.stringify(arr));
+  var bk=bestKey(size,mode),old=localStorage.getItem(bk);
+  if(!old||time<parseFloat(old))localStorage.setItem(bk,time+"");
+}
+function tipText(timeSec,total){
+  var per=timeSec/total;
+  if(per<0.6)return"<b>专注力极佳</b>：单格反应极快，注意力高度集中，可挑战更大方格。";
+  if(per<1.0)return"<b>专注力优秀</b>：反应流畅稳定，继续保持当前训练强度。";
+  if(per<1.6)return"<b>专注力良好</b>：状态正常，建议每天训练 5-10 分钟逐步提升。";
+  if(per<2.2)return"<b>专注力中等</b>：略有分心，可先做 3×3 热身再进入大方格。";
+  return"<b>专注力待提升</b>：建议休息后再练，从 3×3 正序开始循序渐进。";
+}
+
+function startCountdown(){
+  startBtn.disabled=true;
+  scrollStageIntoView();
+  var n=3;
+  showCountdown(n);
+  beep(520,.12,"sine",.09);
+  countdownTimer=setInterval(function(){
+    n--;
+    if(n>0){showCountdown(n);beep(520,.12,"sine",.09);}
+    else{clearInterval(countdownTimer);countdownTimer=null;beginGame();}
+  },750);
+}
+function beginGame(){
+  numbers=buildNumbers();
+  order=buildOrder(numbers);
+  idx=0;reactions=[];running=true;
+  lastClickTime=startTime=performance.now();
+  renderGrid();
+
+  gameCtrl.classList.add("show");
+  updateTimer();
+}
+/* 方格尺寸不一，用元素真实位置居中，避免写死偏移 */
+function scrollStageIntoView(){
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      var c=$("stageCard");
+      if(c&&c.scrollIntoView)c.scrollIntoView({block:"center",behavior:"smooth"});
+    });
+  });
+}
+function renderGrid(){
+  stage.innerHTML="";
+  var g=document.createElement("div");
+  g.className="grid";g.dataset.s=size;
+  g.style.gridTemplateColumns="repeat("+size+",1fr)";
+  numbers.forEach(function(num){
+    var c=document.createElement("div");
+    c.className="cell";c.textContent=num;
+    c.addEventListener("click",function(){onCellClick(c,num);});
+    g.appendChild(c);
+  });
+  stage.appendChild(g);
+}
+/* 预览态：按当前尺寸渲染等大空方格，保证开始前后训练区高度一致 */
+function renderPreview(){
+  if(running)return;
+  stage.innerHTML="";
+  var g=document.createElement("div");
+  g.className="grid";g.dataset.s=size;
+  g.style.gridTemplateColumns="repeat("+size+",1fr)";
+  var total=size*size;
+  for(var i=0;i<total;i++){
+    var c=document.createElement("div");
+    c.className="cell preview";
+    g.appendChild(c);
+  }
+  stage.appendChild(g);
+}
+/* 倒计时叠加在方格之上，训练区高度不变 */
+function showCountdown(n){
+  var cd=stage.querySelector(".cd-ov");
+  if(!cd){cd=document.createElement("div");cd.className="cd-ov";stage.appendChild(cd);}
+  cd.textContent=n;
+}
+function onCellClick(cell,num){
+  if(!running||paused||cell.classList.contains("done"))return;
+  if(num===order[idx]){
+    var now=performance.now();
+    reactions.push(now-lastClickTime);
+    lastClickTime=now;
+    cell.classList.add("done");
+    idx++;
+    beep(700+idx*8,.06,"triangle",.06);
+    if(idx>=order.length)finishGame();
+  }else{
+    cell.classList.remove("err");void cell.offsetWidth;cell.classList.add("err");
+    beep(180,.1,"sawtooth",.05);
+  }
+}
+function updateTimer(){
+  if(!running||paused)return;
+  timerEl.innerHTML=fmtTime(performance.now()-startTime)+'<span class="ms">s</span>';
+  rafId=requestAnimationFrame(updateTimer);
+}
+function finishGame(){
+  running=false;paused=false;
+  gameCtrl.classList.remove("show");overlay.classList.add("hide");
+  if(rafId)cancelAnimationFrame(rafId);
+  var total=performance.now()-startTime;
+  timerEl.innerHTML=fmtTime(total)+'<span class="ms">s</span>';
+  pushHistory(total);
+  renderBest();renderHist();
+  statBox.style.display="grid";
+  var avg=reactions.reduce(function(a,b){return a+b;},0)/reactions.length;
+  avgRt.textContent=Math.round(avg);
+  minRt.textContent=Math.round(Math.min.apply(null,reactions));
+  maxRt.textContent=Math.round(Math.max.apply(null,reactions));
+  tipBox.style.display="block";
+  tipBox.innerHTML=tipText(total/1000,order.length);
+  startBtn.disabled=false;
+  startBtn.textContent="再来一次";
+  beep(760,.15,"sine",.1);beep(1040,.16,"sine",.08);
+}
+/* ===== 暂停 / 退出（与点小球一致：P 暂停/恢复，Esc 暂停/退出，点遮罩空白退出） ===== */
+function pauseGame(){
+  if(!running||paused)return;
+  paused=true;pauseAt=performance.now();
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  showPauseOverlay();
+}
+function resumeGame(){
+  if(!running||!paused)return;
+  var d=performance.now()-pauseAt;
+  startTime+=d;lastClickTime+=d;
+  paused=false;
+  overlay.classList.add("hide");
+  updateTimer();
+}
+function quitGame(){
+  running=false;paused=false;
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  if(countdownTimer){clearInterval(countdownTimer);countdownTimer=null;}
+  overlay.classList.add("hide");
+  gameCtrl.classList.remove("show");
+  timerEl.innerHTML='0.00<span class="ms">s</span>';
+  renderPreview();
+  startBtn.disabled=false;
+  startBtn.textContent="开始训练";
+}
+function showPauseOverlay(){
+  overlay.classList.remove("hide");
+  overlay.innerHTML=
+    '<div class="ov-title">已暂停</div>'+
+    '<div class="ov-sub">按 P 或点击「继续」恢复 · 按 Esc 或点击空白处退出</div>'+
+    '<div class="ov-btns">'+
+      '<button class="ov-btn primary" id="ovResume" type="button">继 续</button>'+
+      '<button class="ov-btn" id="ovQuit2" type="button">退出本局</button>'+
+    '</div>';
+  $("ovResume").onclick=resumeGame;
+  $("ovQuit2").onclick=showQuitConfirm;
+}
+function showQuitConfirm(){
+  overlay.classList.remove("hide");
+  overlay.innerHTML=
+    '<div class="ov-title">确认退出？</div>'+
+    '<div class="ov-sub">当前成绩将不保存，返回准备界面。</div>'+
+    '<div class="ov-btns">'+
+      '<button class="ov-btn primary" id="ovQuitYes" type="button">确认退出</button>'+
+      '<button class="ov-btn" id="ovQuitNo" type="button">继续游戏</button>'+
+    '</div>';
+  $("ovQuitYes").onclick=quitGame;
+  $("ovQuitNo").onclick=resumeGame;
+}
+pauseBtn.onclick=function(){ if(running&&!paused)pauseGame(); };
+quitBtn.onclick=function(){ if(running){pauseGame();showQuitConfirm();} };
+document.addEventListener("keydown",function(e){
+  var k=e.key;
+  if(k==="p"||k==="P"){
+    if(running&&!paused){e.preventDefault();pauseGame();}
+    else if(running&&paused){e.preventDefault();resumeGame();}
+  }else if(k==="Escape"){
+    if(running&&!paused){e.preventDefault();pauseGame();}
+    else if(running&&paused){e.preventDefault();quitGame();}
+  }
+});
+overlay.addEventListener("click",function(e){
+  if(running&&paused&&e.target===overlay)quitGame();
+});
+
+startBtn.addEventListener("click",function(){
+  if(running||countdownTimer)return;
+  statBox.style.display="none";
+  tipBox.style.display="none";
+  timerEl.innerHTML='0.00<span class="ms">s</span>';
+  startBtn.textContent="开始训练";
+  startCountdown();
+});
+
+renderPreview();
+renderBest();renderHist();
+})();
+</script>
+</body>
+</html>

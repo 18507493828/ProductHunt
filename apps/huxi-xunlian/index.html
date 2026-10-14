@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>呼吸训练</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235aae9f'/%3E%3Ccircle cx='32' cy='32' r='9' fill='%23fff'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%23fff' stroke-width='3' opacity='.75'/%3E%3Ccircle cx='32' cy='32' r='25' fill='none' stroke='%23fff' stroke-width='2.5' opacity='.45'/%3E%3C/svg%3E">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --accent:#52a898;
+  --glow:rgba(82,168,152,.5);
+  --txt:#26343c;--txt2:#5f727c;--txt3:#94a5ae;
+  --border:rgba(110,140,145,.18);
+  --card:rgba(255,255,255,.78);
+  --chip-soft:rgba(82,168,152,.10);
+}
+html{min-height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--txt);
+  background:linear-gradient(168deg,#f3f8f6 0%,#e9f1f3 46%,#edeff7 100%);
+  background-attachment:fixed;
+  margin:0;
+  min-height:100vh;
+}
+.fitwrap{display:flex;justify-content:center;align-items:flex-start;box-sizing:border-box;padding:16px;min-height:100vh}
+.app{width:100%;max-width:760px;display:flex;flex-direction:column;gap:16px;animation:pagein .6s ease both}
+@keyframes pagein{from{opacity:0;translate:0 14px}to{opacity:1;translate:0 0}}
+.body-cols{display:grid;grid-template-columns:minmax(0,1fr) 252px;gap:16px;align-items:start}
+.main-col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.side-col{position:sticky;top:20px;display:flex;flex-direction:column;gap:16px}
+
+/* ===== 头部 ===== */
+.head{display:flex;flex-direction:column;gap:14px}
+.title{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#6ec4b4,#4d9d8e);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px var(--glow);flex-shrink:0;transition:box-shadow .8s}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.st{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 6px;text-align:center;backdrop-filter:blur(10px)}
+.st b{font-size:19px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;transition:color .8s}
+.st span{display:block;font-size:10px;color:var(--txt3);margin-top:3px;letter-spacing:2px}
+.intro{font-size:13px;color:var(--txt2);line-height:1.8;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 16px;backdrop-filter:blur(10px)}
+.intro b{color:var(--accent)}
+
+/* ===== 呼吸舞台 ===== */
+.stage{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:6px 0}
+.ringwrap{position:relative;width:230px;height:230px;display:flex;align-items:center;justify-content:center}
+.halo{position:absolute;left:50%;top:50%;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,var(--glow) 0%,transparent 62%);filter:blur(16px);opacity:.3;transform:translate(-50%,-50%) scale(1);pointer-events:none;transition:background .8s;will-change:transform,opacity}
+.pring{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.ptrack{fill:none;stroke:rgba(110,140,145,.13);stroke-width:5}
+.pbar{fill:none;stroke:var(--accent);stroke-width:5;stroke-linecap:round;stroke-dasharray:628.32;stroke-dashoffset:628.32;filter:drop-shadow(0 0 5px var(--glow));transition:stroke .8s}
+.ball{position:relative;width:150px;height:150px;border-radius:50%;background-color:var(--accent);box-shadow:0 14px 44px var(--glow);transform:scale(.62);will-change:transform;transition:background-color .8s ease,box-shadow .8s ease}
+.ball::before{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 35% 27%,rgba(255,255,255,.62),rgba(255,255,255,.14) 52%,transparent 72%)}
+.ball::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 50% 112%,rgba(20,60,50,.20),transparent 58%)}
+.center{position:absolute;z-index:3;text-align:center;color:#fff;text-shadow:0 1px 12px rgba(30,70,60,.4);pointer-events:none}
+.phase{font-size:18px;font-weight:600;letter-spacing:6px;padding-left:6px}
+.count{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15;margin-top:2px}
+.phase.fadein{animation:pfade .45s ease}
+@keyframes pfade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.sess{font-size:12px;color:var(--txt3);height:17px;font-variant-numeric:tabular-nums;letter-spacing:1px}
+
+/* ===== 模式 ===== */
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mode{display:flex;align-items:center;gap:8px;padding:11px 12px;border-radius:14px;background:var(--card);border:1.5px solid var(--border);cursor:pointer;transition:all .25s ease;font-family:inherit;backdrop-filter:blur(6px);text-align:left;width:100%}
+.mode:hover{transform:translateY(-1px)}
+.mode.sel{box-shadow:0 4px 14px var(--glow);border-color:var(--accent);background:var(--chip-soft)}
+.mode-info{flex:1;min-width:0}
+.mode-name{font-size:14px;font-weight:600;color:var(--txt)}
+.mode.sel .mode-name{color:var(--accent)}
+.mode-sub{font-size:11px;color:var(--txt3);margin-top:2px;font-variant-numeric:tabular-nums}
+.mode-i{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--border);background:transparent;color:var(--txt3);font-size:12px;font-style:italic;font-weight:700;font-family:Georgia,serif;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0;padding:0}
+.mode-i:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ===== 自定义面板 ===== */
+.cpanel{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px 16px;display:none;flex-direction:column;gap:12px;backdrop-filter:blur(10px)}
+.cpanel.show{display:flex;animation:pfade .35s ease}
+.crow{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--txt2)}
+.crow label{min-width:58px}
+.crow input[type=range]{flex:1;accent-color:var(--accent)}
+.crow .v{min-width:38px;text-align:right;color:var(--accent);font-variant-numeric:tabular-nums;font-weight:600}
+
+/* ===== 设置 ===== */
+.settings{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:12px;backdrop-filter:blur(10px)}
+.srow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.slabel{font-size:13px;color:var(--txt2);min-width:58px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.chip{padding:6px 12px;border-radius:999px;background:transparent;border:1.5px solid var(--border);font-size:12px;color:var(--txt2);cursor:pointer;transition:all .2s;font-family:inherit}
+.chip.sel{border-color:var(--accent);color:var(--accent);background:var(--chip-soft);font-weight:600}
+.toggles{margin-left:auto;display:flex;gap:14px}
+.tg{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);cursor:pointer;user-select:none}
+.tg .sw{width:34px;height:20px;border-radius:999px;background:rgba(120,140,145,.28);position:relative;transition:background .25s;flex-shrink:0}
+.tg .sw::after{content:"";position:absolute;top:2.5px;left:3px;width:15px;height:15px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.22);transition:transform .28s cubic-bezier(.34,1.56,.64,1)}
+.tg.on .sw{background:var(--accent)}
+.tg.on .sw::after{transform:translateX(13px)}
+
+/* ===== 控制 ===== */
+.ctrl{display:flex;gap:10px}
+.main-btn{flex:1;padding:15px;border:none;border-radius:16px;font-size:16px;font-weight:700;color:#fff;background:linear-gradient(135deg,#6ec4b4,#4d9d8e);cursor:pointer;font-family:inherit;letter-spacing:5px;padding-left:24px;box-shadow:0 8px 24px var(--glow);transition:transform .25s ease,filter .25s,box-shadow .3s}
+.main-btn:hover{transform:translateY(-2px);filter:brightness(1.05)}
+.main-btn:active{transform:translateY(1px)}
+.stop-btn{width:86px;padding:15px;border-radius:16px;border:1.5px solid var(--border);background:var(--card);color:var(--txt2);font-size:14px;cursor:pointer;font-family:inherit;transition:all .25s;display:none;backdrop-filter:blur(6px)}
+.stop-btn.show{display:block}
+.stop-btn:hover{border-color:#e08585;color:#d06868}
+
+/* ===== 历史 ===== */
+.hist{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:13px 16px;backdrop-filter:blur(10px)}
+.hist-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.hist-head h3{font-size:14px;font-weight:600;color:var(--txt2);letter-spacing:1px}
+.hist-arrow{font-size:11px;color:var(--txt3);transition:transform .3s ease}
+.hist.open .hist-arrow{transform:rotate(180deg)}
+.hist-list{list-style:none;margin-top:10px;display:none;flex-direction:column;gap:7px}
+.hist.open .hist-list{display:flex}
+.hist-item{display:flex;justify-content:space-between;font-size:13px;color:var(--txt2);padding:8px 12px;background:rgba(255,255,255,.55);border-radius:10px}
+.hist-item .hm{color:var(--accent);font-weight:600;transition:color .8s}
+.hist-empty{font-size:12px;color:var(--txt3);text-align:center;padding:8px 0;display:none}
+.hist-empty.show{display:block}
+
+/* ===== 信息弹窗 ===== */
+.mask{position:fixed;inset:0;background:rgba(30,50,55,.35);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
+.mask.show{display:flex;animation:maskin .25s ease}
+@keyframes maskin{from{opacity:0}to{opacity:1}}
+.modal{background:#fff;border-radius:18px;width:100%;max-width:400px;max-height:80vh;overflow:auto;box-shadow:0 24px 60px rgba(30,60,55,.25);animation:modalin .3s cubic-bezier(.34,1.2,.5,1)}
+@keyframes modalin{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:15px 20px;border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:16px;font-weight:700;color:var(--txt)}
+.modal-head .close{cursor:pointer;border:none;background:transparent;color:var(--txt3);font-size:22px;line-height:1;padding:2px 8px;border-radius:8px}
+.modal-head .close:hover{background:rgba(0,0,0,.06);color:var(--txt)}
+.modal-body{padding:14px 20px 20px;font-size:13.5px;color:var(--txt2);line-height:1.9}
+.modal-body .ib{display:block;font-weight:700;color:var(--txt);margin:12px 0 2px;font-size:12px;letter-spacing:2px}
+.modal-body .ib:first-child{margin-top:0}
+
+/* ===== toast ===== */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(8px);background:rgba(38,52,60,.92);color:#fff;padding:10px 22px;border-radius:999px;font-size:13px;letter-spacing:1px;opacity:0;transition:opacity .35s ease,transform .35s ease;z-index:99;pointer-events:none;box-shadow:0 8px 24px rgba(30,60,55,.3)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:820px){
+  .app{max-width:430px}
+  .body-cols{grid-template-columns:1fr}
+  .side-col{position:static}
+}
+@media(max-width:380px){
+  .ringwrap{width:200px;height:200px}
+  .ball{width:130px;height:130px}
+  .halo{width:240px;height:240px}
+  .toggles{margin-left:0}
+  .modes{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="fitwrap">
+<div class="app">
+
+  <header class="head">
+    <div class="title">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="4" fill="#fff"/><circle cx="12" cy="12" r="8" fill="none" stroke="#fff" stroke-width="1.5" opacity=".75"/><circle cx="12" cy="12" r="11" fill="none" stroke="#fff" stroke-width="1.2" opacity=".45"/></svg>
+      </div>
+      <div>
+        <h1 style="font-size:21px;font-weight:700;letter-spacing:2px">呼吸训练</h1>
+        <p style="font-size:12px;color:var(--txt3);margin-top:2px">放下杂念，专注一呼一吸</p>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="st"><b id="stToday">0</b><span>今日/次</span></div>
+      <div class="st"><b id="stTotal">0</b><span>累计/分钟</span></div>
+      <div class="st"><b id="stStreak">0</b><span>连续/天</span></div>
+    </div>
+    <div class="intro">跟随呼吸球的起伏完成训练：<b>4 种经典呼吸法 + 自定义节奏</b>，附阶段提示音与练习统计。适合睡前助眠、考前减压、久坐间隙放松——选一种节奏，点「开始练习」即可。</div>
+  </header>
+
+  <div class="body-cols">
+  <div class="main-col">
+
+  <div class="stage">
+    <div class="ringwrap">
+      <div class="halo" id="halo"></div>
+      <svg class="pring" viewBox="0 0 220 220">
+        <circle class="ptrack" cx="110" cy="110" r="100"/>
+        <circle class="pbar" id="progBar" cx="110" cy="110" r="100"/>
+      </svg>
+      <div class="ball" id="ball"></div>
+      <div class="center">
+        <div class="phase" id="phaseText">准备开始</div>
+        <div class="count" id="countText"></div>
+      </div>
+    </div>
+    <div class="sess" id="sessInfo"></div>
+  </div>
+
+  <div class="modes" id="modeList"></div>
+
+  <div class="cpanel" id="cpanel">
+    <div class="crow"><label>吸气</label><input type="range" id="cIn" min="2" max="10" step="1" value="4"><span class="v" id="cInV">4s</span></div>
+    <div class="crow"><label>吸气后屏息</label><input type="range" id="cH1" min="0" max="10" step="1" value="4"><span class="v" id="cH1V">4s</span></div>
+    <div class="crow"><label>呼气</label><input type="range" id="cEx" min="2" max="12" step="1" value="6"><span class="v" id="cExV">6s</span></div>
+    <div class="crow"><label>呼气后屏息</label><input type="range" id="cH2" min="0" max="10" step="1" value="0"><span class="v" id="cH2V">0s</span></div>
+  </div>
+
+  <div class="settings">
+    <div class="srow">
+      <span class="slabel">练习时长</span>
+      <div class="chips" id="durChips">
+        <button class="chip" data-dur="60">1分钟</button>
+        <button class="chip sel" data-dur="180">3分钟</button>
+        <button class="chip" data-dur="300">5分钟</button>
+        <button class="chip" data-dur="600">10分钟</button>
+        <button class="chip" data-dur="0">不限</button>
+      </div>
+    </div>
+    <div class="srow">
+      <span class="slabel">提示</span>
+      <div class="toggles">
+        <div class="tg on" id="tgSound"><span class="sw"></span>音效</div>
+        <div class="tg on" id="tgVib"><span class="sw"></span>震动</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctrl">
+    <button class="main-btn" id="mainBtn">开始练习</button>
+    <button class="stop-btn" id="stopBtn">结束</button>
+  </div>
+
+  </div>
+  <div class="side-col">
+    <div class="hist open" id="histBox">
+      <div class="hist-head" id="histHead">
+        <h3>最近练习</h3>
+        <span class="hist-arrow">▼</span>
+      </div>
+      <ul class="hist-list" id="histList"></ul>
+      <div class="hist-empty" id="histEmpty">暂无练习记录</div>
+    </div>
+  </div>
+  </div>
+
+<div style="text-align:center;font-size:11px;line-height:1.8;color:var(--txt3);padding:14px 4px 2px;letter-spacing:.3px">免责声明：呼吸练习为日常放松与专注训练的辅助手段，不能替代心理辅导或药物治疗；患有心血管、呼吸系统疾病或感到不适时，请在医生指导下进行。</div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="mask" id="infoMask">
+  <div class="modal">
+    <div class="modal-head"><h3 id="infoTitle"></h3><button class="close" id="infoClose">×</button></div>
+    <div class="modal-body" id="infoBody"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id)};
+
+/* ===================== 模式定义 ===================== */
+var MODES=[
+ {key:"478",name:"4-7-8 助眠",sub:"吸4 · 屏7 · 呼8",phases:[["inhale",4],["hold1",7],["exhale",8]],accent:"#6f8fd8",glow:"rgba(111,143,216,.5)",
+  info:{what:"经典的睡前放松呼吸法，由安德鲁·韦尔博士推广，源自瑜伽调息法（Pranayama）。",
+        why:"延长呼气能激活副交感神经系统（迷走神经），使心率下降、血压降低，让身体进入「休息与修复」模式；7 秒屏息让血液充分携氧。",
+        use:"入睡困难、半夜醒来难再入睡、焦虑紧张需要快速平静时。建议躺着做，每天 2-4 轮。"}},
+ {key:"box",name:"箱式呼吸",sub:"4-4-4-4 等长",phases:[["inhale",4],["hold1",4],["exhale",4],["hold2",4]],accent:"#52a898",glow:"rgba(82,168,152,.5)",
+  info:{what:"又称方框呼吸，吸-屏-呼-屏四段等长，节奏如画一个方框，源自特种部队高压环境训练。",
+        why:"四段等长的节奏要求呼吸控制力，能同时平衡交感与副交感神经，稳定情绪并提高专注力。",
+        use:"考试、面试、演讲前稳定情绪；高压工作间隙重置状态；运动中的专注训练。"}},
+ {key:"bal",name:"平衡呼吸",sub:"吸6 · 呼6",phases:[["inhale",6],["exhale",6]],accent:"#7fae5a",glow:"rgba(127,174,90,.5)",
+  info:{what:"吸气与呼气等长的对称节奏，是最简单易上手的呼吸训练方式。",
+        why:"平稳对称的呼吸节律可提升心率变异性（HRV），让呼吸与心跳趋于协调，向大脑传递放松信号。",
+        use:"日常放松、冥想前的热身、初学者入门首选。工作累了随时来一轮。"}},
+ {key:"deep",name:"深呼吸",sub:"吸4 · 呼6",phases:[["inhale",4],["exhale",6]],accent:"#e09a50",glow:"rgba(224,154,80,.5)",
+  info:{what:"最贴近日常习惯的加深放慢版呼吸，无需刻意记忆节奏。",
+        why:"缓慢深长的呼吸提高肺通气效率，牵张肺与血管的压力感受器，缓解肌肉紧张与情绪波动。",
+        use:"久坐工作/学习间隙、运动前调整状态、情绪波动时自我安抚。"}},
+ {key:"cus",name:"自定义",sub:"自由组合节奏",phases:null,accent:"#a678cc",glow:"rgba(166,120,204,.5)",
+  info:{what:"自由组合吸气、吸气后屏息、呼气与呼气后屏息的时长，形成专属于你的节奏。",
+        why:"呼气略长于吸气更易放松（激活副交感）；吸气后屏息偏提神，呼气后屏息偏深度放松。",
+        use:"已有经验者按自身习惯定制，或跟随教练/视频指定的节奏练习。"}}
+];
+var PHASE_TXT={inhale:"吸气",hold1:"屏息",exhale:"呼气",hold2:"屏息"};
+var CIRC=628.32,MIN=.62,MAX=1;
+
+/* ===================== 状态 ===================== */
+var st={
+  mode:localStorage.getItem("breath_mode")||"box",
+  sound:localStorage.getItem("breath_sound")!=="0",
+  vib:localStorage.getItem("breath_vib")!=="0",
+  dur:parseInt(localStorage.getItem("breath_dur")||"180"),
+  custom:JSON.parse(localStorage.getItem("breath_custom")||'{"i":4,"h1":4,"e":6,"h2":0}')
+};
+var run={on:false,paused:false,pi:0,pe:0,se:0,last:null,scale:MIN,phases:[]};
+
+function saveSettings(){
+  localStorage.setItem("breath_mode",st.mode);
+  localStorage.setItem("breath_sound",st.sound?"1":"0");
+  localStorage.setItem("breath_vib",st.vib?"1":"0");
+  localStorage.setItem("breath_dur",String(st.dur));
+  localStorage.setItem("breath_custom",JSON.stringify(st.custom));
+}
+
+function findMode(k){for(var i=0;i<MODES.length;i++){if(MODES[i].key===k)return MODES[i];}return MODES[1];}
+function buildCustomPhases(){
+  var p=[["inhale",st.custom.i]];
+  if(st.custom.h1>0)p.push(["hold1",st.custom.h1]);
+  p.push(["exhale",st.custom.e]);
+  if(st.custom.h2>0)p.push(["hold2",st.custom.h2]);
+  return p;
+}
+function curPhases(){return st.mode==="cus"?buildCustomPhases():findMode(st.mode).phases.slice();}
+
+/* ===================== 音效 / 震动 ===================== */
+var audioCtx=null;
+function tone(freq,dur){
+  if(!st.sound)return;
+  try{
+    if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==="suspended")audioCtx.resume();
+    var o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.type="sine";o.frequency.value=freq;
+    g.gain.setValueAtTime(0.001,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.14,audioCtx.currentTime+0.04);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
+    o.connect(g);g.connect(audioCtx.destination);
+    o.start();o.stop(audioCtx.currentTime+dur);
+  }catch(e){}
+}
+function cue(ph){
+  if(ph==="inhale")tone(523,.28);
+  else if(ph==="exhale")tone(392,.4);
+  else tone(659,.12);
+  if(st.vib&&navigator.vibrate){try{navigator.vibrate(ph==="inhale"?[50]:[25]);}catch(e){}}
+}
+
+/* ===================== 主循环 ===================== */
+var ball=$("ball"),halo=$("halo"),progBar=$("progBar"),phaseText=$("phaseText"),countText=$("countText"),sessInfo=$("sessInfo");
+var lastPhaseStr="",lastCount=-1;
+
+function loop(now){
+  if(!run.on||run.paused)return;
+  if(run.last==null)run.last=now;
+  var dt=now-run.last;run.last=now;
+  run.pe+=dt;run.se+=dt;
+
+  var pd=run.phases[run.pi][1]*1000;
+  if(run.pe>=pd){
+    run.pi=(run.pi+1)%run.phases.length;
+    run.pe-=pd;
+    pd=run.phases[run.pi][1]*1000;
+    var ph=run.phases[run.pi][0];
+    phaseText.textContent=PHASE_TXT[ph];
+    phaseText.classList.remove("fadein");void phaseText.offsetWidth;phaseText.classList.add("fadein");
+    cue(ph);
+  }
+
+  var t=Math.min(1,run.pe/pd);
+  var eased=.5-.5*Math.cos(Math.PI*t);
+  var ph2=run.phases[run.pi][0];
+  var target;
+  if(ph2==="inhale")target=MIN+(MAX-MIN)*eased;
+  else if(ph2==="exhale")target=MAX-(MAX-MIN)*eased;
+  else target=(ph2==="hold1")?MAX:MIN;
+  run.scale+=(target-run.scale)*.14;
+  ball.style.transform="scale("+run.scale.toFixed(4)+")";
+  halo.style.transform="translate(-50%,-50%) scale("+(run.scale*1.06).toFixed(4)+")";
+  halo.style.opacity=(0.22+run.scale*0.35).toFixed(3);
+
+  progBar.style.strokeDashoffset=(CIRC*(1-t)).toFixed(1);
+
+  var remain=Math.ceil((pd-run.pe)/1000);
+  if(remain!==lastCount){countText.textContent=remain>0?remain:"";lastCount=remain;}
+
+  if(st.dur>0){
+    var rem2=st.dur*1000-run.se;
+    if(rem2<=0){finish(true);return;}
+    var rm=Math.floor(rem2/60000),rs=Math.floor(rem2%60000/1000);
+    sessInfo.textContent="剩余 "+rm+":"+(rs<10?"0":"")+rs;
+  }else{
+    var em=Math.floor(run.se/60000),es=Math.floor(run.se%60000/1000);
+    sessInfo.textContent="已进行 "+em+":"+(es<10?"0":"")+es;
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ===================== 开始 / 暂停 / 结束 ===================== */
+var mainBtn=$("mainBtn"),stopBtn=$("stopBtn");
+
+function start(){
+  run.on=true;run.paused=false;run.pi=0;run.pe=0;run.se=0;run.last=null;run.phases=curPhases();
+  run.scale=parseFloat(getComputedScale());
+  mainBtn.textContent="暂停";
+  stopBtn.classList.add("show");
+  var ph=run.phases[0][0];
+  phaseText.textContent=PHASE_TXT[ph];
+  phaseText.classList.remove("fadein");void phaseText.offsetWidth;phaseText.classList.add("fadein");
+  cue(ph);
+  requestAnimationFrame(loop);
+}
+function getComputedScale(){
+  try{
+    var tr=getComputedStyle(ball).transform;
+    if(tr==="none")return MIN;
+    var m=tr.match(/matrix\(([^,]+),/);
+    return m?parseFloat(m[1]):MIN;
+  }catch(e){return MIN;}
+}
+function pause(){
+  run.paused=true;
+  mainBtn.textContent="继续";
+}
+function resume(){
+  run.paused=false;run.last=null;
+  mainBtn.textContent="暂停";
+  requestAnimationFrame(loop);
+}
+function finish(natural){
+  var mins=Math.max(1,Math.round(run.se/60000));
+  run.on=false;run.paused=false;
+  saveRecord(mins);
+  toast(natural?"本次练习完成，做得好":"已结束本次练习");
+  resetStage();
+  renderStats();renderHistory();
+}
+function stop(){
+  if(run.se>=60000){
+    finish(false);
+  }else{
+    run.on=false;run.paused=false;
+    toast("练习已取消（不足1分钟）");
+    resetStage();
+  }
+}
+function resetStage(){
+  mainBtn.textContent="开始练习";
+  stopBtn.classList.remove("show");
+  phaseText.textContent="准备开始";
+  countText.textContent="";
+  sessInfo.textContent="";
+  lastCount=-1;
+  progBar.style.strokeDashoffset=CIRC;
+  var s=run.scale,t0=performance.now();
+  (function tw(n){
+    var t=Math.min(1,(n-t0)/600);
+    var cur=s+(MIN-s)*(.5-.5*Math.cos(Math.PI*t));
+    ball.style.transform="scale("+cur.toFixed(4)+")";
+    halo.style.transform="translate(-50%,-50%) scale("+(cur*1.06).toFixed(4)+")";
+    halo.style.opacity=(0.22+cur*0.35).toFixed(3);
+    if(t<1)requestAnimationFrame(tw);else run.scale=MIN;
+  })(t0);
+}
+mainBtn.onclick=function(){
+  if(!run.on)start();
+  else if(!run.paused)pause();
+  else resume();
+};
+stopBtn.onclick=stop;
+
+/* ===================== 记录与统计 ===================== */
+var RECS_KEY="breath_records",TOTAL_KEY="breath_total_min";
+function loadRecs(){try{return JSON.parse(localStorage.getItem(RECS_KEY)||"[]");}catch(e){return[];}}
+function saveRecord(mins){
+  var recs=loadRecs();
+  recs.unshift({ts:Date.now(),mode:findMode(st.mode).name,mins:mins});
+  if(recs.length>60)recs=recs.slice(0,60);
+  localStorage.setItem(RECS_KEY,JSON.stringify(recs));
+  var total=parseInt(localStorage.getItem(TOTAL_KEY)||"0")+mins;
+  localStorage.setItem(TOTAL_KEY,String(total));
+}
+function calcStreak(recs){
+  var days={};
+  for(var i=0;i<recs.length;i++)days[new Date(recs[i].ts).toDateString()]=1;
+  var d=new Date(),n=0;
+  if(!days[d.toDateString()])d.setDate(d.getDate()-1);
+  while(days[d.toDateString()]){n++;d.setDate(d.getDate()-1);}
+  return n;
+}
+function renderStats(){
+  var recs=loadRecs();
+  var today=new Date().toDateString(),tc=0;
+  for(var i=0;i<recs.length;i++){if(new Date(recs[i].ts).toDateString()===today)tc++;}
+  $("stToday").textContent=tc;
+  $("stTotal").textContent=localStorage.getItem(TOTAL_KEY)||"0";
+  $("stStreak").textContent=calcStreak(recs);
+}
+function pad(n){return(n<10?"0":"")+n;}
+function renderHistory(){
+  var recs=loadRecs(),ul=$("histList");
+  ul.innerHTML="";
+  var n=$("histBox").classList.contains("open")?10:5;
+  if(recs.length===0){$("histEmpty").classList.add("show");return;}
+  $("histEmpty").classList.remove("show");
+  for(var i=0;i<recs.length&&i<n;i++){
+    var r=recs[i],d=new Date(r.ts);
+    var li=document.createElement("li");
+    li.className="hist-item";
+    li.innerHTML='<span>'+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes())+' · '+r.mode+'</span><span class="hm">'+r.mins+' 分钟</span>';
+    ul.appendChild(li);
+  }
+}
+$("histHead").onclick=function(){$("histBox").classList.toggle("open");renderHistory();};
+
+/* ===================== 模式渲染 ===================== */
+function applyModeColor(){
+  var m=findMode(st.mode);
+  document.documentElement.style.setProperty("--accent",m.accent);
+  document.documentElement.style.setProperty("--glow",m.glow);
+  document.documentElement.style.setProperty("--chip-soft",hexSoft(m.accent));
+}
+function hexSoft(hex){
+  var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return "rgba("+r+","+g+","+b+",.10)";
+}
+function renderModes(){
+  var box=$("modeList");
+  box.innerHTML="";
+  for(var i=0;i<MODES.length;i++){
+    (function(m){
+      var card=document.createElement("button");
+      card.className="mode"+(st.mode===m.key?" sel":"");
+      var info=document.createElement("div");
+      info.className="mode-info";
+      var nm=document.createElement("div");
+      nm.className="mode-name";
+      nm.textContent=m.name;
+      var sub=document.createElement("div");
+      sub.className="mode-sub";
+      sub.textContent=m.sub;
+      info.appendChild(nm);info.appendChild(sub);
+      card.appendChild(info);
+      var ib=document.createElement("span");
+      ib.className="mode-i";
+      ib.textContent="i";
+      ib.title="了解 "+m.name;
+      ib.onclick=function(ev){ev.stopPropagation();openInfo(m);};
+      card.appendChild(ib);
+      card.onclick=function(){
+        if(run.on){toast("请先结束当前练习");return;}
+        st.mode=m.key;saveSettings();applyModeColor();renderModes();
+        if(m.key==="cus")$("cpanel").classList.add("show");
+        else $("cpanel").classList.remove("show");
+      };
+      box.appendChild(card);
+    })(MODES[i]);
+  }
+}
+function openInfo(m){
+  $("infoTitle").textContent=m.name+" · 详细介绍";
+  $("infoBody").innerHTML=
+    '<span class="ib">是什么</span>'+m.info.what+
+    '<span class="ib">原理</span>'+m.info.why+
+    '<span class="ib">适用场景</span>'+m.info.use;
+  $("infoMask").classList.add("show");
+}
+function closeInfo(){$("infoMask").classList.remove("show");}
+$("infoClose").onclick=closeInfo;
+$("infoMask").onclick=function(ev){if(ev.target===this)closeInfo();};
+document.addEventListener("keydown",function(e){if(e.key==="Escape")closeInfo();});
+
+/* ===================== 自定义滑块 ===================== */
+function bindCus(id,key,vid){
+  var el=$(id);
+  el.value=st.custom[key];
+  $(vid).textContent=st.custom[key]+"s";
+  el.oninput=function(){
+    st.custom[key]=parseInt(this.value);
+    $(vid).textContent=this.value+"s";
+    saveSettings();
+  };
+}
+bindCus("cIn","i","cInV");
+bindCus("cH1","h1","cH1V");
+bindCus("cEx","e","cExV");
+bindCus("cH2","h2","cH2V");
+
+/* ===================== 时长 / 开关 ===================== */
+var chips=$("durChips").querySelectorAll(".chip");
+for(var c=0;c<chips.length;c++){
+  (function(ch){
+    if(parseInt(ch.dataset.dur)===st.dur){
+      for(var j=0;j<chips.length;j++)chips[j].classList.remove("sel");
+      ch.classList.add("sel");
+    }
+    ch.onclick=function(){
+      for(var j=0;j<chips.length;j++)chips[j].classList.remove("sel");
+      ch.classList.add("sel");
+      st.dur=parseInt(ch.dataset.dur);
+      saveSettings();
+
+    };
+  })(chips[c]);
+}
+function bindTg(id,key){
+  var el=$(id);
+  el.classList.toggle("on",st[key]);
+  el.onclick=function(){
+    st[key]=!st[key];
+    el.classList.toggle("on",st[key]);
+    saveSettings();
+    if(key==="sound"&&st.sound)tone(659,.1);
+  };
+}
+bindTg("tgSound","sound");
+bindTg("tgVib","vib");
+
+/* ===================== toast ===================== */
+var toastTimer=null;
+function toast(msg){
+  var t=$("toast");
+  t.textContent=msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){t.classList.remove("show");},2200);
+}
+
+/* ===================== 启动 ===================== */
+if(st.mode==="cus")$("cpanel").classList.add("show");
+applyModeColor();
+renderModes();
+renderStats();
+renderHistory();
+
+
+})();
+</script>
+</body>
+</html>

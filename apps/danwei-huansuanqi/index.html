@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>单位换算器</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📐</text></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f1923;--card:#1a2c3e;--card2:#21384e;--border:#2a4360;--txt:#e6f0fa;--txt2:#8aa4c0;--accent:#4dd0e1;--accent2:#26a69a;--hi:#2a4a66}
+html,body{height:100%}
+body{background:linear-gradient(160deg,var(--bg) 0%,#0a1420 100%);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;min-height:100vh;padding:16px;line-height:1.5}
+.wrap{max-width:760px;margin:0 auto}
+h1{font-size:24px;font-weight:600;text-align:center;margin-bottom:16px}
+h1 .ic{color:var(--accent)}
+.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;justify-content:center}
+.tab{cursor:pointer;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:7px 16px;font-size:14px;color:var(--txt2);transition:.2s;user-select:none}
+.tab:hover{color:var(--txt);border-color:var(--accent)}
+.tab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#062028;border-color:transparent;font-weight:600}
+.input-area{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;box-shadow:0 4px 18px rgba(0,0,0,.25)}
+.input-area input[type=number]{flex:1 1 180px;min-width:140px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--txt);font-size:18px;transition:.2s}
+.input-area input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(77,208,225,.18)}
+.input-area select{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:11px 12px;color:var(--txt);font-size:15px;cursor:pointer;min-width:120px}
+.input-area select:focus{outline:none;border-color:var(--accent)}
+.prec{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--txt2)}
+.prec select{padding:6px 8px}
+.results{display:flex;flex-direction:column;gap:8px}
+.row{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:.18s}
+.row:hover{background:var(--card2);border-color:var(--accent);transform:translateX(3px)}
+.row:active{transform:translateX(0) scale(.99)}
+.row .u{color:var(--txt2);font-size:13px;min-width:90px}
+.row .v{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right;word-break:break-all}
+.row.cur{background:var(--hi);border-color:var(--accent)}
+.row.cur .v{color:var(--accent)}
+.hint{text-align:center;color:var(--txt2);font-size:13px;margin-top:14px}
+@media(max-width:520px){h1{font-size:20px}.input-area input[type=number]{font-size:16px}.row .v{font-size:15px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1><span class="ic">📐</span> 单位换算器</h1>
+<div class="tabs" id="tabs"></div>
+<div class="input-area">
+<input type="number" id="valInput" value="1" step="any">
+<select id="unitSelect"></select>
+<div class="prec">小数位<select id="precSelect"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select></div>
+</div>
+<div class="results" id="results"></div>
+<div class="hint">点击任意结果行可将其设为输入值</div>
+</div>
+<script>
+(function(){
+"use strict";
+var CAT_KEY="convert_last_category";
+var tabsEl=document.getElementById("tabs");
+var valInput=document.getElementById("valInput");
+var unitSelect=document.getElementById("unitSelect");
+var precSelect=document.getElementById("precSelect");
+var resultsEl=document.getElementById("results");
+
+var cats={
+  "长度":{base:"米",units:{
+    "千米":1000,"米":1,"分米":0.1,"厘米":0.01,"毫米":0.001,"微米":0.000001,
+    "英里":1609.344,"码":0.9144,"英尺":0.3048,"英寸":0.0254,"海里":1852
+  }},
+  "重量":{base:"千克",units:{
+    "吨":1000,"千克":1,"克":0.001,"毫克":0.000001,
+    "磅":0.45359237,"盎司":0.028349523125,"斤":0.5,"两":0.05
+  }},
+  "温度":{base:"摄氏度",units:{"摄氏度":0,"华氏度":1,"开尔文":2},temp:true},
+  "面积":{base:"平方米",units:{
+    "平方千米":1000000,"平方米":1,"平方分米":0.01,"平方厘米":0.0001,
+    "公顷":10000,"亩":666.6666666667,"英亩":4046.8564224,"平方英尺":0.09290304
+  }},
+  "体积":{base:"立方米",units:{
+    "立方米":1,"升":0.001,"毫升":0.000001,"立方厘米":0.000001,
+    "加仑(美)":0.003785411784,"品脱(美)":0.000473176473,"立方英尺":0.028316846592
+  }},
+  "速度":{base:"m/s",units:{
+    "m/s":1,"km/h":0.2777777778,"英里每小时":0.44704,"节":0.5144444444,"马赫":343
+  }},
+  "时间":{base:"秒",units:{
+    "年":31557600,"天":86400,"小时":3600,"分钟":60,"秒":1,"毫秒":0.001
+  }},
+  "数据存储":{base:"字节",units:{
+    "比特":0.125,"字节":1,"KB":1024,"MB":1048576,"GB":1073741824,"TB":1099511627776,"PB":1125899906842624
+  }}
+};
+
+var curCat=localStorage.getItem(CAT_KEY)||"长度";
+if(!cats[curCat])curCat="长度";
+
+function toBase(val,unit,cat){
+  if(cat.temp){
+    if(unit==="摄氏度")return val;
+    if(unit==="华氏度")return (val-32)*5/9;
+    if(unit==="开尔文")return val-273.15;
+  }
+  return val*cat.units[unit];
+}
+function fromBase(base,unit,cat){
+  if(cat.temp){
+    if(unit==="摄氏度")return base;
+    if(unit==="华氏度")return base*9/5+32;
+    if(unit==="开尔文")return base+273.15;
+  }
+  return base/cat.units[unit];
+}
+
+function buildTabs(){
+  var ks=Object.keys(cats),html="";
+  for(var i=0;i<ks.length;i++){
+    html+='<div class="tab'+(ks[i]===curCat?" active":"")+'" data-c="'+ks[i]+'">'+ks[i]+'</div>';
+  }
+  tabsEl.innerHTML=html;
+  var ts=tabsEl.querySelectorAll(".tab");
+  for(var j=0;j<ts.length;j++){
+    ts[j].onclick=function(){
+      curCat=this.getAttribute("data-c");
+      localStorage.setItem(CAT_KEY,curCat);
+      buildTabs();buildUnits();compute();
+    };
+  }
+}
+function buildUnits(){
+  var cat=cats[curCat],ks=Object.keys(cat.units),html="";
+  for(var i=0;i<ks.length;i++)html+='<option>'+ks[i]+'</option>';
+  unitSelect.innerHTML=html;
+}
+function fmt(n,prec){
+  if(!isFinite(n))return "—";
+  if(n===0)return "0";
+  var abs=Math.abs(n);
+  if(abs>=1e15||abs<1e-6&&abs>0)return n.toExponential(prec);
+  return Number(n.toFixed(prec)).toString();
+}
+function compute(){
+  var cat=cats[curCat];
+  var val=parseFloat(valInput.value);
+  if(isNaN(val))val=0;
+  var unit=unitSelect.value;
+  var prec=parseInt(precSelect.value,10);
+  var base=toBase(val,unit,cat);
+  var ks=Object.keys(cat.units),html="";
+  for(var i=0;i<ks.length;i++){
+    var u=ks[i];
+    var r=fromBase(base,u,cat);
+    var cls="row"+(u===unit?" cur":"");
+    html+='<div class="'+cls+'" data-v="'+r+'" data-u="'+u+'"><span class="u">'+u+'</span><span class="v">'+fmt(r,prec)+'</span></div>';
+  }
+  resultsEl.innerHTML=html;
+  var rs=resultsEl.querySelectorAll(".row");
+  for(var j=0;j<rs.length;j++){
+    rs[j].onclick=function(){
+      valInput.value=this.getAttribute("data-v");
+      unitSelect.value=this.getAttribute("data-u");
+      compute();
+    };
+  }
+}
+
+buildTabs();buildUnits();compute();
+valInput.addEventListener("input",compute);
+unitSelect.addEventListener("change",compute);
+precSelect.addEventListener("change",compute);
+})();
+</script>
+</body>
+</html>

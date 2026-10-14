@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>密码生成器</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235b8def'/%3E%3Crect x='16' y='28' width='32' height='24' rx='6' fill='%23fff'/%3E%3Cpath d='M22 28v-6a10 10 0 0 1 20 0v6' fill='none' stroke='%23fff' stroke-width='5'/%3E%3Ccircle cx='32' cy='40' r='4' fill='%235b8def'/%3E%3C/svg%3E">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --accent:#5b8def;--accent2:#3b6fd4;--glow:rgba(91,141,239,.35);
+  --txt:#26343c;--txt2:#5f727c;--txt3:#94a5ae;
+  --border:rgba(110,140,145,.18);
+  --card:rgba(255,255,255,.82);
+  --soft:rgba(91,141,239,.10);
+  --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,"Courier New",monospace;
+}
+html{min-height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--txt);
+  background:linear-gradient(168deg,#f4f8fc 0%,#eef2f9 48%,#f1f0fb 100%);
+  background-attachment:fixed;
+  min-height:100vh;display:flex;justify-content:center;padding:24px 16px 46px;
+}
+.app{width:100%;max-width:620px;display:flex;flex-direction:column;gap:14px;animation:pagein .55s ease both}
+@keyframes pagein{from{opacity:0;translate:0 12px}to{opacity:1;translate:0 0}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;backdrop-filter:blur(10px)}
+
+/* ===== 头部 ===== */
+.head{display:flex;flex-direction:column;gap:12px}
+.title{display:flex;align-items:center;gap:12px}
+.logo{width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#7ba3f5,#4a7ee0);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px var(--glow);flex-shrink:0}
+h1{font-size:21px;font-weight:700;letter-spacing:2px}
+.title p{font-size:12px;color:var(--txt3);margin-top:2px}
+.intro{font-size:13px;color:var(--txt2);line-height:1.8;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:11px 15px;backdrop-filter:blur(10px)}
+.intro b{color:var(--accent)}
+
+/* ===== 密码展示 ===== */
+.display{display:flex;flex-direction:column;gap:14px}
+.pwd-row{display:flex;align-items:stretch;gap:10px}
+.pwd{
+  flex:1;min-width:0;font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:.5px;
+  word-break:break-all;padding:14px 16px;background:rgba(246,249,253,.85);border:1.5px solid var(--border);
+  border-radius:12px;color:var(--txt);line-height:1.45;min-height:58px;display:flex;align-items:center;
+  transition:border-color .25s,box-shadow .25s;
+}
+.pwd.flash{animation:flash .4s ease}
+@keyframes flash{0%{opacity:.35;translate:0 -3px}100%{opacity:1;translate:0 0}}
+.pwd.empty{color:var(--txt3);font-size:14px;font-weight:400;font-family:inherit}
+.icon-btn{width:56px;border:1.5px solid var(--border);background:transparent;border-radius:12px;color:var(--txt2);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:all .2s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--soft)}
+.icon-btn:active{transform:scale(.96)}
+.icon-btn svg{width:18px;height:18px}
+.strength{display:flex;align-items:center;gap:12px}
+.s-bar{flex:1;height:9px;border-radius:999px;background:rgba(140,160,175,.18);overflow:hidden}
+.s-fill{height:100%;width:0;border-radius:999px;transition:width .5s cubic-bezier(.4,1,.5,1),background .5s}
+.s-label{font-size:13px;font-weight:700;min-width:44px;text-align:right;transition:color .4s}
+.s-bits{font-size:11px;color:var(--txt3);min-width:70px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ===== 选项 ===== */
+.opts{display:flex;flex-direction:column;gap:14px}
+.row{display:flex;align-items:center;gap:12px}
+.row .rlabel{font-size:13px;color:var(--txt2);min-width:64px}
+.len-slider{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:999px;background:rgba(140,160,175,.2);outline:none}
+.len-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 2px 8px var(--glow);transition:transform .2s}
+.len-slider::-webkit-slider-thumb:hover{transform:scale(1.18)}
+.len-slider::-moz-range-thumb{width:20px;height:20px;border:none;border-radius:50%;background:var(--accent);cursor:pointer}
+.len-val{font-size:19px;font-weight:700;color:var(--accent);min-width:42px;text-align:center;font-variant-numeric:tabular-nums}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chk{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13.5px;user-select:none;padding:9px 12px;background:rgba(246,249,253,.7);border:1.5px solid var(--border);border-radius:11px;transition:all .2s}
+.chk:hover{border-color:rgba(91,141,239,.5)}
+.chk input{accent-color:var(--accent);width:16px;height:16px;cursor:pointer}
+.chk.on{border-color:var(--accent);background:var(--soft)}
+.chk.on span{color:var(--accent);font-weight:600}
+.chk span{color:var(--txt2);transition:color .2s}
+.custom-row{display:flex;align-items:center;gap:12px}
+.custom-input{flex:1;padding:10px 12px;font-size:13.5px;font-family:var(--mono);background:rgba(246,249,253,.7);border:1.5px solid var(--border);border-radius:11px;color:var(--txt);transition:all .2s;min-width:0}
+.custom-input:focus{outline:none;border-color:var(--accent);background:#fff}
+.custom-input::placeholder{color:var(--txt3);font-family:inherit}
+.act-row{display:flex;gap:10px}
+.btn{cursor:pointer;border:none;border-radius:12px;padding:13px 18px;font-size:14px;font-weight:700;font-family:inherit;transition:transform .2s ease,filter .2s,box-shadow .2s;letter-spacing:1px}
+.btn-primary{flex:1;background:linear-gradient(135deg,#7ba3f5,#4a7ee0);color:#fff;box-shadow:0 8px 22px var(--glow)}
+.btn-primary:hover{transform:translateY(-2px);filter:brightness(1.05)}
+.btn-primary:active{transform:translateY(1px)}
+.btn-ghost{background:transparent;color:var(--txt2);border:1.5px solid var(--border)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-ghost:active{transform:scale(.97)}
+
+/* ===== 批量 ===== */
+.batch{display:none;flex-direction:column;gap:8px}
+.batch.show{display:flex;animation:pfade .35s ease}
+@keyframes pfade{from{opacity:0;translate:0 6px}to{opacity:1;translate:0 0}}
+.batch-title{font-size:12px;color:var(--txt3);letter-spacing:1px}
+.batch-list{display:flex;flex-direction:column;gap:7px}
+.batch-item{font-family:var(--mono);font-size:14px;padding:10px 13px;background:rgba(246,249,253,.7);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all .18s;word-break:break-all}
+.batch-item:hover{border-color:var(--accent);color:var(--accent);background:var(--soft)}
+
+/* ===== 历史 ===== */
+.hist-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.hist-head h3{font-size:14px;font-weight:600;color:var(--txt2);letter-spacing:1px}
+.hist-actions{display:flex;align-items:center;gap:10px}
+.clear-btn{font-size:11px;color:var(--txt3);background:transparent;border:none;cursor:pointer;font-family:inherit;padding:2px 6px;border-radius:6px;transition:all .2s}
+.clear-btn:hover{color:#e06550;background:rgba(224,101,80,.1)}
+.hist-arrow{font-size:11px;color:var(--txt3);transition:transform .3s ease}
+.hist.open .hist-arrow{transform:rotate(180deg)}
+.hist-list{list-style:none;margin-top:10px;display:none;flex-direction:column;gap:7px}
+.hist.open .hist-list{display:flex}
+.hist-item{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--mono);font-size:13px;padding:9px 12px;background:rgba(246,249,253,.7);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all .18s;word-break:break-all}
+.hist-item:hover{border-color:var(--accent)}
+.hist-item .h-time{font-family:inherit;font-size:10.5px;color:var(--txt3);flex-shrink:0}
+.hist-empty{font-size:12px;color:var(--txt3);text-align:center;padding:8px 0 0;display:none}
+.hist-empty.show{display:block}
+
+/* ===== toast ===== */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(8px);background:rgba(38,52,60,.92);color:#fff;padding:10px 22px;border-radius:999px;font-size:13px;letter-spacing:1px;opacity:0;transition:opacity .35s ease,transform .35s ease;z-index:99;pointer-events:none;box-shadow:0 8px 24px rgba(30,60,55,.3)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:420px){
+  .pwd{font-size:18px}
+  .checks{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="head">
+    <div class="title">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" width="24" height="24"><rect x="5" y="10.5" width="14" height="9.5" rx="2.4" fill="#fff"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" fill="none" stroke="#fff" stroke-width="2"/><circle cx="12" cy="15" r="1.7" fill="#4a7ee0"/></svg>
+      </div>
+      <div>
+        <h1>密码生成器</h1>
+        <p>本地生成，随机更强</p>
+      </div>
+    </div>
+    <div class="intro">基于浏览器加密随机数（Crypto）生成高强度密码，全程本地运行、不上传任何数据。可自定义长度与字符类型，实时查看 <b>强度与信息熵</b>，支持批量生成与历史复用。</div>
+  </header>
+
+  <div class="card display">
+    <div class="pwd-row">
+      <div class="pwd empty" id="pwdDisplay">点击「生成密码」开始</div>
+      <button class="icon-btn" id="copyBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        复制
+      </button>
+    </div>
+    <div class="strength">
+      <div class="s-bar"><div class="s-fill" id="sFill"></div></div>
+      <div class="s-label" id="sLabel">—</div>
+      <div class="s-bits" id="sBits"></div>
+    </div>
+  </div>
+
+  <div class="card opts">
+    <div class="row">
+      <span class="rlabel">密码长度</span>
+      <input type="range" class="len-slider" id="lenSlider" min="4" max="64" value="16">
+      <span class="len-val" id="lenVal">16</span>
+    </div>
+    <div class="checks" id="checks">
+      <label class="chk" id="chk-upper"><input type="checkbox" checked> <span>大写 A-Z</span></label>
+      <label class="chk" id="chk-lower"><input type="checkbox" checked> <span>小写 a-z</span></label>
+      <label class="chk" id="chk-digit"><input type="checkbox" checked> <span>数字 0-9</span></label>
+      <label class="chk" id="chk-special"><input type="checkbox"> <span>特殊字符</span></label>
+      <label class="chk" id="chk-exclude"><input type="checkbox"> <span>排除易混字符</span></label>
+    </div>
+    <div class="custom-row">
+      <span class="rlabel">自定义片段</span>
+      <input type="text" class="custom-input" id="customInput" maxlength="32" placeholder="可选，嵌入密码中间，如 0702">
+    </div>
+    <div class="act-row">
+      <button class="btn btn-primary" id="genBtn">生成密码</button>
+      <button class="btn btn-ghost" id="batchBtn">批量生成 5 个</button>
+    </div>
+  </div>
+
+  <div class="card batch" id="batchArea">
+    <div class="batch-title">批量结果 · 点击即可选用</div>
+    <div class="batch-list" id="batchList"></div>
+  </div>
+
+  <div class="card hist open" id="histBox">
+    <div class="hist-head" id="histHead">
+      <h3>历史记录</h3>
+      <div class="hist-actions">
+        <button class="clear-btn" id="clearHist">清空</button>
+        <span class="hist-arrow">▼</span>
+      </div>
+    </div>
+    <ul class="hist-list" id="histList"></ul>
+    <div class="hist-empty" id="histEmpty">暂无历史记录</div>
+  </div>
+
+</div>
+<div class="toast" id="toast">已复制</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id)};
+var OPT_KEY="password_options",HIST_KEY="password_history";
+var UPPER="ABCDEFGHIJKLMNOPQRSTUVWXYZ",LOWER="abcdefghijklmnopqrstuvwxyz",DIGIT="0123456789";
+var SPECIAL="!@#$%^&*()_+-=[]{}|;:,.<>?/~",CONFUSABLE="0Oo1lIL";
+
+var els={upper:$("chk-upper"),lower:$("chk-lower"),digit:$("chk-digit"),special:$("chk-special"),exclude:$("chk-exclude")};
+
+function getOpts(){
+  return{
+    len:parseInt($("lenSlider").value,10),
+    custom:$("customInput").value,
+    upper:els.upper.querySelector("input").checked,
+    lower:els.lower.querySelector("input").checked,
+    digit:els.digit.querySelector("input").checked,
+    special:els.special.querySelector("input").checked,
+    exclude:els.exclude.querySelector("input").checked
+  };
+}
+function saveOpts(){localStorage.setItem(OPT_KEY,JSON.stringify(getOpts()));}
+function loadOpts(){
+  try{
+    var o=JSON.parse(localStorage.getItem(OPT_KEY)||"null");
+    if(!o)return;
+    $("lenSlider").value=o.len;$("lenVal").textContent=o.len;
+    els.upper.querySelector("input").checked=!!o.upper;
+    els.lower.querySelector("input").checked=!!o.lower;
+    els.digit.querySelector("input").checked=!!o.digit;
+    els.special.querySelector("input").checked=!!o.special;
+    els.exclude.querySelector("input").checked=!!o.exclude;
+    $("customInput").value=o.custom||"";
+  }catch(e){}
+}
+function syncChkStyle(){
+  Object.keys(els).forEach(function(k){
+    els[k].classList.toggle("on",els[k].querySelector("input").checked);
+  });
+}
+function buildPool(o){
+  var pool="";
+  if(o.upper)pool+=UPPER;
+  if(o.lower)pool+=LOWER;
+  if(o.digit)pool+=DIGIT;
+  if(o.special)pool+=SPECIAL;
+  if(o.exclude){
+    var p2="";
+    for(var i=0;i<pool.length;i++){if(CONFUSABLE.indexOf(pool[i])<0)p2+=pool[i];}
+    pool=p2;
+  }
+  return pool;
+}
+function randInt(n){
+  var arr=new Uint32Array(1);
+  (window.crypto||window.msCrypto).getRandomValues(arr);
+  return arr[0]%n;
+}
+function genPwd(o){
+  var pool=buildPool(o);
+  if(!pool)return null;
+  var custom=o.custom||"";
+  var randomLen=o.len-custom.length;
+  if(randomLen<1)return null;
+  var rand="";
+  for(var i=0;i<randomLen;i++)rand+=pool.charAt(randInt(pool.length));
+  if(!custom)return rand;
+  var insertPos=Math.floor(Math.random()*(randomLen+1));
+  return rand.slice(0,insertPos)+custom+rand.slice(insertPos);
+}
+function strength(pwd,o){
+  if(!pwd)return{label:"—",color:"#94a5ae",pct:0,bits:0,customLen:0};
+  var pool=buildPool(o),size=pool.length||1;
+  var customLen=(o.custom||"").length;
+  var effLen=Math.max(0,pwd.length-customLen); /* 自定义片段固定已知，不计入熵 */
+  var bits=effLen*Math.log(size)/Math.LN2;
+  var label,color,pct;
+  if(bits<40){label="弱";color="#e06550";pct=25;}
+  else if(bits<60){label="中";color="#e09a50";pct=50;}
+  else if(bits<80){label="强";color="#58b57a";pct=75;}
+  else{label="极强";color="#3b6fd4";pct=100;}
+  return{label:label,color:color,pct:pct,bits:Math.round(bits),customLen:customLen};
+}
+function showStrength(pwd,o){
+  var s=strength(pwd,o);
+  $("sFill").style.width=s.pct+"%";
+  $("sFill").style.background=s.color;
+  var lb=$("sLabel");lb.textContent=s.label;lb.style.color=s.color;
+  $("sBits").textContent=pwd?("≈ "+s.bits+" bit"+(s.customLen>0?" · 含自定义"+s.customLen+"位":"")):"";
+}
+function setPwd(p){
+  var el=$("pwdDisplay");
+  if(p){el.textContent=p;el.classList.remove("empty");}
+  else{el.textContent="点击「生成密码」开始";el.classList.add("empty");}
+  el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash");
+}
+function pad(n){return(n<10?"0":"")+n;}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});}
+function loadHist(){try{return JSON.parse(localStorage.getItem(HIST_KEY)||"[]");}catch(e){return[];}}
+function saveHist(arr){localStorage.setItem(HIST_KEY,JSON.stringify(arr));}
+function addHist(p){
+  if(!p)return;
+  var arr=loadHist(),now=new Date();
+  var t=now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate())+" "+pad(now.getHours())+":"+pad(now.getMinutes());
+  arr=arr.filter(function(r){return r.pwd!==p;});
+  arr.unshift({pwd:p,time:t});
+  if(arr.length>20)arr=arr.slice(0,20);
+  saveHist(arr);renderHist();
+}
+function renderHist(){
+  var arr=loadHist(),ul=$("histList");
+  ul.innerHTML="";
+  if(arr.length===0){$("histEmpty").classList.add("show");return;}
+  $("histEmpty").classList.remove("show");
+  arr.forEach(function(r){
+    var li=document.createElement("li");
+    li.className="hist-item";
+    li.innerHTML='<span>'+esc(r.pwd)+'</span><span class="h-time">'+r.time+'</span>';
+    li.onclick=function(){setPwd(r.pwd);showStrength(r.pwd,getOpts());};
+    ul.appendChild(li);
+  });
+}
+var toastTimer=null;
+function toastShow(msg){
+  var t=$("toast");t.textContent=msg;t.classList.add("show");
+  clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove("show");},1600);
+}
+function doGen(){
+  var o=getOpts();
+  if(!o.upper&&!o.lower&&!o.digit&&!o.special){toastShow("请至少选择一种字符类型");return;}
+  if(!buildPool(o)){toastShow("排除后无可用字符");return;}
+  var cl=(o.custom||"").length;
+  if(cl>0&&cl>=o.len){toastShow("自定义片段长度需小于密码长度");return;}
+  $("batchArea").classList.remove("show");
+  var p=genPwd(o);
+  if(!p){toastShow("生成失败");return;}
+  setPwd(p);showStrength(p,o);addHist(p);saveOpts();syncChkStyle();
+}
+function doBatch(){
+  var o=getOpts();
+  if(!o.upper&&!o.lower&&!o.digit&&!o.special){toastShow("请至少选择一种字符类型");return;}
+  if(!buildPool(o)){toastShow("排除后无可用字符");return;}
+  var cl=(o.custom||"").length;
+  if(cl>0&&cl>=o.len){toastShow("自定义片段长度需小于密码长度");return;}
+  var list=[];
+  for(var i=0;i<5;i++){var p=genPwd(o);if(p)list.push(p);}
+  if(!list.length){toastShow("生成失败");return;}
+  var box=$("batchList");box.innerHTML="";
+  list.forEach(function(p){
+    var d=document.createElement("div");
+    d.className="batch-item";d.textContent=p;
+    d.onclick=function(){setPwd(p);showStrength(p,o);addHist(p);};
+    box.appendChild(d);
+  });
+  $("batchArea").classList.add("show");
+  saveOpts();syncChkStyle();
+}
+function doCopy(){
+  var p=$("pwdDisplay").textContent;
+  if(!p||$("pwdDisplay").classList.contains("empty")){toastShow("无密码可复制");return;}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(p).then(function(){toastShow("已复制到剪贴板");}).catch(function(){fallbackCopy(p);});
+  }else fallbackCopy(p);
+}
+function fallbackCopy(p){
+  var ta=document.createElement("textarea");
+  ta.value=p;ta.style.position="fixed";ta.style.opacity="0";
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand("copy");toastShow("已复制到剪贴板");}catch(e){toastShow("复制失败");}
+  document.body.removeChild(ta);
+}
+
+$("lenSlider").addEventListener("input",function(){$("lenVal").textContent=this.value;});
+$("customInput").addEventListener("input",saveOpts);
+Object.keys(els).forEach(function(k){
+  els[k].querySelector("input").addEventListener("change",function(){syncChkStyle();saveOpts();});
+});
+$("genBtn").onclick=doGen;
+$("batchBtn").onclick=doBatch;
+$("copyBtn").onclick=doCopy;
+$("histHead").onclick=function(e){
+  if(e.target.id==="clearHist")return;
+  $("histBox").classList.toggle("open");
+};
+$("clearHist").onclick=function(){
+  saveHist([]);renderHist();toastShow("历史已清空");
+};
+
+loadOpts();
+syncChkStyle();
+renderHist();
+})();
+</script>
+</body>
+</html>
