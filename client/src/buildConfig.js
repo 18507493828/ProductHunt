@@ -77,13 +77,13 @@ export const BUILD_TOOLS = [
     id: "madao",
     name: "华为码道",
     emoji: "🔥",
-    desc: "华为云开发者工具 · 本期活动赞助",
+    desc: "华为云开发者工具",
     downloadUrl:
       "https://devcloud.cn-north-4.huaweicloud.com/chat/home?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
     inviteCode: "CSDN-MD-004",
     deployId: "huawei",
-    sponsored: true,
-    incentive: 9.9,
+    sponsored: false,
+    incentive: 0,
   },
   {
     id: "workbuddy",

@@ -1316,6 +1316,8 @@ async function resolveBuildToolFields(body = {}) {
 }
 
 async function maybeCreateMaodaoGrant(product, actorUsername = "") {
+  // 华为码道 ¥9.9 活动激励已下线（2026-10），不再自动创建激励入账；重新上线时删除下一行即可
+  return null;
   const buildConfig = await readBuildConfig();
   const tools = buildConfig.tools || [];
   if (!isMaodaoProduct(product, tools)) return null;

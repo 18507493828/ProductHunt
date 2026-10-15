@@ -28,7 +28,7 @@ const emptyForm = {
   pool: 50000,
   paid: 0,
   heroCopy:
-    "本期激励：冲周榜最高可得 ¥{weekTop1}，月榜 ¥{monthTop1}，季榜 ¥{quarterTop1}；选用华为码道构建并成功发布，还可再领 ¥{maodao} 活动激励。",
+    "本期激励：冲周榜最高可得 ¥{weekTop1}，月榜 ¥{monthTop1}，季榜 ¥{quarterTop1}。",
 };
 
 const PERIODS = [

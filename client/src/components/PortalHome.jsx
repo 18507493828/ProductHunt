@@ -91,7 +91,7 @@ export default function PortalHome({
     const month = Number(incentive?.monthTop1) || 300;
     const quarter = Number(incentive?.quarterTop1) || 1000;
     const maodao = Number(incentive?.maodao) || 9.9;
-    const fallback = `本期激励：冲周榜最高可得 ¥${week}，月榜 ¥${month}，季榜 ¥${quarter}；选用华为码道构建并成功发布，还可再领 ¥${maodao} 活动激励。`;
+    const fallback = `本期激励：冲周榜最高可得 ¥${week}，月榜 ¥${month}，季榜 ¥${quarter}。`;
     const tpl = String(incentive?.heroCopy || "").trim();
     if (!tpl) return fallback;
     const vals = {

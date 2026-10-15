@@ -79,10 +79,6 @@ export default function MyWorkspace({
     const votes = list.reduce((s, p) => s + (Number(p.voteCount) || 0), 0);
     const shares = list.reduce((s, p) => s + (Number(p.shareCount) || 0), 0);
     const heat = list.reduce((s, p) => s + heatScore(p), 0);
-    const incentive = drafts.reduce(
-      (s, d) => s + (d.sponsored ? Number(d.incentive) || 0 : 0),
-      0,
-    );
 
     const ranked = [...list]
       .map((p) => ({
@@ -116,7 +112,6 @@ export default function MyWorkspace({
       votes,
       shares,
       heat,
-      incentive,
       ranked,
       maxHeat,
       platforms,
@@ -349,7 +344,6 @@ export default function MyWorkspace({
                     <p className="ph-my-draft-meta">
                       {d.toolName}
                       {d.deployName ? ` · 部署 ${d.deployName}` : ""}
-                      {d.sponsored ? " · 赞助激励" : ""}
                     </p>
                     {d.taskBrief ? (
                       <p className="ph-my-draft-brief">{d.taskBrief}</p>

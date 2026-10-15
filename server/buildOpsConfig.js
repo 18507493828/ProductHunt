@@ -77,14 +77,14 @@ export const DEFAULT_BUILD_TOOLS = [
     id: "madao",
     name: "华为码道",
     emoji: "🔥",
-    desc: "华为云开发者工具 · 本期活动赞助",
+    desc: "华为云开发者工具",
     downloadUrl:
       "https://devcloud.cn-north-4.huaweicloud.com/chat/home?source=dmzntgwltcsdn1&sourcead=dmzntgwltcsdncpd1",
     inviteCode: "CSDN-MD-004",
     deployId: "huawei",
     recommended: false,
-    sponsored: true,
-    incentive: 9.9,
+    sponsored: false,
+    incentive: 0,
     enabled: true,
     sort: 1,
   },
@@ -444,7 +444,18 @@ export function publicBuildConfig(config) {
             .map((t) => [t.name, t.createdBy]),
         ),
       })),
-    tools: normalized.tools.filter((t) => t.enabled),
+    tools: normalized.tools
+      .filter((t) => t.enabled)
+      .map((t) => ({
+        ...t,
+        // 活动激励已下线：前台一律不展示赞助激励，历史库配置也不带回
+        sponsored: false,
+        incentive: 0,
+        desc: String(t.desc || "")
+          .replace(/官方赞助|活动赞助|本期活动赞助/g, "")
+          .replace(/\s*[·•]\s*$/, "")
+          .trim(),
+      })),
     deploys: normalized.deploys.filter((d) => d.enabled),
   };
 }
