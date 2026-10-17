@@ -1429,6 +1429,18 @@ a.ph-logo {
   transition: opacity 0.25s ease;
 }
 
+/* 有封面图时完整展示，不按固定比例裁切 */
+.ph-campaign-detail-hero-cover.has-img {
+  aspect-ratio: auto;
+  min-height: 180px;
+}
+.ph-campaign-detail-hero-cover.has-img .ph-campaign-detail-hero-img {
+  height: auto;
+  max-height: 560px;
+  object-fit: contain;
+  margin: 0 auto;
+}
+
 .ph-campaign-detail-hero-img.is-loaded,
 .ph-campaign-detail-hero-img.ph-cached-image.is-loaded {
   opacity: 1;
@@ -1596,6 +1608,10 @@ a.ph-logo {
 @media (max-width: 768px) {
   .ph-campaign-detail-hero-cover {
     aspect-ratio: 16 / 9;
+    min-height: 160px;
+  }
+  .ph-campaign-detail-hero-cover.has-img {
+    aspect-ratio: auto;
     min-height: 160px;
   }
   .ph-campaign-detail-meta {

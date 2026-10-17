@@ -243,7 +243,9 @@ export default function CampaignDetail() {
             <>
               <section className="ph-campaign-detail-hero">
                 <div
-                  className="ph-campaign-detail-hero-cover"
+                  className={`ph-campaign-detail-hero-cover${
+                    campaign?.coverImage ? " has-img" : ""
+                  }`}
                   style={coverStyle}
                 >
                   {campaign?.coverImage ? (
