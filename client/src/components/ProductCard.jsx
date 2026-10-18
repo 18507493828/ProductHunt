@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { ThumbsUp, Eye, MessageCircle, Share2, Star } from "lucide-react";
+import { Eye, MessageCircle, Share2, Star } from "lucide-react";
 import CachedImage from "./CachedImage";
 import { useShare } from "../ShareContext";
 import { buildTopicHomePath, formatTopicName } from "../topicUtils";
@@ -8,24 +8,29 @@ function getProductInitial(name = "") {
   return (name.trim()[0] || "P").toUpperCase();
 }
 
-function VoteControl({ product, onVote, disabled }) {
+function ScoreControl({ product, onVote, disabled }) {
+  const hasRating = product.ratingCount > 0 && product.avgRating > 0;
+  const scoreText = hasRating ? Number(product.avgRating).toFixed(1) : "0";
   return (
     <button
       type="button"
-      className={
-        "ph-card-vote" + (product.votedByMe ? " voted" : "")
-      }
+      className={"ph-card-score" + (product.votedByMe ? " voted" : "")}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
         onVote?.(product);
       }}
-      disabled={disabled || product.votedByMe}
-      aria-label={product.votedByMe ? "已评分" : "评分"}
-      title={product.votedByMe ? "已评分" : "为这个资源评分"}
+      disabled={disabled}
+      aria-label={product.votedByMe ? "已打分" : "为它打分"}
+      data-tip={product.votedByMe ? "你已打过分" : "为它打分"}
     >
-      <ThumbsUp size={14} strokeWidth={2.2} aria-hidden="true" />
-      <span>{product.voteCount ?? 0}</span>
+      <Star
+        size={14}
+        strokeWidth={2.2}
+        fill={product.votedByMe ? "currentColor" : "none"}
+        aria-hidden="true"
+      />
+      <span className="ph-card-metric">{scoreText}</span>
     </button>
   );
 }
@@ -105,7 +110,7 @@ export default function ProductCard({
             <h3 className="ph-product-card-name" title={product.name}>
               {product.name}
             </h3>
-            {product.ratingCount > 0 && product.avgRating > 0 && (
+            {!onVote && product.ratingCount > 0 && product.avgRating > 0 && (
               <span className="ph-product-card-rating-badge" aria-label={`${product.avgRating} 分`}>
                 <Star size={12} fill="currentColor" aria-hidden="true" />
                 {product.avgRating}
@@ -173,9 +178,10 @@ export default function ProductCard({
                 onClick={handleShare}
               >
                 <Share2 size={14} strokeWidth={2.2} aria-hidden="true" />
+                <span className="ph-card-metric">{product.shareCount ?? 0}</span>
               </button>
               {onVote && (
-                <VoteControl
+                <ScoreControl
                   product={product}
                   onVote={onVote}
                   disabled={votingDisabled}

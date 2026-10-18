@@ -1,9 +1,9 @@
 /** 作品评分维度：等权，各 1–5 星（与 server/ratingDimensions.js 保持一致） */
 export const RATING_DIMENSIONS = [
-  { key: "creativity", label: "创意性" },
-  { key: "completeness", label: "完成度" },
-  { key: "usefulness", label: "实用性" },
-  { key: "experience", label: "体验感" },
+  { key: "creativity", label: "创新性" },
+  { key: "completeness", label: "技术实现" },
+  { key: "usefulness", label: "应用价值" },
+  { key: "experience", label: "产品体验" },
 ];
 
 export const RATING_DIMENSION_KEYS = RATING_DIMENSIONS.map((d) => d.key);

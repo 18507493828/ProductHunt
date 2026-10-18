@@ -12,6 +12,7 @@ import {
   DEFAULT_CAMPAIGN_ZONE,
 } from "./categories.js";
 import {
+  RATING_DIMENSIONS,
   RATING_DIMENSION_KEYS,
   normalizeUserRatings,
   overallFromRatings,
@@ -2847,7 +2848,7 @@ app.post("/api/products/:id/vote", requireAuth, async (req, res) => {
     const scores = parseVotePayload(req.body || {});
     if (!scores) {
       return res.status(400).json({
-        error: "请为创意性、完成度、实用性、体验感各打 1-5 分",
+        error: `请为${RATING_DIMENSIONS.map((d) => d.label).join("、")}各打 1-5 分`,
       });
     }
 

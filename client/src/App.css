@@ -1811,72 +1811,92 @@ a.ph-logo {
   border: 1px solid rgba(98, 92, 252, 0.22);
 }
 
-.ph-card-vote {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--ph-text-secondary);
-  font-family: var(--ph-mono);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color var(--ph-ease), color var(--ph-ease), background var(--ph-ease);
+.ph-card-score:hover {
+  color: #fbbf24;
 }
 
-.ph-card-vote svg { color: var(--ph-text-muted); flex-shrink: 0; }
+/* 已打分：只让星星变成金色，按钮本身保持默认样式 */
+.ph-card-score.voted svg { color: #fbbf24; }
 
-.ph-card-vote:hover {
-  border-color: rgba(252, 85, 49, 0.5);
-  color: var(--ph-accent);
-  background: rgba(252, 85, 49, 0.1);
+.ph-card-score:disabled { opacity: 0.55; cursor: default; }
+
+/* 打分按钮的悬停提示：贴着卡片右边缘，右对齐避免被卡片裁掉 */
+.ph-card-score::after {
+  content: attr(data-tip);
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  transform: translate(0, 4px);
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: rgba(9, 11, 20, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.42);
+  color: #fff;
+  font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  z-index: 6;
 }
 
-.ph-card-vote:hover svg { color: var(--ph-accent); }
-
-.ph-card-vote.voted {
-  background: rgba(252, 85, 49, 0.15);
-  border-color: rgba(252, 85, 49, 0.4);
-  color: var(--ph-accent);
+.ph-card-score:hover::after,
+.ph-card-score:focus-visible::after {
+  opacity: 1;
+  transform: translate(0, 0);
 }
-
-.ph-card-vote.voted svg { color: var(--ph-accent); }
-.ph-card-vote:disabled { opacity: 0.55; cursor: default; }
 
 .ph-product-card-footer-actions {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-left: auto;
+  flex: 0 0 auto;
 }
 
-.ph-card-share {
+/* 分享 / 评分：与浏览、评论同款「图标 + 数值」，不占额外宽度 */
+.ph-card-share,
+.ph-card-score {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
+  gap: 3px;
   padding: 0;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
+  border: 0;
+  background: none;
   color: var(--ph-text-muted);
+  font-family: var(--ph-mono);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
   cursor: pointer;
-  transition: border-color var(--ph-ease), color var(--ph-ease), background var(--ph-ease);
+  transition: color var(--ph-ease);
 }
+
+.ph-card-share svg,
+.ph-card-score svg { flex-shrink: 0; }
+
+.ph-card-metric { font-variant-numeric: tabular-nums; }
 
 .ph-card-share:hover {
-  border-color: rgba(252, 85, 49, 0.5);
   color: var(--ph-accent);
-  background: rgba(252, 85, 49, 0.1);
 }
 
-.ph-product-card-sm .ph-card-share {
-  width: 28px;
-  height: 28px;
+.ph-product-card-sm .ph-card-share,
+.ph-product-card-sm .ph-card-score {
+  gap: 3px;
+  font-size: 11px;
+}
+
+.ph-product-card-sm .ph-card-share svg,
+.ph-product-card-sm .ph-card-score svg {
+  width: 12px;
+  height: 12px;
 }
 
 .ph-product-card-body {
@@ -1965,7 +1985,8 @@ a.ph-logo {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px 10px;
   margin-top: auto;
   padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
@@ -1974,7 +1995,8 @@ a.ph-logo {
 .ph-product-card-stats {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
   font-size: 12px;
   color: var(--ph-text-muted);
 }
@@ -2039,11 +2061,6 @@ a.ph-logo {
 
 .ph-product-card-sm .ph-product-card-initial {
   font-size: 22px;
-}
-
-.ph-product-card-sm .ph-card-vote {
-  padding: 3px 7px;
-  font-size: 11px;
 }
 
 .ph-product-card-sm .ph-product-card-stats {
@@ -6549,7 +6566,7 @@ a.ph-logo {
 
 .ph-rating-dim {
   display: grid;
-  grid-template-columns: 64px 1fr 56px;
+  grid-template-columns: 68px 1fr 56px;
   align-items: center;
   gap: 10px;
 }
@@ -6558,6 +6575,7 @@ a.ph-logo {
   font-size: 13px;
   font-weight: 700;
   color: var(--ph-light-text);
+  white-space: nowrap;
 }
 
 .ph-rating-dim-tip {
@@ -6632,7 +6650,7 @@ a.ph-logo {
 
 @media (max-width: 640px) {
   .ph-rating-dim {
-    grid-template-columns: 56px 1fr;
+    grid-template-columns: 62px 1fr;
     gap: 6px 10px;
   }
   .ph-rating-dim-tip {
