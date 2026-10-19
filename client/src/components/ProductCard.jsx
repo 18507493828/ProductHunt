@@ -11,18 +11,31 @@ function getProductInitial(name = "") {
 function ScoreControl({ product, onVote, disabled }) {
   const hasRating = product.ratingCount > 0 && product.avgRating > 0;
   const scoreText = hasRating ? Number(product.avgRating).toFixed(1) : "0";
+  const isOwner = Boolean(product.isOwner);
   return (
     <button
       type="button"
-      className={"ph-card-score" + (product.votedByMe ? " voted" : "")}
+      className={
+        "ph-card-score" +
+        (product.votedByMe ? " voted" : "") +
+        (isOwner ? " is-owner" : "")
+      }
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
         onVote?.(product);
       }}
-      disabled={disabled}
-      aria-label={product.votedByMe ? "已打分" : "为它打分"}
-      data-tip={product.votedByMe ? "你已打过分" : "为它打分"}
+      disabled={disabled || isOwner}
+      aria-label={
+        isOwner ? "不能给自己的作品打分" : product.votedByMe ? "已打分" : "为它打分"
+      }
+      data-tip={
+        isOwner
+          ? "不能给自己的作品打分"
+          : product.votedByMe
+            ? "你已打过分"
+            : "为它打分"
+      }
     >
       <Star
         size={14}

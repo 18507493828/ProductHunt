@@ -1820,6 +1820,10 @@ a.ph-logo {
 
 .ph-card-score:disabled { opacity: 0.55; cursor: default; }
 
+/* 自己的作品：按钮保留分数展示，但不可点、不跟随 hover 变金 */
+.ph-card-score.is-owner,
+.ph-card-score.is-owner:hover { color: inherit; cursor: not-allowed; opacity: 1; }
+
 /* 打分按钮的悬停提示：贴着卡片右边缘，右对齐避免被卡片裁掉 */
 .ph-card-score::after {
   content: attr(data-tip);

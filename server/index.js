@@ -1204,6 +1204,15 @@ function resolveSubmitterDisplayName(product, nicknameMap) {
   return product.submittedBy || "";
 }
 
+/* 作品归属判定：一律比原始账号用户名（submittedBy 存的是 username，展示名可能是昵称） */
+function isProductOwner(product, user) {
+  if (!product || !user) return false;
+  const ownerName = String(product.submittedBy || "").trim();
+  const viewerName = String(user.username || "").trim();
+  if (!ownerName || !viewerName) return false;
+  return ownerName === viewerName;
+}
+
 function getProductCategories(product) {
   const cats = [];
   if (Array.isArray(product.categories)) {
@@ -1402,11 +1411,7 @@ function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = nu
     myRating: myRating > 0 ? myRating : 0,
     myRatings: myRatings || null,
     submittedBy: resolveSubmitterDisplayName(product, nicknameMap),
-    isOwner: Boolean(
-      currentUser?.username &&
-        product.submittedBy &&
-        product.submittedBy === currentUser.username,
-    ),
+    isOwner: isProductOwner(product, currentUser),
     submittedAt: product.submittedAt,
     status: product.status,
     rejectReason: product.rejectReason || "",
@@ -2853,6 +2858,11 @@ app.post("/api/products/:id/vote", requireAuth, async (req, res) => {
     }
 
     const voters = Array.isArray(product.voters) ? product.voters : [];
+
+    // 自己的账号不能给自己的作品投票打分
+    if (isProductOwner(product, req.user)) {
+      return res.status(403).json({ error: "不能给自己的作品投票打分" });
+    }
 
     if (voters.includes(req.user.id)) {
       return res.status(400).json({ error: "您已经评价过了" });

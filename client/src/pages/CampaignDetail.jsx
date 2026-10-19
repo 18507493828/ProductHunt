@@ -167,6 +167,10 @@ export default function CampaignDetail() {
 
   function handleVote(product) {
     if (!requireLogin()) return;
+    if (product.isOwner) {
+      toast.info("不能给自己打分", "自己的作品不支持投票评分");
+      return;
+    }
     if (product.votedByMe) {
       toast.success("已评分", `你的评分：${product.myRating} 星`);
       return;

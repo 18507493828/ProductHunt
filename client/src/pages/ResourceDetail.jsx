@@ -265,8 +265,14 @@ export default function ResourceDetail() {
                     <button
                       type="button"
                       className="ph-btn-secondary"
+                      disabled={Boolean(resource.isOwner)}
+                      title={resource.isOwner ? "不能给自己的作品投票打分" : undefined}
                       onClick={() => {
                         if (!requireLogin()) return;
+                        if (resource.isOwner) {
+                          toast.info("不能给自己打分", "自己的作品不支持投票评分");
+                          return;
+                        }
                         if (resource.votedByMe) {
                           toast.success("已评分", `你的评分：${resource.myRating} 星`);
                           return;
@@ -274,7 +280,11 @@ export default function ResourceDetail() {
                         setRatingOpen(true);
                       }}
                     >
-                      {resource.votedByMe ? `已评 ${resource.myRating} 星` : "参与评分"}
+                      {resource.isOwner
+                        ? "不可自评"
+                        : resource.votedByMe
+                          ? `已评 ${resource.myRating} 星`
+                          : "参与评分"}
                     </button>
                     <button
                       type="button"
