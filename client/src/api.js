@@ -318,6 +318,22 @@ export async function deleteProduct(id) {
   return request(`/api/products/${id}`, { method: "DELETE" });
 }
 
+/* 批量通过：ids 一次提交，服务端逐条审核 */
+export async function bulkApproveProducts(ids = []) {
+  return request("/api/admin/products/bulk-approve", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+}
+
+/* 批量删除：连同作品配图一起清理 */
+export async function bulkDeleteProducts(ids = []) {
+  return request("/api/admin/products/bulk-delete", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+}
+
 export async function setProductSpecial(id, { isSpecial, campaign } = {}) {
   return request(`/api/admin/products/${id}/special`, {
     method: "POST",

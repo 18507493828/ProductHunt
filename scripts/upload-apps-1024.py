@@ -23,7 +23,7 @@ import requests
 BASE = "https://vb.csdn.net"
 API = BASE + "/api"
 APP_DIR = "/Users/lidiwen/Desktop/CSDN工作相关文件/外部广告项目/1024/生成应用"
-ACCOUNT_FILE = "/Users/lidiwen/Desktop/CSDN工作相关文件/码上创推广/账号.txt"
+ACCOUNT_FILE = "/Users/lidiwen/Desktop/CSDN工作相关文件/账号清单-50个.txt"
 CAMPAIGN = "1024"
 RESULT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "upload-1024-result.json")
 
@@ -53,6 +53,57 @@ META = {
     "冰箱菜谱翻牌": ("bingxiang-caipu-fanpai", "pc"),
     "合租账单分摊": ("hezu-zhangdan-fentan", "pc"),
     "快递取件码卡片": ("kuaidi-qujianma-kapian", "h5"),
+    # ===== 2026-10-21 批（50 个）=====
+    "推箱子": ("tuixiangzi", "h5"),
+    "迷宫寻路": ("migong-xunlu", "h5"),
+    "诗词飞花令": ("shici-feihualing", "h5"),
+    "文献引用格式生成": ("wenxian-yinyong-geshi", "pc"),
+    "小组作业分工板": ("xiaozu-zuoye-fengongban", "pc"),
+    "艾宾浩斯复习卡": ("aibinhaosi-fuxika", "h5"),
+    "衣柜穿搭日历": ("yigui-chuanda-rili", "pc"),
+    "家庭药箱管家": ("jiating-yaoxiang-guanjia", "pc"),
+    "旅行打包清单": ("lvxing-dabao-qingdan", "h5"),
+    "平板支撑挑战": ("pingban-zhicheng-tiaozhan", "h5"),
+    "每日饮水计划": ("meiri-yinshui-jihua", "h5"),
+    "跳绳间歇训练": ("tiaosheng-jianxie-xunlian", "h5"),
+    "生日礼物灵感": ("shengri-liwu-linggan", "pc"),
+    "聚会破冰抽签": ("juhui-pobing-chouqian", "h5"),
+    "拼车同行板": ("pinche-tongxingban", "pc"),
+    "赶海潮汐表": ("ganhai-chaoxibiao", "pc"),
+    "Citywalk路线灵感": ("citywalk-luxian-linggan", "pc"),
+    "自然探索任务单": ("ziran-tansuo-renwudan", "h5"),
+    "无障碍设施标注": ("wuzhangai-sheshi-biaozhu", "pc"),
+    "社区互助黑板": ("shequ-huzhu-heiban", "pc"),
+    "旧衣回收指南": ("jiuyi-huihou-zhinan", "h5"),
+    "古诗背诵填空": ("gushi-beisong-tiankong", "h5"),
+    "英语单词听写本": ("yingyu-danci-tingxieben", "h5"),
+    "几何面积练习": ("jihe-mianji-lianxi", "h5"),
+    "数字连线": ("shuzi-lianxian", "h5"),
+    "黑白棋对战": ("heibaiqi-duizhan", "h5"),
+    "数织": ("shuzhi", "h5"),
+    "24点挑战": ("24dian-tiaozhan", "h5"),
+    "课表空档表": ("kebiao-kongdangbiao", "pc"),
+    "实验数据拟合": ("shiyan-shuju-nihe", "pc"),
+    "演讲提词计时": ("yanjiang-tici-jishi", "pc"),
+    "家电保修提醒": ("jiadian-baoxiu-tixing", "pc"),
+    "一周菜单排程": ("yizhou-caidan-paicheng", "pc"),
+    "宠物喂养日程": ("chongwu-weiye-richeng", "h5"),
+    "配速区间": ("peisu-qujian", "h5"),
+    "哑铃训练计划": ("yaling-xunlian-jihua", "h5"),
+    "体态自测": ("titai-zice", "h5"),
+    "聚餐分账": ("jucan-fenzhang", "h5"),
+    "礼物交换抽签": ("liwu-jiaohuan-chouqian", "h5"),
+    "群活动投票": ("qunhuodong-toupiao", "h5"),
+    "紫外线防晒": ("ziwaixian-fangshai", "h5"),
+    "海拔剖面": ("haiba-poumian", "pc"),
+    "户外急救速查": ("huwai-jijiu-sucha", "h5"),
+    "AED急救地图": ("aed-jijiu-ditu", "pc"),
+    "家庭碳足迹": ("jiating-tanzuji", "pc"),
+    "垃圾分类速查": ("laji-fenlei-sucha", "h5"),
+    "竖式计算": ("shushi-jisuan", "h5"),
+    "分数运算": ("fenshu-yunsuan", "h5"),
+    "元素周期表速记": ("yuansu-zhouqibiao-suji", "h5"),
+    "英语时态练习": ("yingyu-shitai-lianxi", "h5"),
 }
 
 # 分类顺序（决定轮流分配时的搭配，同账号尽量跨分类）
@@ -102,12 +153,13 @@ def parse_intro(path):
     return name, cat, tagline, "".join(intro), features
 
 
-def build_plan():
-    names = sorted(os.listdir(APP_DIR))
+def build_plan(batch=None):
+    base = os.path.join(APP_DIR, batch) if batch else APP_DIR
+    names = sorted(os.listdir(base))
     apps = []
     for d in names:
-        folder = os.path.join(APP_DIR, d)
-        if not os.path.isdir(folder):
+        folder = os.path.join(base, d)
+        if not os.path.isdir(folder) or re.match(r"^\d{4}-\d{2}-\d{2}$", d):
             continue
         html = os.path.join(folder, d + ".html")
         cover = os.path.join(folder, "封面.png")
@@ -308,9 +360,10 @@ def main():
     ap.add_argument("--plan", action="store_true", help="只打印分配计划")
     ap.add_argument("--only", help="只上传指定应用（文件夹名）")
     ap.add_argument("--resume", action="store_true", help="跳过已成功上传的应用")
+    ap.add_argument("--batch", help="只上传某个日期批次，如 2026-10-21")
     args = ap.parse_args()
 
-    apps, accounts = build_plan()
+    apps, accounts = build_plan(batch=args.batch)
     if args.plan:
         show_plan(apps, accounts)
         return

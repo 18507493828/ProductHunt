@@ -15,6 +15,9 @@ import SubmitProductModal from "../components/SubmitProductModal";
 
 const PAGE_SIZE = 20;
 
+/* 这些活动下的作品集按提交时间排序（最新提交在前），其余活动沿用接口默认排序 */
+const TIME_ORDER_CAMPAIGNS = ["1024"];
+
 const COVER_TONES = [
   "linear-gradient(135deg, #1a2240 0%, #2a3a6a 48%, #c44b3c 120%)",
   "linear-gradient(135deg, #1c2838 0%, #245a6e 50%, #e07a3a 120%)",
@@ -56,11 +59,29 @@ export default function CampaignDetail() {
     return code % COVER_TONES.length;
   }, [id]);
 
-  const visibleProducts = useMemo(
-    () => products.slice(0, visibleCount),
-    [products, visibleCount],
+  const isTimeOrder = useMemo(
+    () =>
+      TIME_ORDER_CAMPAIGNS.includes(
+        String(id || "").trim().toLowerCase(),
+      ),
+    [id],
   );
-  const hasMore = products.length > 0 && visibleCount < products.length;
+
+  /* 活动作品集顺序：时间序活动按提交时间倒序（最新在前），其余保持接口排序 */
+  const orderedProducts = useMemo(() => {
+    if (!isTimeOrder) return products;
+    return products.slice().sort((a, b) => {
+      const ta = Date.parse(a.submittedAt || "") || 0;
+      const tb = Date.parse(b.submittedAt || "") || 0;
+      return tb - ta;
+    });
+  }, [products, isTimeOrder]);
+
+  const visibleProducts = useMemo(
+    () => orderedProducts.slice(0, visibleCount),
+    [orderedProducts, visibleCount],
+  );
+  const hasMore = orderedProducts.length > 0 && visibleCount < orderedProducts.length;
   const ruleLines = useMemo(
     () => splitLines(campaign?.rules),
     [campaign?.rules],
@@ -341,6 +362,7 @@ export default function CampaignDetail() {
                       {typeof campaign?.participantCount === "number"
                         ? ` · ${campaign.participantCount} 位创作者`
                         : ""}
+                      {isTimeOrder ? " · 按提交时间排序（最新在前）" : ""}
                     </p>
                   </div>
                   <button
@@ -402,6 +424,7 @@ export default function CampaignDetail() {
                           showCategory
                           showMeta
                           showStats
+                          showTime
                           size="md"
                         />
                       ))}

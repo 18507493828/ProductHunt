@@ -1,11 +1,31 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, MessageCircle, Share2, Star } from "lucide-react";
+import { Clock, Eye, MessageCircle, Share2, Star } from "lucide-react";
 import CachedImage from "./CachedImage";
 import { useShare } from "../ShareContext";
 import { buildTopicHomePath, formatTopicName } from "../topicUtils";
 
 function getProductInitial(name = "") {
   return (name.trim()[0] || "P").toUpperCase();
+}
+
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+
+/* 提交时间：接口给的是 ISO 串，这里按本地时区显示 MM-DD HH:mm */
+function formatSubmitTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+}
+
+/* 悬浮提示用完整时间 */
+function formatSubmitTimeFull(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
 
 function ScoreControl({ product, onVote, disabled }) {
@@ -57,10 +77,13 @@ export default function ProductCard({
   showCategory = false,
   showTopic = false,
   showStats = false,
+  showTime = false,
   size = "md",
 }) {
   const navigate = useNavigate();
   const { openShare } = useShare();
+  const submitTime = showTime ? formatSubmitTime(product.submittedAt) : "";
+  const submitTimeFull = showTime ? formatSubmitTimeFull(product.submittedAt) : "";
   const mediaStyle = product.imageUrl
     ? undefined
     : {
@@ -135,7 +158,7 @@ export default function ProductCard({
             {product.tagline}
           </p>
 
-          {(showTopic || showMeta) && (
+          {(showTopic || showMeta || submitTime) && (
             <div className="ph-product-card-tags">
               {showTopic && product.topicName && (
                 product.topicId ? (
@@ -163,6 +186,15 @@ export default function ProductCard({
               )}
               {showMeta && product.submittedBy && (
                 <span className="ph-product-card-author">{product.submittedBy}</span>
+              )}
+              {submitTime && (
+                <span
+                  className="ph-product-card-time"
+                  title={`提交时间 ${submitTimeFull}`}
+                >
+                  <Clock size={11} strokeWidth={2.2} aria-hidden="true" />
+                  {submitTime} 提交
+                </span>
               )}
             </div>
           )}

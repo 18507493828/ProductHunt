@@ -3265,6 +3265,80 @@ app.post("/api/admin/products/:id/approve", requireAdmin, async (req, res) => {
   }
 });
 
+/* 批量通过：后台应用管理「全选 → 批量通过」，只处理待审核作品，已上架/已下架/未通过的一律跳过 */
+app.post("/api/admin/products/bulk-approve", requireAdmin, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter(Boolean) : [];
+    if (!ids.length) return res.status(400).json({ error: "请先选择要处理的应用" });
+    const done = [];
+    const skipped = [];
+    const failed = [];
+    for (const id of ids) {
+      try {
+        const product = await getProduct(id);
+        if ((product.status || "approved") !== "pending") {
+          skipped.push(id);
+          continue;
+        }
+        product.status = "approved";
+        product.reviewedAt = new Date().toISOString();
+        product.reviewedBy = req.user.username;
+        product.rejectReason = "";
+        await writeProduct(product);
+        try {
+          await maybeCreateMaodaoGrant(product, req.user.username);
+        } catch (grantErr) {
+          console.warn("[incentive] auto-grant failed:", grantErr.message);
+        }
+        done.push(id);
+      } catch (err) {
+        failed.push({ id, error: err.message || "处理失败" });
+      }
+    }
+    res.json({
+      message: `已通过 ${done.length} 个应用`,
+      updated: done.length,
+      ids: done,
+      skipped,
+      failed,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* 批量删除：后台应用管理「全选 → 批量删除」，连带清掉作品配图 */
+app.post("/api/admin/products/bulk-delete", requireAdmin, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter(Boolean) : [];
+    if (!ids.length) return res.status(400).json({ error: "请先选择要处理的应用" });
+    const done = [];
+    const failed = [];
+    for (const id of ids) {
+      try {
+        const product = await getProduct(id);
+        const uploadName = localUploadFilename(product.imageUrl);
+        if (uploadName) {
+          await deleteUpload(uploadName);
+          await fs.rm(path.join(UPLOADS_DIR, uploadName), { force: true });
+        }
+        await deleteProduct(id);
+        done.push(id);
+      } catch (err) {
+        failed.push({ id, error: err.message || "处理失败" });
+      }
+    }
+    res.json({
+      message: `已删除 ${done.length} 个应用`,
+      deleted: done.length,
+      ids: done,
+      failed,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post("/api/admin/products/:id/reject", requireAdmin, async (req, res) => {
   try {
     const product = await getProduct(req.params.id);

@@ -1860,6 +1860,7 @@ export default function App() {
                             showCategory
                             showMeta
                             showStats
+                            showTime
                             size="md"
                           />
                         ))}

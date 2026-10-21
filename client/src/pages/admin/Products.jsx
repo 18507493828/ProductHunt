@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import EmptyState from "../../components/EmptyState";
 import SubmitProductModal from "../../components/SubmitProductModal";
 import {
@@ -7,6 +7,8 @@ import {
 } from "../../appPlatforms";
 import {
   approveProduct,
+  bulkApproveProducts,
+  bulkDeleteProducts,
   deleteProduct,
   fetchAdminProducts,
   fetchAdminCampaigns,
@@ -47,6 +49,10 @@ export default function Products() {
   const [error, setError] = useState("");
   const [actionId, setActionId] = useState("");
   const [editingProduct, setEditingProduct] = useState(null);
+  /* 批量操作：勾选的作品 id、正在执行的批量动作（approve / delete） */
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkAction, setBulkAction] = useState("");
+  const selectAllRef = useRef(null);
 
   const campaignOptions = [
     { id: "", label: "无活动" },
@@ -74,6 +80,93 @@ export default function Products() {
     loadProducts(activeStatus, filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStatus, filters]);
+
+  /* 切标签 / 改筛选后清空勾选，避免批量操作到当前看不到的作品 */
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [activeStatus, filters]);
+
+  const allSelected =
+    products.length > 0 && selectedIds.length === products.length;
+
+  /* 只有待审核的作品能批量通过；已上架 / 未通过 / 已下架的选中项会被跳过 */
+  const selectedProducts = products.filter((item) =>
+    selectedIds.includes(item.id),
+  );
+  const approvableIds = selectedProducts
+    .filter((item) => item.status === "pending")
+    .map((item) => item.id);
+  const skippedSelectedCount = selectedProducts.length - approvableIds.length;
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate =
+        selectedIds.length > 0 && selectedIds.length < products.length;
+    }
+  }, [selectedIds, products.length]);
+
+  function toggleOne(id) {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  }
+
+  function toggleAll() {
+    setSelectedIds((prev) =>
+      prev.length === products.length ? [] : products.map((item) => item.id),
+    );
+  }
+
+  async function handleBulkApprove() {
+    if (!approvableIds.length) return;
+    if (
+      approvableIds.length > 10 &&
+      !window.confirm(`确定通过选中的 ${approvableIds.length} 个待审核应用吗？`)
+    ) {
+      return;
+    }
+    try {
+      setBulkAction("approve");
+      setError("");
+      const result = await bulkApproveProducts(approvableIds);
+      const failedCount = result?.failed?.length || 0;
+      if (failedCount) {
+        setError(`${result?.message || "批量通过完成"}，其中 ${failedCount} 个失败`);
+      }
+      setSelectedIds([]);
+      await loadProducts();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBulkAction("");
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (!selectedIds.length) return;
+    if (
+      !window.confirm(
+        `确定删除选中的 ${selectedIds.length} 个应用吗？此操作不可恢复。`,
+      )
+    ) {
+      return;
+    }
+    try {
+      setBulkAction("delete");
+      setError("");
+      const result = await bulkDeleteProducts(selectedIds);
+      const failedCount = result?.failed?.length || 0;
+      if (failedCount) {
+        setError(`${result?.message || "批量删除完成"}，其中 ${failedCount} 个失败`);
+      }
+      setSelectedIds([]);
+      await loadProducts();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBulkAction("");
+    }
+  }
 
   useEffect(() => {
     fetchAdminCampaigns()
@@ -252,6 +345,67 @@ export default function Products() {
 
       {error && <div className="error">{error}</div>}
 
+      {!loading && products.length > 0 && (
+        <div className="admin-bulk-bar">
+          <label className="admin-bulk-check">
+            <input
+              ref={selectAllRef}
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleAll}
+            />
+            <span>全选</span>
+          </label>
+          <span className="admin-bulk-count">
+            已选 {selectedIds.length} / {products.length}
+          </span>
+          <div className="admin-bulk-actions">
+            {selectedIds.length > 0 && (
+              <button
+                type="button"
+                className="admin-btn admin-btn-ghost"
+                disabled={Boolean(bulkAction)}
+                onClick={() => setSelectedIds([])}
+              >
+                取消选择
+              </button>
+            )}
+            {approvableIds.length > 0 && (
+              <button
+                type="button"
+                className="admin-btn admin-btn-primary"
+                disabled={Boolean(bulkAction)}
+                onClick={handleBulkApprove}
+              >
+                {bulkAction === "approve"
+                  ? "通过中..."
+                  : `批量通过（${approvableIds.length}）`}
+              </button>
+            )}
+            {selectedIds.length > 0 && approvableIds.length === 0 && (
+              <span className="admin-bulk-hint">
+                选中项中没有待审核应用
+              </span>
+            )}
+            {approvableIds.length > 0 && skippedSelectedCount > 0 && (
+              <span className="admin-bulk-hint">
+                另 {skippedSelectedCount} 个非待审核项将跳过
+              </span>
+            )}
+            <button
+              type="button"
+              className="admin-btn admin-btn-danger"
+              disabled={!selectedIds.length || Boolean(bulkAction)}
+              onClick={handleBulkDelete}
+            >
+              {bulkAction === "delete"
+                ? "删除中..."
+                : `批量删除${selectedIds.length ? `（${selectedIds.length}）` : ""}`}
+            </button>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="admin-empty">加载中...</div>
       ) : products.length === 0 ? (
@@ -259,11 +413,26 @@ export default function Products() {
       ) : (
         <div className="admin-masonry">
           {products.map((product) => (
-            <article className="admin-masonry-card" key={product.id}>
+            <article
+              className={
+                "admin-masonry-card" +
+                (selectedIds.includes(product.id) ? " is-selected" : "")
+              }
+              key={product.id}
+            >
               <div className="admin-masonry-card-top">
-                <span className={`status-badge status-${product.status}`}>
-                  {STATUS_LABEL[product.status] || product.status}
-                </span>
+                <div className="admin-masonry-card-top-left">
+                  <input
+                    type="checkbox"
+                    className="admin-select-box"
+                    checked={selectedIds.includes(product.id)}
+                    onChange={() => toggleOne(product.id)}
+                    aria-label={`选择 ${product.name}`}
+                  />
+                  <span className={`status-badge status-${product.status}`}>
+                    {STATUS_LABEL[product.status] || product.status}
+                  </span>
+                </div>
                 <span className="admin-masonry-sort">
                   {product.voteCount ?? 0} 评分
                 </span>

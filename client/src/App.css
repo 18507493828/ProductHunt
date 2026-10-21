@@ -1985,6 +1985,21 @@ a.ph-logo {
   color: var(--ph-text-muted);
 }
 
+.ph-product-card-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ph-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ph-product-card-time svg {
+  opacity: 0.65;
+  flex-shrink: 0;
+}
+
 .ph-product-card-footer {
   display: flex;
   align-items: center;
@@ -2073,6 +2088,7 @@ a.ph-logo {
 }
 
 .ph-product-card-sm .ph-product-card-author,
+.ph-product-card-sm .ph-product-card-time,
 .ph-product-card-sm .ph-product-card-topic {
   font-size: 11px;
 }
@@ -5469,6 +5485,76 @@ a.ph-logo {
   justify-content: start;
   justify-items: stretch;
   align-items: start;
+}
+
+/* -------- 批量操作条（全选 / 批量通过 / 批量删除） -------- */
+.admin-bulk-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.admin-bulk-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2329;
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-bulk-check input,
+.admin-select-box {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: #fc5531;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.admin-bulk-count {
+  font-size: 12px;
+  color: var(--ph-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-bulk-hint {
+  font-size: 12px;
+  color: #b26a00;
+  background: #fff7e6;
+  border: 1px solid #ffe0a3;
+  border-radius: 999px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+.admin-bulk-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.admin-masonry-card-top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-masonry-card.is-selected {
+  border-color: rgba(252, 85, 49, 0.55);
+  box-shadow: 0 0 0 2px rgba(252, 85, 49, 0.12);
 }
 
 .admin-masonry-card {
@@ -11209,6 +11295,7 @@ button.ph-my-pipe:hover {
 .ph-my-sub,
 .ph-product-card-tagline,
 .ph-product-card-author,
+.ph-product-card-time,
 .ph-product-card-stats,
 .ph-product-card-stats span,
 .ph-item-tagline,
