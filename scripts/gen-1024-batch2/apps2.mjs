@@ -516,7 +516,10 @@ export default [
       b.addEventListener('click', function (e) { reveal(Number(e.currentTarget.dataset.i)); });
       b.addEventListener('contextmenu', function (e) { e.preventDefault(); toggleFlag(Number(e.currentTarget.dataset.i)); });
       var lp = null;
-      b.addEventListener('touchstart', function (e) { lp = setTimeout(function () { toggleFlag(Number(e.currentTarget.dataset.i)); lp = null; }, 420); });
+      b.addEventListener('touchstart', function (e) {
+        var el2 = e.currentTarget;
+        lp = setTimeout(function () { toggleFlag(Number(el2.dataset.i)); lp = null; }, 420);
+      });
       b.addEventListener('touchend', function () { if (lp) clearTimeout(lp); });
       box.appendChild(b);
     }

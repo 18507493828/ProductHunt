@@ -1980,15 +1980,30 @@ a.ph-logo {
   background: rgba(252, 85, 49, 0.12);
 }
 
+/* 作者 + 提交时间：左右两端对齐，昵称过长省略 */
+.ph-product-card-metarow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
 .ph-product-card-author {
   font-size: 11px;
   color: var(--ph-text-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ph-product-card-time {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
   font-size: 11px;
   color: var(--ph-text-muted);
   font-variant-numeric: tabular-nums;

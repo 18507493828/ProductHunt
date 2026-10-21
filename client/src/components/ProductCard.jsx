@@ -184,16 +184,25 @@ export default function ProductCard({
                   </span>
                 )
               )}
-              {showMeta && product.submittedBy && (
-                <span className="ph-product-card-author">{product.submittedBy}</span>
-              )}
-              {submitTime && (
-                <span
-                  className="ph-product-card-time"
-                  title={`提交时间 ${submitTimeFull}`}
-                >
-                  <Clock size={11} strokeWidth={2.2} aria-hidden="true" />
-                  {submitTime} 提交
+              {((showMeta && product.submittedBy) || submitTime) && (
+                <span className="ph-product-card-metarow">
+                  {showMeta && product.submittedBy && (
+                    <span
+                      className="ph-product-card-author"
+                      title={product.submittedBy}
+                    >
+                      {product.submittedBy}
+                    </span>
+                  )}
+                  {submitTime && (
+                    <span
+                      className="ph-product-card-time"
+                      title={`提交时间 ${submitTimeFull}`}
+                    >
+                      <Clock size={11} strokeWidth={2.2} aria-hidden="true" />
+                      {submitTime}
+                    </span>
+                  )}
                 </span>
               )}
             </div>
