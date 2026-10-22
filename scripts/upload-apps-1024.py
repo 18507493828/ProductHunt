@@ -104,6 +104,57 @@ META = {
     "分数运算": ("fenshu-yunsuan", "h5"),
     "元素周期表速记": ("yuansu-zhouqibiao-suji", "h5"),
     "英语时态练习": ("yingyu-shitai-lianxi", "h5"),
+    # ===== 2026-10-21 第二批（50 个）=====
+    "三角函数速查": ("trig-functions-quick", "pc"),
+    "物理公式速查": ("physics-formula-quick", "pc"),
+    "时区换算器": ("timezone-converter", "pc"),
+    "化学方程式配平": ("chemistry-equation-balancer", "pc"),
+    "成语填空挑战": ("idiom-fill-blank", "h5"),
+    "小数分数互转": ("decimal-fraction-converter", "h5"),
+    "四六级分数换算": ("cet-score-converter", "h5"),
+    "学分进度看板": ("credit-progress-board", "pc"),
+    "实验报告生成器": ("lab-report-generator", "pc"),
+    "课堂座位表生成": ("classroom-seating-maker", "pc"),
+    "宿舍值日表": ("dorm-duty-roster", "pc"),
+    "考试倒计时": ("exam-countdown", "h5"),
+    "群接龙登记": ("group-signup-chain", "h5"),
+    "匿名投票箱": ("anonymous-ballot-box", "h5"),
+    "生日提醒清单": ("birthday-reminder-list", "pc"),
+    "纪念日计算器": ("anniversary-calculator", "h5"),
+    "性格颜色测试": ("personality-color-test", "h5"),
+    "聊天话题抽取": ("chat-topic-picker", "h5"),
+    "捐步换算": ("step-donation-converter", "h5"),
+    "应急物资清单": ("emergency-supplies-checklist", "pc"),
+    "领养前检查清单": ("pet-adoption-checklist", "pc"),
+    "旧物交换板": ("secondhand-swap-board", "pc"),
+    "流浪猫投喂记录": ("stray-cat-feeding-log", "h5"),
+    "低碳打卡": ("low-carbon-checkin", "h5"),
+    "蛋白质摄入计算": ("protein-intake-calc", "h5"),
+    "组间休息计时器": ("rest-interval-timer", "h5"),
+    "七分钟训练": ("seven-minute-workout", "h5"),
+    "健身房器械指南": ("gym-equipment-guide", "pc"),
+    "跑鞋里程账本": ("running-shoe-mileage", "pc"),
+    "1RM 负重估算": ("one-rep-max-calc", "h5"),
+    "户外电源续航": ("outdoor-power-budget", "pc"),
+    "星空摄影曝光": ("star-photography-exposure", "pc"),
+    "徒步补水计划": ("hiking-hydration-plan", "h5"),
+    "野外方向辨识": ("wild-direction-finder", "h5"),
+    "徒步用时估算": ("hiking-time-estimator", "h5"),
+    "雷暴距离测算": ("thunder-distance-calc", "h5"),
+    "风寒指数": ("wind-chill-index", "h5"),
+    "洗护标签解读": ("laundry-label-guide", "pc"),
+    "家电能耗估算": ("appliance-energy-cost", "pc"),
+    "冰箱库存管理": ("fridge-inventory", "pc"),
+    "水电抄表记录": ("utility-meter-log", "pc"),
+    "家庭月度预算": ("family-monthly-budget", "pc"),
+    "多菜做饭计时器": ("multi-dish-cook-timer", "h5"),
+    "井字棋三连": ("tic-tac-toe", "h5"),
+    "一笔画挑战": ("one-stroke-drawing", "h5"),
+    "水排序": ("water-sort-puzzle", "h5"),
+    "数字猜心": ("number-guess-game", "h5"),
+    "记忆序列": ("memory-sequence", "h5"),
+    "色字干扰测试": ("stroop-color-test", "h5"),
+    "emoji 猜词": ("emoji-word-guess", "h5"),
 }
 
 # 分类顺序（决定轮流分配时的搭配，同账号尽量跨分类）
@@ -362,6 +413,14 @@ def main():
     ap.add_argument("--resume", action="store_true", help="跳过已成功上传的应用")
     ap.add_argument("--batch", help="只上传某个日期批次，如 2026-10-21")
     args = ap.parse_args()
+
+    # 指定批次时，结果单独落一个文件，避免覆盖第一批的记录
+    if args.batch:
+        global RESULT_FILE
+        RESULT_FILE = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            f"upload-1024-result-{args.batch}.json",
+        )
 
     apps, accounts = build_plan(batch=args.batch)
     if args.plan:
