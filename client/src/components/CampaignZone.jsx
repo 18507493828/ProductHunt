@@ -334,8 +334,11 @@ export default function CampaignZone({ campaigns = [], onOpenCampaign }) {
               }}
             >
               <div className="ph-campaign-entry-cover">
-                {active.coverImage ? (
-                  <CachedImage src={active.coverImage} alt="" />
+                {active.cardImageUrl || active.coverImage ? (
+                  <CachedImage
+                    src={active.cardImageUrl || active.coverImage}
+                    alt=""
+                  />
                 ) : (
                   <div
                     className="ph-campaign-entry-cover-empty"

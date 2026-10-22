@@ -123,6 +123,8 @@ async function applySchema(conn) {
     await conn.query(statement);
   }
   // 存量库兼容：补齐后续新增列
+  await ensureColumn(conn, "campaigns", "card_image_url", "VARCHAR(500) NOT NULL DEFAULT ''");
+  await ensureColumn(conn, "products", "card_image_url", "VARCHAR(500) NOT NULL DEFAULT ''");
   await ensureColumn(conn, "products", "app_platform", "VARCHAR(32) NOT NULL DEFAULT 'h5'");
   await ensureColumn(conn, "products", "build_tool_id", "VARCHAR(64) NOT NULL DEFAULT ''");
   await ensureColumn(conn, "products", "build_tool_name", "VARCHAR(191) NOT NULL DEFAULT ''");

@@ -16,6 +16,7 @@ import {
 } from "./incentiveConfig.js";
 import {
   DEFAULT_BUILD_CONFIG,
+  DEFAULT_BUILD_TOOLS,
   normalizeBuildConfig,
 } from "./buildOpsConfig.js";
 
@@ -208,6 +209,7 @@ function mapCampaign(row) {
     rankLabel: row.rank_label || row.title || "",
     description: row.description || "",
     coverImage: row.cover_image || "",
+    cardImageUrl: row.card_image_url || "",
     timeText: row.time_text || "",
     rules: row.rules || "",
     rewards: row.rewards || "",
@@ -231,15 +233,16 @@ export async function writeCampaigns(campaigns) {
       await connQuery(
         conn,
         `INSERT INTO campaigns
-          (id, title, rank_label, description, cover_image, time_text, rules, rewards,
+          (id, title, rank_label, description, cover_image, card_image_url, time_text, rules, rewards,
            enabled, sort, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           item.id,
           item.title || "",
           item.rankLabel || item.title || "",
           item.description || "",
           item.coverImage || "",
+          item.cardImageUrl || "",
           item.timeText || "",
           item.rules || "",
           item.rewards || "",
@@ -423,6 +426,26 @@ export async function readBuildConfig() {
     }
     throw err;
   }
+}
+
+/**
+ * 启动时把 DEFAULT_BUILD_TOOLS 里新增的工具补进线上 build_config（幂等、只增不改）：
+ * 运营后台已保存过配置时，normalizeBuildConfig 不会自动带入新增的默认工具，
+ * 这里只 append 缺失的 id，已存在的工具字段一律不动。
+ */
+export async function ensureDefaultBuildTools() {
+  const existing = await readBuildConfig();
+  const have = new Set((existing.tools || []).map((t) => t.id));
+  const missing = DEFAULT_BUILD_TOOLS.filter((t) => !have.has(t.id));
+  if (!missing.length) return existing;
+  const merged = await writeBuildConfig({
+    ...existing,
+    tools: [...(existing.tools || []), ...missing],
+  });
+  console.log(
+    `[build-config] appended default tools: ${missing.map((t) => t.name).join(", ")}`,
+  );
+  return merged;
 }
 
 export async function writeBuildConfig(config) {
@@ -952,6 +975,7 @@ async function assembleProducts(productRows) {
       topicIds,
       color: row.color || "",
       imageUrl: row.image_url || "",
+      cardImageUrl: row.card_image_url || "",
       voters: voterMap.get(row.id) || [],
       ratings: ratingMap.get(row.id) || {},
       comments: commentMap.get(row.id) || [],
@@ -1023,12 +1047,13 @@ export async function writeProduct(product) {
       conn,
       `INSERT INTO products
         (id, name, tagline, description, url, category, topic_id, color, image_url,
+         card_image_url,
          submitted_by, submitted_nickname, submitted_at, status, reject_reason,
          reviewed_at, reviewed_by, is_special, campaign, view_count, share_count,
          app_platform, build_tool_id, build_tool_name, invite_code,
          price, original_price, buy_url, purchase_note,
          updated_at, rank_pinned, rank_hidden, rank_weight)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          name = VALUES(name),
          tagline = VALUES(tagline),
@@ -1038,6 +1063,7 @@ export async function writeProduct(product) {
          topic_id = VALUES(topic_id),
          color = VALUES(color),
          image_url = VALUES(image_url),
+         card_image_url = VALUES(card_image_url),
          submitted_by = VALUES(submitted_by),
          submitted_nickname = VALUES(submitted_nickname),
          submitted_at = VALUES(submitted_at),
@@ -1071,6 +1097,7 @@ export async function writeProduct(product) {
         topicId,
         product.color || "",
         product.imageUrl || "",
+        product.cardImageUrl || "",
         product.submittedBy || "",
         product.submittedNickname || "",
         toDbDate(product.submittedAt),

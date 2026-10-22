@@ -3140,6 +3140,14 @@ a.ph-logo {
   margin-left: 1px;
 }
 
+/* 字段下方的说明文案（如卡片封面与详情页封面的关系） */
+.modal-field-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ph-text-muted);
+}
+
 .modal-field input,
 .modal-field textarea,
 .modal-field select {

@@ -31,6 +31,7 @@ const EMPTY_FORM = {
   campaign: "",
   description: "",
   imageUrl: "",
+  cardImageUrl: "",
   topicName: "",
   appPlatform: DEFAULT_APP_PLATFORM,
   buildToolId: "",
@@ -51,6 +52,8 @@ export default function SubmitProductModal({
   editingProduct = null,
   lockedCampaignId = "",
   initialCampaignId = "",
+  /* 运营后台编辑时开启：额外提供「卡片封面」上传（列表卡片与详情页封面尺寸不同） */
+  showCardCover = false,
 }) {
   const toast = useToast();
 
@@ -64,6 +67,7 @@ export default function SubmitProductModal({
   const [topicSuggestOpen, setTopicSuggestOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  const [cardImageUploading, setCardImageUploading] = useState(false);
   const [publishMode, setPublishMode] = useState("url");
   const [pendingHtmlFile, setPendingHtmlFile] = useState(null);
   const [error, setError] = useState("");
@@ -113,6 +117,7 @@ export default function SubmitProductModal({
         campaign: editingProduct.campaign || "",
         description: editingProduct.description || "",
         imageUrl: editingProduct.imageUrl || "",
+        cardImageUrl: editingProduct.cardImageUrl || "",
         topicName: editingProduct.topicName || "",
         appPlatform: editingProduct.appPlatform || DEFAULT_APP_PLATFORM,
         buildToolId: editingProduct.buildToolId || "",
@@ -259,11 +264,7 @@ export default function SubmitProductModal({
     return [...sceneHits, ...communityHits].slice(0, 10);
   }
 
-  async function handleImageChange(e) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
+  async function uploadCoverImage(file, { field, setBusy, label }) {
     if (!/^image\/(jpeg|png|gif|webp)$/i.test(file.type)) {
       setError("仅支持 JPG / PNG / GIF / WebP 图片");
       return;
@@ -274,15 +275,37 @@ export default function SubmitProductModal({
     }
 
     try {
-      setImageUploading(true);
+      setBusy(true);
       setError("");
       const { url } = await uploadImage(file);
-      updateForm("imageUrl", url);
+      updateForm(field, url);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || `${label}上传失败`);
     } finally {
-      setImageUploading(false);
+      setBusy(false);
     }
+  }
+
+  async function handleImageChange(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    await uploadCoverImage(file, {
+      field: "imageUrl",
+      setBusy: setImageUploading,
+      label: "封面图",
+    });
+  }
+
+  async function handleCardImageChange(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    await uploadCoverImage(file, {
+      field: "cardImageUrl",
+      setBusy: setCardImageUploading,
+      label: "卡片封面",
+    });
   }
 
   function handleClose() {
@@ -375,6 +398,8 @@ export default function SubmitProductModal({
           : form.campaign || "",
         description: form.description,
         imageUrl: form.imageUrl,
+        /* 未开启卡片封面入口时不下发该字段，服务端保持原值 */
+        ...(showCardCover ? { cardImageUrl: form.cardImageUrl } : {}),
         topicId: selectedTopicId || "",
         topicName,
         appPlatform: form.appPlatform || DEFAULT_APP_PLATFORM,
@@ -442,7 +467,7 @@ export default function SubmitProductModal({
 
         <form className="modal-body" onSubmit={handleSubmit}>
           <div className="modal-field">
-            <span>封面图</span>
+            <span>{showCardCover ? "详情页封面" : "封面图"}</span>
             <div className="ph-upload">
               {form.imageUrl ? (
                 <div className="ph-upload-preview">
@@ -482,12 +507,69 @@ export default function SubmitProductModal({
                     {imageUploading ? "上传中..." : "点击上传图片"}
                   </span>
                   <span className="ph-upload-sub">
-                    JPG / PNG / GIF / WebP，不超过 2MB，选填
+                    {showCardCover
+                      ? "详情页顶部使用，方图（1:1）效果最好"
+                      : "JPG / PNG / GIF / WebP，不超过 2MB，选填"}
                   </span>
                 </label>
               )}
             </div>
           </div>
+
+          {showCardCover && (
+            <div className="modal-field">
+              <span>卡片封面</span>
+              <div className="ph-upload">
+                {form.cardImageUrl ? (
+                  <div className="ph-upload-preview">
+                    <img src={form.cardImageUrl} alt="卡片封面预览" />
+                    <button
+                      type="button"
+                      className="ph-upload-remove"
+                      onClick={() => updateForm("cardImageUrl", "")}
+                      disabled={submitting || cardImageUploading}
+                      aria-label="移除卡片封面"
+                      title="移除卡片封面"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <label
+                    className={
+                      cardImageUploading
+                        ? "ph-upload-trigger uploading"
+                        : "ph-upload-trigger"
+                    }
+                  >
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      onChange={handleCardImageChange}
+                      disabled={submitting || cardImageUploading}
+                      hidden
+                    />
+                    <Upload
+                      className="ph-upload-icon"
+                      size={26}
+                      aria-hidden="true"
+                    />
+                    <span className="ph-upload-text">
+                      {cardImageUploading ? "上传中..." : "点击上传卡片封面"}
+                    </span>
+                    <span className="ph-upload-sub">
+                      首页 / 活动页卡片使用，建议 16:10 横图
+                    </span>
+                  </label>
+                )}
+              </div>
+              <p className="modal-field-hint">
+                {form.cardImageUrl
+                  ? "卡片封面已单独设置，首页列表优先使用这张图。"
+                  : "未上传时，卡片直接使用详情页封面（按卡片比例裁切）。"}
+              </p>
+            </div>
+          )}
 
           <label className="modal-field">
             <span>

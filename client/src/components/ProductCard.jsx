@@ -84,7 +84,9 @@ export default function ProductCard({
   const { openShare } = useShare();
   const submitTime = showTime ? formatSubmitTime(product.submittedAt) : "";
   const submitTimeFull = showTime ? formatSubmitTimeFull(product.submittedAt) : "";
-  const mediaStyle = product.imageUrl
+  /* 卡片封面优先；未单独配置时回落到详情页封面 */
+  const cardImage = String(product.cardImageUrl || product.imageUrl || "").trim();
+  const mediaStyle = cardImage
     ? undefined
     : {
         background: `linear-gradient(135deg, ${product.color || "#fc5531"} 0%, rgba(10,14,26,0.2) 100%)`,
@@ -103,8 +105,8 @@ export default function ProductCard({
     >
       <article>
         <div className="ph-product-card-media" style={mediaStyle} aria-hidden="true">
-          {product.imageUrl ? (
-            <CachedImage src={product.imageUrl} alt="" />
+          {cardImage ? (
+            <CachedImage src={cardImage} alt="" />
           ) : (
             <span className="ph-product-card-initial">{getProductInitial(product.name)}</span>
           )}

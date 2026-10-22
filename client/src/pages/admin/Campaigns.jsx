@@ -14,6 +14,7 @@ const EMPTY_FORM = {
   rankLabel: "",
   description: "",
   coverImage: "",
+  cardImageUrl: "",
   timeText: "",
   rules: "",
   rewards: "",
@@ -30,6 +31,7 @@ export default function Campaigns() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
+  const [cardCoverUploading, setCardCoverUploading] = useState(false);
 
   async function loadCampaigns() {
     try {
@@ -54,6 +56,7 @@ export default function Campaigns() {
             rankLabel: campaign.rankLabel || "",
             description: campaign.description || "",
             coverImage: campaign.coverImage || "",
+            cardImageUrl: campaign.cardImageUrl || "",
             timeText: campaign.timeText || "",
             rules: campaign.rules || "",
             rewards: campaign.rewards || "",
@@ -70,20 +73,39 @@ export default function Campaigns() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  async function uploadCampaignCover(file, { field, setBusy, label }) {
+    try {
+      setBusy(true);
+      setError("");
+      const { url } = await uploadImage(file);
+      updateForm(field, url);
+    } catch (err) {
+      setError(err.message || `${label}上传失败`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleCoverUpload(e) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    try {
-      setCoverUploading(true);
-      setError("");
-      const { url } = await uploadImage(file);
-      updateForm("coverImage", url);
-    } catch (err) {
-      setError(err.message || "封面上传失败");
-    } finally {
-      setCoverUploading(false);
-    }
+    await uploadCampaignCover(file, {
+      field: "coverImage",
+      setBusy: setCoverUploading,
+      label: "活动封面",
+    });
+  }
+
+  async function handleCardCoverUpload(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    await uploadCampaignCover(file, {
+      field: "cardImageUrl",
+      setBusy: setCardCoverUploading,
+      label: "首页卡片封面",
+    });
   }
 
   async function handleSubmit(e) {
@@ -102,6 +124,7 @@ export default function Campaigns() {
         rankLabel: form.rankLabel.trim() || title,
         description: form.description.trim(),
         coverImage: form.coverImage.trim(),
+        cardImageUrl: form.cardImageUrl.trim(),
         timeText: form.timeText.trim(),
         rules: form.rules.trim(),
         rewards: form.rewards.trim(),
@@ -175,8 +198,11 @@ export default function Campaigns() {
               key={campaign.id}
             >
               <div className="admin-campaign-card-cover" aria-hidden>
-                {campaign.coverImage ? (
-                  <img src={campaign.coverImage} alt="" />
+                {campaign.cardImageUrl || campaign.coverImage ? (
+                  <img
+                    src={campaign.cardImageUrl || campaign.coverImage}
+                    alt=""
+                  />
                 ) : (
                   <span>{(campaign.title || "活").slice(0, 1)}</span>
                 )}
@@ -318,7 +344,7 @@ export default function Campaigns() {
                 />
               </label>
               <div className="modal-field">
-                <span>活动封面</span>
+                <span>活动封面（详情页）</span>
                 <div className="banner-upload">
                   {form.coverImage ? (
                     <div className="banner-upload-preview">
@@ -367,6 +393,62 @@ export default function Campaigns() {
                   onChange={(e) => updateForm("coverImage", e.target.value)}
                   placeholder="或粘贴封面图片 URL"
                 />
+              </div>
+              <div className="modal-field">
+                <span>首页卡片封面</span>
+                <div className="banner-upload">
+                  {form.cardImageUrl ? (
+                    <div className="banner-upload-preview">
+                      <img src={form.cardImageUrl} alt="首页卡片封面预览" />
+                      <button
+                        type="button"
+                        className="ph-upload-remove"
+                        onClick={() => updateForm("cardImageUrl", "")}
+                        aria-label="移除首页卡片封面"
+                        title="移除首页卡片封面"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <label
+                      className={
+                        cardCoverUploading
+                          ? "ph-upload-trigger uploading"
+                          : "ph-upload-trigger"
+                      }
+                    >
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        onChange={handleCardCoverUpload}
+                        disabled={cardCoverUploading || saving}
+                        hidden
+                      />
+                      <Upload
+                        className="ph-upload-icon"
+                        size={26}
+                        aria-hidden="true"
+                      />
+                      <span className="ph-upload-text">
+                        {cardCoverUploading ? "上传中..." : "点击上传卡片封面"}
+                      </span>
+                      <span className="ph-upload-sub">
+                        首页活动卡片使用，1.9:1 左右横图
+                      </span>
+                    </label>
+                  )}
+                </div>
+                <input
+                  value={form.cardImageUrl}
+                  onChange={(e) => updateForm("cardImageUrl", e.target.value)}
+                  placeholder="或粘贴卡片封面图片 URL"
+                />
+                <p className="modal-field-hint">
+                  {form.cardImageUrl
+                    ? "首页活动卡片使用这张图，活动详情页仍用上面的活动封面。"
+                    : "未上传时，首页活动卡片直接使用活动封面（按卡片比例裁切）。"}
+                </p>
               </div>
               <label className="modal-field">
                 <span>排序</span>

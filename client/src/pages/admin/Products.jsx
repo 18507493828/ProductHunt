@@ -455,6 +455,9 @@ export default function Products() {
                 </span>
                 <span>{product.submittedBy || "未知"}</span>
                 <span>分享 {product.shareCount ?? 0}</span>
+                <span>
+                  {product.cardImageUrl ? "卡片封面：已设置" : "卡片封面：用详情页"}
+                </span>
                 {product.campaignLabel && (
                   <span className="special-badge">{product.campaignLabel}</span>
                 )}
@@ -549,6 +552,7 @@ export default function Products() {
       <SubmitProductModal
         open={Boolean(editingProduct)}
         editingProduct={editingProduct}
+        showCardCover
         onClose={() => setEditingProduct(null)}
         onSuccess={async () => {
           setEditingProduct(null);

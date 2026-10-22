@@ -82,19 +82,23 @@ export default function MyProductsList({
             ? [product.category]
             : [];
         const busy = unpublishingId === product.id;
+        /* 卡片位用卡片封面，没有则回落到详情页封面 */
+        const cardImage = String(
+          product.cardImageUrl || product.imageUrl || "",
+        ).trim();
         return (
           <article className="ph-my-masonry-card" key={product.id}>
             <Link
               to={`/resource/${product.id}`}
               className="ph-my-masonry-cover"
               style={
-                product.imageUrl
+                cardImage
                   ? undefined
                   : { background: product.color || "var(--ph-accent)" }
               }
             >
-              {product.imageUrl ? (
-                <CachedImage src={product.imageUrl} alt="" />
+              {cardImage ? (
+                <CachedImage src={cardImage} alt="" />
               ) : (
                 <span className="ph-my-masonry-initial" aria-hidden="true">
                   {getProductInitial(product.name)}

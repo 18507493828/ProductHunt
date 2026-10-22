@@ -71,6 +71,7 @@ import {
   writeIncentiveConfig,
   readBuildConfig,
   writeBuildConfig,
+  ensureDefaultBuildTools,
   readShares,
   writeShares,
   readTopics,
@@ -178,6 +179,23 @@ function normalizePurchaseFields(body = {}, fallback = {}) {
 function localUploadFilename(url) {
   const match = String(url || "").match(LOCAL_UPLOAD_URL_PATTERN);
   return match ? match[1] : "";
+}
+
+/* 作品删除时清掉站内上传的图片文件：详情页封面 + 卡片封面（去重，跳过外链） */
+async function removeProductUploads(product) {
+  const names = new Set(
+    [product?.imageUrl, product?.cardImageUrl]
+      .map((url) => localUploadFilename(url))
+      .filter(Boolean),
+  );
+  for (const name of names) {
+    try {
+      await deleteUpload(name);
+      await fs.rm(path.join(UPLOADS_DIR, name), { force: true });
+    } catch (err) {
+      console.warn("[upload] cleanup failed:", name, err.message);
+    }
+  }
 }
 
 const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -310,6 +328,12 @@ try {
   await initNavs();
   await initCampaigns();
   await initCategories();
+  /* 构建工具目录：把默认列表里新增的工具补进线上配置（幂等、只增不改） */
+  try {
+    await ensureDefaultBuildTools();
+  } catch (err) {
+    console.warn("[build-config] ensure tools skipped:", err.message || err);
+  }
   await initTopics();
   await initTopicPosts();
   if (allowStartupDataMutations()) {
@@ -719,11 +743,17 @@ function pickCampaignFields(body = {}, existing = {}) {
     .trim();
   const coverRaw =
     body.coverImage !== undefined ? body.coverImage : existing.coverImage || "";
+  /* 首页卡片封面：活动封面（coverImage）继续作为详情页主图，卡片位单独一张 */
+  const cardCoverRaw =
+    body.cardImageUrl !== undefined
+      ? body.cardImageUrl
+      : existing.cardImageUrl || "";
   return {
     title,
     rankLabel: rankLabel || title,
     description,
     coverImage: normalizeCampaignImage(coverRaw),
+    cardImageUrl: normalizeCampaignImage(cardCoverRaw),
     timeText,
     rules,
     rewards,
@@ -737,6 +767,7 @@ function toPublicCampaign(campaign) {
     rankLabel: campaign.rankLabel || campaign.title || "",
     description: campaign.description || "",
     coverImage: campaign.coverImage || "",
+    cardImageUrl: campaign.cardImageUrl || "",
     timeText: campaign.timeText || "",
     rules: campaign.rules || "",
     rewards: campaign.rewards || "",
@@ -1385,6 +1416,7 @@ function toPublicProduct(product, currentUser, topicMap = null, nicknameMap = nu
     topicId,
     topicName,
     imageUrl: product.imageUrl || "",
+    cardImageUrl: product.cardImageUrl || "",
     color: product.color || "",
     voteCount,
     avgRating,
@@ -2441,6 +2473,7 @@ app.post("/api/products", requireAuth, async (req, res) => {
       category,
       categories,
       imageUrl,
+      cardImageUrl,
       topicId,
       topicName,
       campaign,
@@ -2459,6 +2492,7 @@ app.post("/api/products", requireAuth, async (req, res) => {
     const trimmedUrl = (url || "").trim();
     const trimmedDescription = (description || "").trim();
     const trimmedImageUrl = (imageUrl || "").trim();
+    const trimmedCardImageUrl = (cardImageUrl || "").trim();
     const purchaseFields = normalizePurchaseFields({
       price,
       originalPrice,
@@ -2505,6 +2539,12 @@ app.post("/api/products", requireAuth, async (req, res) => {
     }
     if (trimmedImageUrl && !IMAGE_URL_PATTERN.test(trimmedImageUrl)) {
       return res.status(400).json({ error: "图片链接格式不正确" });
+    }
+    if (trimmedCardImageUrl && trimmedCardImageUrl.length > 500) {
+      return res.status(400).json({ error: "卡片封面链接过长" });
+    }
+    if (trimmedCardImageUrl && !IMAGE_URL_PATTERN.test(trimmedCardImageUrl)) {
+      return res.status(400).json({ error: "卡片封面链接格式不正确" });
     }
 
     const requestedCategories = [];
@@ -2573,6 +2613,7 @@ app.post("/api/products", requireAuth, async (req, res) => {
       topicId: resolvedTopicId,
       color: pickAvatarColor(trimmedName),
       imageUrl: trimmedImageUrl,
+      cardImageUrl: trimmedCardImageUrl,
       appPlatform: resolvedPlatform,
       buildToolId: buildFields.buildToolId,
       buildToolName: buildFields.buildToolName,
@@ -2623,6 +2664,7 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
       category,
       categories,
       imageUrl,
+      cardImageUrl,
       topicId,
       topicName,
       campaign,
@@ -2641,6 +2683,11 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     const trimmedUrl = (url || "").trim();
     const trimmedDescription = (description || "").trim();
     const trimmedImageUrl = (imageUrl || "").trim();
+    /* 卡片封面：未传该字段时保持原值（避免老表单/其他入口把已有卡片封面清空） */
+    const trimmedCardImageUrl =
+      cardImageUrl !== undefined
+        ? String(cardImageUrl || "").trim()
+        : product.cardImageUrl || "";
     const purchaseFields = normalizePurchaseFields(
       { price, originalPrice, buyUrl, purchaseNote },
       product,
@@ -2687,6 +2734,12 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     }
     if (trimmedImageUrl && !IMAGE_URL_PATTERN.test(trimmedImageUrl)) {
       return res.status(400).json({ error: "图片链接格式不正确" });
+    }
+    if (trimmedCardImageUrl && trimmedCardImageUrl.length > 500) {
+      return res.status(400).json({ error: "卡片封面链接过长" });
+    }
+    if (trimmedCardImageUrl && !IMAGE_URL_PATTERN.test(trimmedCardImageUrl)) {
+      return res.status(400).json({ error: "卡片封面链接格式不正确" });
     }
 
     const previousCategories = getProductCategories(product);
@@ -2767,6 +2820,7 @@ app.put("/api/products/:id", requireAuth, async (req, res) => {
     product.campaign = requestedCampaign;
     product.topicId = resolvedTopicId;
     product.imageUrl = trimmedImageUrl;
+    product.cardImageUrl = trimmedCardImageUrl;
     product.appPlatform = resolvedPlatform;
     product.buildToolId = buildFields.buildToolId;
     product.buildToolName = buildFields.buildToolName;
@@ -3317,11 +3371,7 @@ app.post("/api/admin/products/bulk-delete", requireAdmin, async (req, res) => {
     for (const id of ids) {
       try {
         const product = await getProduct(id);
-        const uploadName = localUploadFilename(product.imageUrl);
-        if (uploadName) {
-          await deleteUpload(uploadName);
-          await fs.rm(path.join(UPLOADS_DIR, uploadName), { force: true });
-        }
+        await removeProductUploads(product);
         await deleteProduct(id);
         done.push(id);
       } catch (err) {
@@ -4123,11 +4173,7 @@ app.post("/api/products/:id/share", attachUserIfPresent, async (req, res) => {
 app.delete("/api/products/:id", requireAdmin, async (req, res) => {
   try {
     const product = await getProduct(req.params.id);
-    const uploadName = localUploadFilename(product.imageUrl);
-    if (uploadName) {
-      await deleteUpload(uploadName);
-      await fs.rm(path.join(UPLOADS_DIR, uploadName), { force: true });
-    }
+    await removeProductUploads(product);
     await deleteProduct(req.params.id);
     res.json({ message: "删除成功" });
   } catch {

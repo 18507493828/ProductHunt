@@ -156,8 +156,11 @@ export default function PromoteWizardModal({
                         onClick={() => selectApp(p.id)}
                       >
                         <span className="ph-promote-app-thumb" aria-hidden="true">
-                          {p.imageUrl ? (
-                            <img src={p.imageUrl} alt="" />
+                          {p.cardImageUrl || p.imageUrl ? (
+                            <img
+                              src={p.cardImageUrl || p.imageUrl}
+                              alt=""
+                            />
                           ) : (
                             (p.name || "?").slice(0, 1)
                           )}

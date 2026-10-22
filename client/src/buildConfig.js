@@ -117,6 +117,16 @@ export const BUILD_TOOLS = [
     deployId: "aliyun",
     sponsored: false,
   },
+  {
+    id: "raccoon",
+    name: "商汤小浣熊",
+    emoji: "🦝",
+    desc: "商汤日日新底座 AI 办公智能体，对话式构建应用，适合数据处理与文档自动化",
+    downloadUrl: "https://www.xiaohuanxiong.com/?fromSource=CSDNsmc",
+    inviteCode: "CSDN-XHX-005",
+    deployId: "",
+    sponsored: false,
+  },
 ];
 
 /** 部署云厂商（构建向导最后一步：云部署；可由运营后台覆盖） */

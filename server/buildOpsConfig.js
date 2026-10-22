@@ -131,6 +131,20 @@ export const DEFAULT_BUILD_TOOLS = [
     enabled: true,
     sort: 4,
   },
+  {
+    id: "raccoon",
+    name: "商汤小浣熊",
+    emoji: "🦝",
+    desc: "商汤日日新底座 AI 办公智能体，对话式构建应用，适合数据处理与文档自动化",
+    downloadUrl: "https://www.xiaohuanxiong.com/?fromSource=CSDNsmc",
+    inviteCode: "CSDN-XHX-005",
+    deployId: "",
+    recommended: false,
+    sponsored: false,
+    incentive: 0,
+    enabled: true,
+    sort: 5,
+  },
 ];
 
 /** 云部署厂商（构建向导最后一步；激励文案运营可配） */
