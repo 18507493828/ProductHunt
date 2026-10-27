@@ -34,6 +34,11 @@ export default function Register() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    const phone = username.trim();
+    if (!/^1[3-9]\d{9}$/.test(phone)) {
+      setError("请输入正确的 11 位手机号");
+      return;
+    }
     if (password !== confirmPassword) {
       setError("两次输入的密码不一致");
       return;
@@ -42,7 +47,7 @@ export default function Register() {
     try {
       setLoading(true);
       setError("");
-      const result = await register(username, nickname, password);
+      const result = await register(phone, nickname, password);
       navigate(resolvePostAuthTarget(searchParams, result.user), {
         replace: true,
       });
@@ -70,13 +75,18 @@ export default function Register() {
         <p className="auth-tip">构建 · 发布 · 霸榜 · 加入开发者应用共创平台</p>
 
         <label>
-          登录账号
+          手机号
           <input
+            type="tel"
+            inputMode="numeric"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
-            placeholder="邮箱或自定义账号，至少 3 个字符"
-            minLength={3}
+            placeholder="请输入手机号"
+            pattern="1[3-9][0-9]{9}"
+            title="请输入正确的中国大陆 11 位手机号"
+            minLength={11}
+            maxLength={11}
             required
           />
         </label>

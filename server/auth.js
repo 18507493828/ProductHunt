@@ -54,10 +54,13 @@ export async function initAuth() {
 }
 
 export async function registerUser(username, nickname, password) {
-  const normalizedUsername = username.trim();
-  const normalizedNickname = nickname.trim();
-  if (normalizedUsername.length < USERNAME_MIN_LENGTH) {
-    throw new Error("登录账号至少 3 个字符");
+  const normalizedUsername = typeof username === "string" ? username.trim() : "";
+  const normalizedNickname = typeof nickname === "string" ? nickname.trim() : "";
+  if (!/^1[3-9]\d{9}$/.test(normalizedUsername)) {
+    throw new Error("请输入正确的 11 位手机号");
+  }
+  if (typeof password !== "string") {
+    throw new Error("密码至少 6 位");
   }
   if (normalizedNickname.length < 2) {
     throw new Error("昵称至少 2 个字符");
@@ -71,7 +74,7 @@ export async function registerUser(username, nickname, password) {
 
   const existing = await findUserByUsername(normalizedUsername);
   if (existing) {
-    throw new Error("该登录账号已被注册");
+    throw new Error("该手机号已被注册");
   }
 
   const user = {
