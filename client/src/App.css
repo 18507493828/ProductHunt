@@ -781,6 +781,25 @@ a.ph-logo {
   gap: 14px;
 }
 
+/* 宣传视频位 */
+.ph-portal-video-wrap {
+  padding-top: 22px;
+}
+.ph-portal-video {
+  width: 100%;
+  margin: 0 auto;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #0f1117;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
+}
+.ph-portal-video-media {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
 .ph-page-header-cta {
   display: flex;
   flex-wrap: wrap;

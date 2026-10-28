@@ -10,6 +10,35 @@ function formatCount(n) {
   return String(num);
 }
 
+const PROMO_VIDEO_URL = "https://comfile.csdnimg.cn/file/vb.mp4";
+
+// 远程 CDN 对该视频返回 text/plain，浏览器会拒绝直接 <video> 播放；
+// 这里 fetch 成 blob 再播放，远程加载、不落地本地文件，同时绕开 MIME 限制。
+function useRemoteVideoBlob(url) {
+  const [blobUrl, setBlobUrl] = useState("");
+  useEffect(() => {
+    let objectUrl = "";
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(url, { referrerPolicy: "no-referrer" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setBlobUrl(objectUrl);
+      } catch {
+        setBlobUrl("");
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [url]);
+  return blobUrl;
+}
+
 const PILLARS = [
   {
     id: "build",
@@ -43,6 +72,7 @@ export default function PortalHome({
   votingId,
 }) {
   const { scenes: BUILD_SCENES } = useBuildCatalog();
+  const promoVideoUrl = useRemoteVideoBlob(PROMO_VIDEO_URL);
   const [stats, setStats] = useState(null);
   const [incentive, setIncentive] = useState(null);
   const [hot, setHot] = useState([]);
@@ -186,6 +216,27 @@ export default function PortalHome({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="ph-section ph-portal-video-wrap" aria-label="码上创宣传视频">
+        <div className="ph-section-inner">
+          <div className="ph-portal-video">
+            <video
+              className="ph-portal-video-media"
+              src={promoVideoUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+              controls
+            >
+              您的浏览器不支持 HTML5 视频，请
+              <a href="https://comfile.csdnimg.cn/file/vb.mp4" target="_blank" rel="noopener noreferrer">
+                点击查看宣传视频
+              </a>
+            </video>
           </div>
         </div>
       </section>
