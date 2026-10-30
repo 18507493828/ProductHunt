@@ -48,6 +48,7 @@ import HtmlPublishField from "./components/HtmlPublishField";
 import PeriodRankBoard from "./components/PeriodRankBoard";
 import { applyBuildConfig, getSceneById, getToolById, compareHeatItems, inferSceneIdFromText, productMatchesScene } from "./buildConfig";
 import useBuildCatalog from "./useBuildCatalog";
+import useHScroll from "./useHScroll";
 import Carousel from "./components/Carousel";
 import {
   APP_PLATFORMS,
@@ -157,11 +158,23 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState("全部");
   const [squareScene, setSquareScene] = useState("all");
   const [squareSort, setSquareSort] = useState("hot");
+  const {
+    ref: squareFiltersRef,
+    revealActive: revealSquareTab,
+    dragProps: squareFiltersDragProps,
+  } = useHScroll();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [activeTopicId, setActiveTopicId] = useState("");
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [activeView, setActiveView] = useState("home");
+
+  useEffect(() => {
+    revealSquareTab();
+    const timer = window.setTimeout(revealSquareTab, 240);
+    return () => window.clearTimeout(timer);
+  }, [squareScene, activeView, revealSquareTab]);
 
   const [loading, setLoading] = useState(true);
   const [topicPostsLoading, setTopicPostsLoading] = useState(false);
@@ -1774,6 +1787,8 @@ export default function App() {
                     className="ph-filters"
                     role="tablist"
                     aria-label="场景"
+                    ref={squareFiltersRef}
+                    {...squareFiltersDragProps}
                   >
                     <button
                       type="button"

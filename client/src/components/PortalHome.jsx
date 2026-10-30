@@ -3,6 +3,7 @@ import { ArrowRight, Eye, Rocket, Share2, Sparkles, Users, Boxes, Coins } from "
 import { fetchIncentiveConfig, fetchProducts, fetchStats } from "../api";
 import { compareHeatItems, productMatchesScene } from "../buildConfig";
 import useBuildCatalog from "../useBuildCatalog";
+import useHScroll from "../useHScroll";
 import ProductCard, { ProductCardSkeleton } from "./ProductCard";
 function formatCount(n) {
   const num = Number(n) || 0;
@@ -79,6 +80,18 @@ export default function PortalHome({
   const [loading, setLoading] = useState(true);
   const [sceneFilter, setSceneFilter] = useState("all");
   const [sort, setSort] = useState("hot");
+  const {
+    ref: filtersRef,
+    revealActive: revealSceneTab,
+    dragProps: filtersDragProps,
+  } = useHScroll();
+
+  useEffect(() => {
+    revealSceneTab();
+    // 场景标签异步加载，稍后补一次定位
+    const timer = window.setTimeout(revealSceneTab, 240);
+    return () => window.clearTimeout(timer);
+  }, [sceneFilter, loading, revealSceneTab]);
 
   useEffect(() => {
     let cancelled = false;
@@ -298,7 +311,13 @@ export default function PortalHome({
               </button>
             </div>
             <div className="ph-portal-hot-filters">
-              <div className="ph-filters" role="tablist" aria-label="场景筛选">
+              <div
+                className="ph-filters"
+                role="tablist"
+                aria-label="场景筛选"
+                ref={filtersRef}
+                {...filtersDragProps}
+              >
                 <button
                   type="button"
                   className={"ph-filter" + (sceneFilter === "all" ? " active" : "")}

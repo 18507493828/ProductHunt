@@ -2263,6 +2263,11 @@ a.ph-logo {
 
 .ph-filters:active { cursor: grabbing; }
 
+/* 筛选标签在 flex 行内允许收缩，溢出改在标签条内部横向滚动（不改变原有布局） */
+.ph-portal-hot-filters > .ph-filters {
+  min-width: 0;
+}
+
 .ph-filters-fade {
   position: absolute;
   top: 0;
