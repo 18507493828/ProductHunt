@@ -113,7 +113,7 @@ export default function PortalHome({
     } else {
       list.sort(compareHeatItems);
     }
-    return list.slice(0, 6);
+    return list.slice(0, 8);
   }, [hot, sceneFilter, sort, BUILD_SCENES]);
 
   const incentiveCopy = useMemo(() => {
@@ -336,7 +336,7 @@ export default function PortalHome({
             </div>
             {loading ? (
               <div className="ph-product-grid ph-product-grid-compact">
-                {Array.from({ length: 6 }).map((_, i) => (
+                {Array.from({ length: 8 }).map((_, i) => (
                   <ProductCardSkeleton key={i} size="sm" />
                 ))}
               </div>
