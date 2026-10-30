@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Upload, Inbox, SearchX, Plus } from "lucide-react";
+import { Upload, Inbox, SearchX, Plus, CalendarDays, ChevronDown } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { useToast } from "./Toast";
 import { redirectToLogin } from "./authRedirect";
@@ -75,9 +75,28 @@ const TOPIC_COLORS = [
   "#B0528F",
 ];
 
+/* 把 ISO 时间串转成本地时区的 YYYY-MM-DD，用于日期区间比较 */
+function toLocalDateKey(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value).slice(0, 10);
+  }
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/* 近 N 天（含今天）的区间 */
+function recentDateRange(days) {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  start.setDate(start.getDate() - (days - 1));
+  return { from: toLocalDateKey(start), to: toLocalDateKey(now) };
+}
+
 function StarField() {
   const ref = useRef(null);
-
   useEffect(() => {
     const canvas = ref.current;
     const ctx = canvas.getContext("2d");
@@ -158,6 +177,11 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState("全部");
   const [squareScene, setSquareScene] = useState("all");
   const [squareSort, setSquareSort] = useState("hot");
+  /* 上架时间区间筛选：from/to 为本地时区 YYYY-MM-DD，空串表示不限 */
+  const [squareDate, setSquareDate] = useState({ from: "", to: "" });
+  const [squareDateDraft, setSquareDateDraft] = useState({ from: "", to: "" });
+  const [squareDateOpen, setSquareDateOpen] = useState(false);
+  const squareDateRef = useRef(null);
   const {
     ref: squareFiltersRef,
     revealActive: revealSquareTab,
@@ -175,6 +199,25 @@ export default function App() {
     const timer = window.setTimeout(revealSquareTab, 240);
     return () => window.clearTimeout(timer);
   }, [squareScene, activeView, revealSquareTab]);
+
+  /* 时间筛选面板：点空白处关闭 */
+  useEffect(() => {
+    if (!squareDateOpen) return undefined;
+    function handlePointerDown(event) {
+      if (
+        squareDateRef.current &&
+        !squareDateRef.current.contains(event.target)
+      ) {
+        setSquareDateOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [squareDateOpen]);
 
   const [loading, setLoading] = useState(true);
   const [topicPostsLoading, setTopicPostsLoading] = useState(false);
@@ -310,11 +353,24 @@ export default function App() {
   );
   const submitSceneTopics = submitScene?.topics || [];
 
-  const visibleProducts = useMemo(() => {
+  const squareDateActive = Boolean(squareDate.from || squareDate.to);
+  const squareDateLabel = squareDateActive
+    ? `${squareDate.from || "不限"} ~ ${squareDate.to || "不限"}`
+    : "全部时间";
+
+  const squareMatchedProducts = useMemo(() => {
     let list = [...products];
     if (squareScene !== "all") {
       const scene = BUILD_SCENES.find((s) => s.id === squareScene);
       list = list.filter((p) => productMatchesScene(p, scene));
+    }
+    if (squareDate.from || squareDate.to) {
+      const from = squareDate.from || "0000-01-01";
+      const to = squareDate.to || "9999-12-31";
+      list = list.filter((p) => {
+        const key = toLocalDateKey(p.submittedAt);
+        return Boolean(key) && key >= from && key <= to;
+      });
     }
     if (squareSort === "new") {
       list.sort((a, b) =>
@@ -325,13 +381,19 @@ export default function App() {
     } else {
       list.sort(compareHeatItems);
     }
-    return list.slice(0, visibleCount);
-  }, [products, visibleCount, squareScene, squareSort]);
+    return list;
+  }, [products, squareScene, squareSort, squareDate.from, squareDate.to]);
+  const visibleProducts = useMemo(
+    () => squareMatchedProducts.slice(0, visibleCount),
+    [squareMatchedProducts, visibleCount],
+  );
   const visibleTopicPosts = useMemo(
     () => topicPosts.slice(0, topicVisibleCount),
     [topicPosts, topicVisibleCount],
   );
-  const hasMore = products.length > 0 && visibleCount < products.length;
+  const hasMore =
+    squareMatchedProducts.length > 0 &&
+    visibleCount < squareMatchedProducts.length;
   const topicHasMore =
     topicPosts.length > 0 && topicVisibleCount < topicPosts.length;
   const filterTags = useMemo(() => {
@@ -499,7 +561,9 @@ export default function App() {
   // 客户端分页：滚动触底自动多展示一页（数据已全部在本地）
   const loadMoreRef = useRef(() => {});
   loadMoreRef.current = () => {
-    setVisibleCount((c) => Math.min(c + PRODUCT_PAGE_SIZE, products.length));
+    setVisibleCount((c) =>
+      Math.min(c + PRODUCT_PAGE_SIZE, squareMatchedProducts.length),
+    );
   };
 
   const loadMoreTopicRef = useRef(() => {});
@@ -538,7 +602,7 @@ export default function App() {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [hasMore, visibleCount, products.length]);
+  }, [hasMore, visibleCount, squareMatchedProducts.length]);
 
   useEffect(() => {
     if (!topicHasMore) return undefined;
@@ -571,7 +635,7 @@ export default function App() {
       cancelled = true;
       cancelAnimationFrame(id);
     };
-  }, [visibleCount, products.length, hasMore]);
+  }, [visibleCount, squareMatchedProducts.length, hasMore]);
 
   useEffect(() => {
     if (!topicHasMore) return undefined;
@@ -589,6 +653,32 @@ export default function App() {
       cancelAnimationFrame(id);
     };
   }, [topicVisibleCount, topicPosts.length, topicHasMore]);
+
+  function toggleSquareDatePanel() {
+    if (!squareDateOpen) setSquareDateDraft(squareDate);
+    setSquareDateOpen(!squareDateOpen);
+  }
+
+  /* 应用时间区间：只改生效值，不改数据池 */
+  function applySquareDateRange(range) {
+    setSquareDate(range);
+    setSquareDateDraft(range);
+    setVisibleCount(PRODUCT_PAGE_SIZE);
+  }
+
+  function handleSquareDatePreset(days) {
+    applySquareDateRange(days ? recentDateRange(days) : { from: "", to: "" });
+  }
+
+  function handleSquareDateConfirm() {
+    const { from, to } = squareDateDraft;
+    if (from && to && from > to) {
+      toast.error("时间区间有误", "开始日期不能晚于结束日期");
+      return;
+    }
+    applySquareDateRange({ from, to });
+    setSquareDateOpen(false);
+  }
 
   function requireLogin() {
     if (!user) {
@@ -1778,7 +1868,7 @@ export default function App() {
                 />
                 {appliedSearch && (
                   <p className="ph-search-active">
-                    搜索「{appliedSearch}」共 {products.length} 条结果
+                    搜索「{appliedSearch}」共 {squareMatchedProducts.length} 条结果
                   </p>
                 )}
 
@@ -1813,24 +1903,117 @@ export default function App() {
                       </button>
                     ))}
                   </div>
-                  <div className="ph-period-rank-tabs" role="tablist" aria-label="排序">
-                    {[
-                      ["hot", "最热"],
-                      ["new", "最新"],
-                      ["likes", "点赞最多"],
-                    ].map(([k, label]) => (
+                  <div className="ph-square-tools">
+                    <div className="ph-period-rank-tabs" role="tablist" aria-label="排序">
+                      {[
+                        ["hot", "最热"],
+                        ["new", "最新"],
+                        ["likes", "点赞最多"],
+                      ].map(([k, label]) => (
+                        <button
+                          key={k}
+                          type="button"
+                          className={
+                            "ph-period-rank-tab" +
+                            (squareSort === k ? " active" : "")
+                          }
+                          onClick={() => setSquareSort(k)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="ph-date-filter" ref={squareDateRef}>
                       <button
-                        key={k}
                         type="button"
                         className={
-                          "ph-period-rank-tab" +
-                          (squareSort === k ? " active" : "")
+                          "ph-date-trigger" + (squareDateActive ? " active" : "")
                         }
-                        onClick={() => setSquareSort(k)}
+                        aria-haspopup="dialog"
+                        aria-expanded={squareDateOpen}
+                        onClick={toggleSquareDatePanel}
                       >
-                        {label}
+                        <CalendarDays size={14} aria-hidden="true" />
+                        <span>{squareDateLabel}</span>
+                        <ChevronDown size={14} aria-hidden="true" />
                       </button>
-                    ))}
+
+                      {squareDateOpen && (
+                        <div
+                          className="ph-date-panel"
+                          role="dialog"
+                          aria-label="按上架时间筛选"
+                        >
+                          <div className="ph-date-presets">
+                            {[
+                              ["全部时间", 0],
+                              ["近 7 天", 7],
+                              ["近 30 天", 30],
+                              ["近 90 天", 90],
+                            ].map(([label, days]) => (
+                              <button
+                                key={label}
+                                type="button"
+                                className="ph-date-preset"
+                                onClick={() => handleSquareDatePreset(days)}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="ph-date-inputs">
+                            <label className="ph-date-field">
+                              <span>开始日期</span>
+                              <input
+                                type="date"
+                                value={squareDateDraft.from}
+                                max={squareDateDraft.to || undefined}
+                                onChange={(e) =>
+                                  setSquareDateDraft((prev) => ({
+                                    ...prev,
+                                    from: e.target.value,
+                                  }))
+                                }
+                              />
+                            </label>
+                            <span className="ph-date-sep">至</span>
+                            <label className="ph-date-field">
+                              <span>结束日期</span>
+                              <input
+                                type="date"
+                                value={squareDateDraft.to}
+                                min={squareDateDraft.from || undefined}
+                                onChange={(e) =>
+                                  setSquareDateDraft((prev) => ({
+                                    ...prev,
+                                    to: e.target.value,
+                                  }))
+                                }
+                              />
+                            </label>
+                          </div>
+
+                          <div className="ph-date-actions">
+                            <button
+                              type="button"
+                              className="ph-date-clear"
+                              onClick={() => handleSquareDatePreset(0)}
+                            >
+                              重置
+                            </button>
+                            <button
+                              type="button"
+                              className="ph-date-apply"
+                              onClick={handleSquareDateConfirm}
+                            >
+                              确定
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -1843,24 +2026,36 @@ export default function App() {
                         <ProductCardSkeleton key={index} size="md" />
                       ))}
                     </div>
-                  ) : products.length === 0 ? (
+                  ) : squareMatchedProducts.length === 0 ? (
                     <EmptyState
                       icon={<Inbox />}
                       title={
                         appliedSearch
                           ? `未找到「${appliedSearch}」相关应用`
-                          : activeCategory !== "全部"
-                            ? "该场景下还没有应用"
-                            : "还没有应用，来构建并发布第一个吧"
+                          : squareDateActive
+                            ? "该时间区间内还没有应用"
+                            : squareScene !== "all"
+                              ? "该场景下还没有应用"
+                              : "还没有应用，来构建并发布第一个吧"
                       }
                       action={
-                        <button
-                          type="button"
-                          className="ph-empty-link"
-                          onClick={openBuildWizard}
-                        >
-                          我要构建 →
-                        </button>
+                        squareDateActive ? (
+                          <button
+                            type="button"
+                            className="ph-empty-link"
+                            onClick={() => handleSquareDatePreset(0)}
+                          >
+                            清除时间筛选 →
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="ph-empty-link"
+                            onClick={openBuildWizard}
+                          >
+                            我要构建 →
+                          </button>
+                        )
                       }
                     />
                   ) : (
@@ -1888,7 +2083,7 @@ export default function App() {
                           aria-hidden="true"
                         />
                       ) : (
-                        products.length > 0 && (
+                        squareMatchedProducts.length > 0 && (
                           <div className="ph-loadmore-done">
                             — 已经到底了 —
                           </div>
